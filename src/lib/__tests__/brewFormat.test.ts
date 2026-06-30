@@ -1,0 +1,64 @@
+import { formatSeconds, daysOffRoast, formatBrewLine, formatBrewsTable, formatBrewDetail } from "../brewFormat";
+import type { Brew } from "../../models/types";
+
+const base: Brew = {
+  id: "b1", coffeeId: "c1", brewedAt: 1000, doseG: 15, waterG: 250, ratio: 16.6667,
+  grind: "medium-fine", waterTempC: 94, dripper: "V60", bloomWaterG: 45, bloomTimeS: 30,
+  totalTimeS: 165, agitation: "swirl", filterType: null, tds: null, ey: null,
+  acidity: 4, sweetness: 3, bitterness: 2, body: 3, clarity: 4, rating: 4,
+  notes: "fruity, a touch sharp", createdAt: 1000,
+};
+
+describe("formatSeconds", () => {
+  it("formats m:ss", () => { expect(formatSeconds(165)).toBe("2:45"); });
+  it("pads seconds", () => { expect(formatSeconds(125)).toBe("2:05"); });
+  it("returns empty string for nullish", () => { expect(formatSeconds(null)).toBe(""); });
+});
+
+describe("daysOffRoast", () => {
+  it("computes whole days between roast date and now", () => {
+    const now = Date.parse("2026-06-20T00:00:00Z");
+    expect(daysOffRoast("2026-06-10", now)).toBe(10);
+  });
+  it("returns null when no roast date", () => { expect(daysOffRoast(null)).toBeNull(); });
+  it("returns null for an invalid date string", () => {
+    expect(daysOffRoast("not-a-date")).toBeNull();
+  });
+});
+
+describe("formatBrewLine", () => {
+  it("includes index, ratio, grind, temp, time, rating", () => {
+    const line = formatBrewLine(base, 1);
+    expect(line).toContain("1)");
+    expect(line).toContain("15g:250g");
+    expect(line).toContain("1:16.7");
+    expect(line).toContain("medium-fine");
+    expect(line).toContain("94");
+    expect(line).toContain("2:45");
+    expect(line).toContain("4/5");
+  });
+  it("omits fields that are null", () => {
+    const sparse: Brew = { ...base, grind: null, waterTempC: null, rating: null };
+    const line = formatBrewLine(sparse, 2);
+    expect(line).not.toContain("grind");
+    expect(line).not.toContain("/5 overall");
+  });
+});
+
+describe("formatBrewsTable", () => {
+  it("numbers rows in order", () => {
+    const table = formatBrewsTable([base, { ...base, id: "b2" }]);
+    expect(table).toContain("1)");
+    expect(table).toContain("2)");
+  });
+  it("handles empty", () => { expect(formatBrewsTable([])).toBe("(no brews)"); });
+});
+
+describe("formatBrewDetail", () => {
+  it("returns brew content without leading index prefix", () => {
+    const detail = formatBrewDetail(base);
+    expect(detail.startsWith("1) ")).toBe(false);
+    expect(detail).toContain("1:16.7");
+    expect(detail).toContain("15g:250g");
+  });
+});
