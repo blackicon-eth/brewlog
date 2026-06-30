@@ -1,5 +1,10 @@
-import React, { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator, Animated, BackHandler, PanResponder, Pressable,
+  ScrollView, StyleSheet, Text, View,
+} from "react-native";
+import { StatusBar } from "expo-status-bar";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { RootStackParamList } from "../navigation/types";
 import { getDb } from "../db/database";
@@ -7,21 +12,85 @@ import { getCoffee } from "../db/coffees";
 import { getBrew, listBrewsForCoffee } from "../db/brews";
 import { buildDiagnosePrompt, buildBestRecipePrompt, type ChatMessage } from "../qvac/advisor";
 import { useQvac } from "../qvac/QvacProvider";
-import { theme } from "../theme";
+import { AppText, PillButton, ReasoningDisclosure } from "../components/ui";
+import { colors, fonts, radii, spacing } from "../design/tokens";
 
 type Rt = RouteProp<RootStackParamList, "AdvisorResult">;
 
+const OFFSCREEN = 1000; // start fully below the fold until we measure the sheet
+
+// A blinking ink caret that trails the streamed answer, the one bit of live motion.
+function StreamingCaret() {
+  const opacity = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 0, duration: 480, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 1, duration: 480, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [opacity]);
+  return <Animated.Text style={[styles.caret, { opacity }]}>▍</Animated.Text>;
+}
+
 export function AdvisorResultScreen() {
   const nav = useNavigation();
+  const insets = useSafeAreaInsets();
   const { params } = useRoute<Rt>();
   const { status, prepare, retry, runAdvice } = useQvac();
 
   const [phase, setPhase] = useState<"preparing" | "thinking" | "streaming" | "done" | "error">("preparing");
   const [answer, setAnswer] = useState("");
   const [thinking, setThinking] = useState("");
-  const [showThinking, setShowThinking] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const cancelRef = useRef<null | (() => void)>(null);
+
+  // Sheet entrance / drag / exit, all on the built-in Animated driver (no extra deps).
+  const translateY = useRef(new Animated.Value(OFFSCREEN)).current;
+  const backdrop = useRef(new Animated.Value(0)).current;
+  const sheetH = useRef(OFFSCREEN);
+  const opened = useRef(false);
+  const closing = useRef(false);
+
+  const close = useCallback(() => {
+    if (closing.current) return;
+    closing.current = true;
+    Animated.parallel([
+      Animated.timing(translateY, { toValue: sheetH.current, duration: 220, useNativeDriver: true }),
+      Animated.timing(backdrop, { toValue: 0, duration: 220, useNativeDriver: true }),
+    ]).start(() => nav.goBack());
+  }, [nav, translateY, backdrop]);
+
+  const onSheetLayout = useCallback((e: { nativeEvent: { layout: { height: number } } }) => {
+    sheetH.current = e.nativeEvent.layout.height;
+    if (opened.current) return;
+    opened.current = true;
+    translateY.setValue(sheetH.current);
+    Animated.parallel([
+      Animated.spring(translateY, { toValue: 0, useNativeDriver: true, bounciness: 2, speed: 14 }),
+      Animated.timing(backdrop, { toValue: 1, duration: 260, useNativeDriver: true }),
+    ]).start();
+  }, [translateY, backdrop]);
+
+  // Drag-to-dismiss, attached to the sheet header only (so the body still scrolls).
+  const pan = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) => g.dy > 6 && Math.abs(g.dy) > Math.abs(g.dx),
+      onPanResponderMove: (_, g) => { if (g.dy > 0) translateY.setValue(g.dy); },
+      onPanResponderRelease: (_, g) => {
+        if (g.dy > 110 || g.vy > 0.8) close();
+        else Animated.spring(translateY, { toValue: 0, useNativeDriver: true, bounciness: 0, speed: 18 }).start();
+      },
+    }),
+  ).current;
+
+  // Android hardware back runs the same animated close.
+  useEffect(() => {
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => { close(); return true; });
+    return () => sub.remove();
+  }, [close]);
 
   useEffect(() => {
     let active = true;
@@ -67,65 +136,120 @@ export function AdvisorResultScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.coffeeId, params.brewId, params.kind, status]);
 
+  const generating = phase === "streaming" || phase === "thinking";
+  const loading = phase === "preparing" || (phase === "thinking" && !answer);
+
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>{params.title}</Text>
+    <View style={styles.root}>
+      <StatusBar style="light" />
+      <Animated.View style={[styles.backdrop, { opacity: backdrop }]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={close} />
+      </Animated.View>
 
-      {phase === "preparing" || (phase === "thinking" && !answer) ? (
-        <View style={styles.row}><ActivityIndicator color={theme.accent} /><Text style={styles.muted}>
-          {status === "ready" ? "Thinking…" : "Preparing advisor…"}
-        </Text></View>
-      ) : null}
-
-      {thinking ? (
-        <View style={styles.thinkBox}>
-          <Pressable onPress={() => setShowThinking((s) => !s)}>
-            <Text style={styles.thinkToggle}>{showThinking ? "▾ Hide reasoning" : "▸ Show reasoning"}</Text>
-          </Pressable>
-          {showThinking ? <Text style={styles.thinkText}>{thinking}</Text> : null}
+      <Animated.View
+        style={[styles.sheet, { paddingBottom: insets.bottom + 16, transform: [{ translateY }] }]}
+        onLayout={onSheetLayout}
+      >
+        <View {...pan.panHandlers} style={styles.grip}>
+          <View style={styles.handle} />
+          <View style={styles.kickerRow}>
+            <Text style={styles.sparkle}>✦</Text>
+            <AppText variant="labelSm" style={styles.kicker}>On-device · Private</AppText>
+          </View>
+          <AppText variant="headlineLg" style={styles.title}>{params.title}</AppText>
         </View>
-      ) : null}
 
-      {answer ? <Text style={styles.answer}>{answer}</Text> : null}
-      {errorMsg ? <Text style={styles.error}>❌ {errorMsg}</Text> : null}
-
-      {phase === "streaming" || phase === "thinking" ? (
-        <Pressable style={styles.stop} onPress={() => cancelRef.current?.()}>
-          <Text style={styles.stopText}>Stop</Text>
-        </Pressable>
-      ) : null}
-      {phase === "done" || phase === "error" ? (
-        <View style={styles.row}>
-          {phase === "error" ? (
-            <Pressable style={[styles.close, styles.retryBtn]} onPress={() => {
-              setErrorMsg(null); setAnswer(""); setThinking(""); setPhase("preparing"); retry();
-            }}>
-              <Text style={styles.closeText}>Retry</Text>
-            </Pressable>
+        <ScrollView
+          style={styles.body}
+          contentContainerStyle={styles.bodyContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {loading ? (
+            <View style={styles.loading}>
+              <ActivityIndicator color={colors.primary} />
+              <AppText variant="headlineMd" style={styles.loadingTitle}>
+                {status === "ready" ? "Thinking…" : "Preparing advisor…"}
+              </AppText>
+              <AppText variant="bodyMd" style={styles.loadingSub}>
+                Reading your brew history on-device.
+              </AppText>
+            </View>
           ) : null}
-          <Pressable style={styles.close} onPress={() => nav.goBack()}>
-            <Text style={styles.closeText}>Close</Text>
-          </Pressable>
+
+          {thinking ? <ReasoningDisclosure text={thinking} /> : null}
+
+          {answer ? (
+            <AppText variant="bodyLg" style={styles.answer}>
+              {answer}
+              {generating ? <StreamingCaret /> : null}
+            </AppText>
+          ) : null}
+
+          {errorMsg ? (
+            <View style={styles.errorBox}>
+              <AppText variant="bodyLg" style={styles.errorText}>✕ {errorMsg}</AppText>
+              <AppText variant="bodyMd" style={styles.errorSub}>
+                The advisor runs locally — try again in a moment.
+              </AppText>
+            </View>
+          ) : null}
+        </ScrollView>
+
+        <View style={styles.actions}>
+          {generating ? (
+            <PillButton label="Stop" variant="danger" onPress={() => cancelRef.current?.()} />
+          ) : phase === "error" ? (
+            <View style={styles.errorActions}>
+              <PillButton
+                label="Retry"
+                variant="danger"
+                style={styles.flex1}
+                onPress={() => { setErrorMsg(null); setAnswer(""); setThinking(""); setPhase("preparing"); retry(); }}
+              />
+              <PillButton label="Close" style={styles.flex1} onPress={close} />
+            </View>
+          ) : phase === "done" ? (
+            <PillButton label="Close" onPress={close} />
+          ) : null}
         </View>
-      ) : null}
-      <View style={{ height: 40 }} />
-    </ScrollView>
+      </Animated.View>
+    </View>
   );
 }
+
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: theme.bg },
-  content: { padding: 16, gap: 12 },
-  title: { color: theme.text, fontSize: 18, fontWeight: "700" },
-  row: { flexDirection: "row", alignItems: "center", gap: 8 },
-  muted: { color: theme.muted },
-  answer: { color: theme.text, fontSize: 16, lineHeight: 24 },
-  thinkBox: { backgroundColor: theme.surface, borderRadius: 10, padding: 10 },
-  thinkToggle: { color: theme.muted, fontWeight: "600" },
-  thinkText: { color: theme.muted, marginTop: 8, fontStyle: "italic", lineHeight: 20 },
-  error: { color: theme.bad },
-  stop: { borderColor: theme.bad, borderWidth: 1, borderRadius: 12, padding: 12, alignItems: "center" },
-  stopText: { color: theme.bad, fontWeight: "600" },
-  close: { flex: 1, backgroundColor: theme.accent, borderRadius: 12, padding: 14, alignItems: "center" },
-  closeText: { color: "white", fontWeight: "600" },
-  retryBtn: { marginRight: 8 },
+  root: { flex: 1, justifyContent: "flex-end" },
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(44,22,14,0.45)" },
+  sheet: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: spacing.container,
+    paddingTop: 10,
+    maxHeight: "90%",
+    shadowColor: "#2c160e",
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: -8 },
+    elevation: 16,
+  },
+  grip: { paddingBottom: 4 },
+  handle: { alignSelf: "center", width: 40, height: 5, borderRadius: 999, backgroundColor: colors.outlineVariant, marginBottom: 18 },
+  kickerRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  sparkle: { color: colors.primary, fontSize: 13, fontFamily: fonts.sansBold },
+  kicker: { color: colors.primary },
+  title: { marginTop: 6, marginBottom: spacing.stack },
+  body: { flexGrow: 0 },
+  bodyContent: { paddingBottom: spacing.stack },
+  loading: { alignItems: "center", paddingVertical: spacing.section, gap: 10 },
+  loadingTitle: {},
+  loadingSub: { textAlign: "center" },
+  answer: { color: colors.onSurface, lineHeight: 27 },
+  caret: { color: colors.primary, fontFamily: fonts.sans },
+  errorBox: { paddingVertical: spacing.stack, gap: 6 },
+  errorText: { color: colors.tertiary },
+  errorSub: {},
+  actions: { paddingTop: spacing.stack },
+  errorActions: { flexDirection: "row", gap: spacing.gutter },
+  flex1: { flex: 1 },
 });

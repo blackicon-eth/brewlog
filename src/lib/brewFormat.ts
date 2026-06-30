@@ -23,11 +23,9 @@ export function formatBrewLine(brew: Brew, index: number): string {
   if (brew.grind) parts.push(`grind ${brew.grind}`);
   if (brew.waterTempC != null) parts.push(`${brew.waterTempC}C`);
   if (brew.dripper) parts.push(brew.dripper);
-  if (brew.bloomWaterG != null || brew.bloomTimeS != null) {
-    parts.push(`bloom ${brew.bloomWaterG ?? "?"}g/${formatSeconds(brew.bloomTimeS) || "?"}`);
-  }
+  if (brew.pours != null) parts.push(`${brew.pours} pours`);
+  if (brew.pourIntervalS != null) parts.push(`pour every ${brew.pourIntervalS}s`);
   if (brew.totalTimeS != null) parts.push(formatSeconds(brew.totalTimeS));
-  if (brew.agitation) parts.push(`agit ${brew.agitation}`);
   const taste: string[] = [];
   if (brew.acidity != null) taste.push(`acid${brew.acidity}`);
   if (brew.sweetness != null) taste.push(`sweet${brew.sweetness}`);

@@ -19,11 +19,20 @@ export function RootNavigator() {
         contentStyle: { backgroundColor: theme.bg },
       }}
     >
-      <Stack.Screen name="Coffees" component={CoffeesScreen} options={{ title: "Brewlog" }} />
-      <Stack.Screen name="CoffeeForm" component={CoffeeFormScreen} options={{ title: "Coffee" }} />
-      <Stack.Screen name="CoffeeDetail" component={CoffeeDetailScreen} options={{ title: "Coffee" }} />
-      <Stack.Screen name="BrewForm" component={BrewFormScreen} options={{ title: "Brew" }} />
-      <Stack.Screen name="AdvisorResult" component={AdvisorResultScreen} options={{ title: "Advisor", presentation: "modal" }} />
+      <Stack.Screen name="Coffees" component={CoffeesScreen} options={{ title: "Brewlog", headerShown: false }} />
+      <Stack.Screen name="CoffeeForm" component={CoffeeFormScreen} options={{ title: "Coffee", headerShown: false }} />
+      <Stack.Screen name="CoffeeDetail" component={CoffeeDetailScreen} options={{ title: "Coffee", headerShown: false }} />
+      <Stack.Screen name="BrewForm" component={BrewFormScreen} options={{ title: "Brew", headerShown: false }} />
+      <Stack.Screen
+        name="AdvisorResult"
+        component={AdvisorResultScreen}
+        options={{
+          headerShown: false,
+          presentation: "transparentModal",
+          animation: "none",
+          contentStyle: { backgroundColor: "transparent" },
+        }}
+      />
     </Stack.Navigator>
   );
 }

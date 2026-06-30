@@ -6,8 +6,8 @@ export function rowToBrew(r: BrewRow): Brew {
     id: r.id, coffeeId: r.coffee_id, brewedAt: r.brewed_at,
     doseG: r.dose_g, waterG: r.water_g, ratio: r.ratio,
     grind: r.grind, waterTempC: r.water_temp_c, dripper: r.dripper,
-    bloomWaterG: r.bloom_water_g, bloomTimeS: r.bloom_time_s, totalTimeS: r.total_time_s,
-    agitation: r.agitation, filterType: r.filter_type, tds: r.tds, ey: r.ey,
+    pours: r.pours, pourIntervalS: r.pour_interval_s, totalTimeS: r.total_time_s,
+    filterType: r.filter_type, tds: r.tds, ey: r.ey,
     acidity: r.acidity, sweetness: r.sweetness, bitterness: r.bitterness,
     body: r.body, clarity: r.clarity, rating: r.rating, notes: r.notes, createdAt: r.created_at,
   };
@@ -16,12 +16,12 @@ export function rowToBrew(r: BrewRow): Brew {
 export async function createBrew(db: Db, b: Brew): Promise<void> {
   await db.runAsync(
     `INSERT INTO brews (id, coffee_id, brewed_at, dose_g, water_g, ratio, grind, water_temp_c,
-       dripper, bloom_water_g, bloom_time_s, total_time_s, agitation, filter_type, tds, ey,
+       dripper, pours, pour_interval_s, total_time_s, filter_type, tds, ey,
        acidity, sweetness, bitterness, body, clarity, rating, notes, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [b.id, b.coffeeId, b.brewedAt, b.doseG, b.waterG, b.ratio, b.grind ?? null, b.waterTempC ?? null,
-     b.dripper ?? null, b.bloomWaterG ?? null, b.bloomTimeS ?? null, b.totalTimeS ?? null,
-     b.agitation ?? null, b.filterType ?? null, b.tds ?? null, b.ey ?? null,
+     b.dripper ?? null, b.pours ?? null, b.pourIntervalS ?? null, b.totalTimeS ?? null,
+     b.filterType ?? null, b.tds ?? null, b.ey ?? null,
      b.acidity ?? null, b.sweetness ?? null, b.bitterness ?? null, b.body ?? null,
      b.clarity ?? null, b.rating ?? null, b.notes ?? null, b.createdAt]
   );
@@ -42,11 +42,11 @@ export async function getBrew(db: Db, id: string): Promise<Brew | null> {
 export async function updateBrew(db: Db, b: Brew): Promise<void> {
   await db.runAsync(
     `UPDATE brews SET brewed_at=?, dose_g=?, water_g=?, ratio=?, grind=?, water_temp_c=?, dripper=?,
-       bloom_water_g=?, bloom_time_s=?, total_time_s=?, agitation=?, filter_type=?, tds=?, ey=?,
+       pours=?, pour_interval_s=?, total_time_s=?, filter_type=?, tds=?, ey=?,
        acidity=?, sweetness=?, bitterness=?, body=?, clarity=?, rating=?, notes=?
      WHERE id = ?`,
     [b.brewedAt, b.doseG, b.waterG, b.ratio, b.grind ?? null, b.waterTempC ?? null, b.dripper ?? null,
-     b.bloomWaterG ?? null, b.bloomTimeS ?? null, b.totalTimeS ?? null, b.agitation ?? null,
+     b.pours ?? null, b.pourIntervalS ?? null, b.totalTimeS ?? null,
      b.filterType ?? null, b.tds ?? null, b.ey ?? null, b.acidity ?? null, b.sweetness ?? null,
      b.bitterness ?? null, b.body ?? null, b.clarity ?? null, b.rating ?? null, b.notes ?? null, b.id]
   );

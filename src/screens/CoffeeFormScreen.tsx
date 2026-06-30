@@ -1,19 +1,22 @@
 import React, { useEffect, useState } from "react";
-import { Alert, ScrollView, StyleSheet, TouchableOpacity, Text, View } from "react-native";
+import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { StatusBar } from "expo-status-bar";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/types";
 import { getDb } from "../db/database";
 import { getCoffee, createCoffee, updateCoffee, deleteCoffee } from "../db/coffees";
 import { makeId } from "../lib/ids";
-import { Field } from "../components/Field";
-import { theme } from "../theme";
+import { AppText, TextField, PillButton } from "../components/ui";
+import { colors, fonts, radii, shadows, spacing } from "../design/tokens";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "CoffeeForm">;
 type Rt = RouteProp<RootStackParamList, "CoffeeForm">;
 
 export function CoffeeFormScreen() {
   const nav = useNavigation<Nav>();
+  const insets = useSafeAreaInsets();
   const { params } = useRoute<Rt>();
   const editingId = params?.coffeeId;
 
@@ -64,7 +67,7 @@ export function CoffeeFormScreen() {
     }
   }
 
-  async function onDelete() {
+  function onDelete() {
     if (!editingId) return;
     Alert.alert("Delete coffee?", "This removes the coffee and all its brews.", [
       { text: "Cancel", style: "cancel" },
@@ -80,27 +83,70 @@ export function CoffeeFormScreen() {
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Field label="Roaster *" value={roaster} onChangeText={setRoaster} placeholder="Sey Coffee" />
-      <Field label="Name *" value={name} onChangeText={setName} placeholder="Kenya Nyeri AA" />
-      <Field label="Origin" value={origin} onChangeText={setOrigin} placeholder="Kenya" />
-      <Field label="Process" value={process} onChangeText={setProcess} placeholder="washed / natural / honey" />
-      <Field label="Roast level" value={roastLevel} onChangeText={setRoastLevel} placeholder="light / medium" />
-      <Field label="Roast date (YYYY-MM-DD)" value={roastDate} onChangeText={setRoastDate} placeholder="2026-06-10" />
-      <Field label="Notes" value={notes} onChangeText={setNotes} multiline placeholder="blackcurrant, floral" />
-      <TouchableOpacity style={styles.save} onPress={onSave}><Text style={styles.saveText}>Save coffee</Text></TouchableOpacity>
-      {editingId ? (
-        <TouchableOpacity style={styles.delete} onPress={onDelete}><Text style={styles.deleteText}>Delete coffee</Text></TouchableOpacity>
-      ) : null}
-      <View style={{ height: 40 }} />
-    </ScrollView>
+    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+      <StatusBar style="dark" />
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 40 }]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.topBar}>
+          <Pressable onPress={() => nav.goBack()} hitSlop={10}>
+            <Text style={styles.back}>←</Text>
+          </Pressable>
+        </View>
+        <AppText variant="labelSm">{editingId ? "Edit · Ledger" : "New · Ledger"}</AppText>
+        <AppText variant="headlineLg" style={styles.title}>
+          {editingId ? "Edit coffee" : "New coffee"}
+        </AppText>
+
+        <View style={styles.heroWrap}>
+          <Image
+            source={editingId
+              ? require("../../assets/coffee-hero-edit.png")
+              : require("../../assets/coffee-hero-new.png")}
+            style={styles.hero}
+            resizeMode="cover"
+          />
+        </View>
+
+        <AppText variant="labelSm" style={styles.section}>The bean</AppText>
+        <TextField label="Roaster" value={roaster} onChangeText={setRoaster} placeholder="Sey Coffee" required autoCapitalize="words" />
+        <TextField label="Name / variety" value={name} onChangeText={setName} placeholder="Kenya Nyeri AA" required autoCapitalize="words" />
+
+        <AppText variant="labelSm" style={styles.section}>Details</AppText>
+        <View style={styles.row}>
+          <TextField label="Origin" value={origin} onChangeText={setOrigin} placeholder="Kenya" autoCapitalize="words" style={styles.col} />
+          <TextField label="Process" value={process} onChangeText={setProcess} placeholder="washed" style={styles.col} />
+        </View>
+        <View style={styles.row}>
+          <TextField label="Roast level" value={roastLevel} onChangeText={setRoastLevel} placeholder="light" style={styles.col} />
+          <TextField label="Roast date" value={roastDate} onChangeText={setRoastDate} placeholder="2026-06-10" autoCapitalize="none" style={styles.col} />
+        </View>
+
+        <AppText variant="labelSm" style={styles.section}>Notes</AppText>
+        <TextField label="Tasting notes" value={notes} onChangeText={setNotes} multiline placeholder="blackcurrant, floral, juicy" />
+
+        <View style={styles.actions}>
+          <PillButton label={editingId ? "Save changes" : "Save coffee"} onPress={onSave} />
+          {editingId ? <PillButton label="Delete coffee" variant="danger" onPress={onDelete} style={styles.delete} /> : null}
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
+
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: theme.bg },
-  content: { padding: 16 },
-  save: { backgroundColor: theme.accent, borderRadius: 12, padding: 14, alignItems: "center", marginTop: 8 },
-  saveText: { color: "white", fontWeight: "600" },
-  delete: { borderColor: theme.bad, borderWidth: 1, borderRadius: 12, padding: 14, alignItems: "center", marginTop: 12 },
-  deleteText: { color: theme.bad, fontWeight: "600" },
+  screen: { flex: 1, backgroundColor: colors.background },
+  content: { paddingHorizontal: spacing.container },
+  topBar: { marginBottom: 14 },
+  back: { fontFamily: fonts.sansSemiBold, fontSize: 26, color: colors.onSurface, lineHeight: 28 },
+  title: { marginTop: 6, marginBottom: spacing.base },
+  heroWrap: { marginTop: spacing.base, borderRadius: radii.lg, backgroundColor: colors.surfaceLowest, ...shadows.card },
+  hero: { width: "100%", height: 160, borderRadius: radii.lg },
+  section: { marginTop: spacing.section, marginBottom: spacing.gutter },
+  row: { flexDirection: "row", gap: spacing.gutter },
+  col: { flex: 1 },
+  actions: { marginTop: spacing.section },
+  delete: { marginTop: spacing.gutter },
 });

@@ -28,8 +28,8 @@ export function buildDiagnosePrompt(
     formatBrewDetail(selected),
     "",
     "How should I adjust my next brew of this coffee to make it taste better? " +
-      "Give a short ordered list of specific changes (grind, ratio, water temperature, agitation, " +
-      "bloom/pour). One brief reason each.",
+      "Give a short ordered list of specific changes (grind, ratio, water temperature, number of " +
+      "pours, pour interval). One brief reason each.",
   ].join("\n");
   return [{ role: "system", content: SYSTEM_PROMPT }, { role: "user", content: user }];
 }
@@ -45,8 +45,8 @@ export function buildBestRecipePrompt(
     formatBrewsTable(capped),
     "",
     "Based on these results, what is the best recipe for this coffee? Specify dose, ratio, grind, " +
-      "water temperature, bloom, pour structure and total time. Briefly justify it and reference " +
-      "which brews above support your choice.",
+      "water temperature, number of pours, pour interval and total time. Briefly justify it and " +
+      "reference which brews above support your choice.",
   ].join("\n");
   return [{ role: "system", content: SYSTEM_PROMPT }, { role: "user", content: user }];
 }
