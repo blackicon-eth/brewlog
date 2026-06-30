@@ -9,7 +9,8 @@ import { getDb } from "../db/database";
 import { getBrew, createBrew, updateBrew, deleteBrew } from "../db/brews";
 import { computeRatio, formatRatio } from "../lib/ratio";
 import { makeId } from "../lib/ids";
-import { AppText, TextField, ChipSelect, ScaleSelect, PillButton, type ChipOption } from "../components/ui";
+import { AppText, TextField, ChipSelect, ScaleSelect, PillButton, NaturalLanguageIntake, type ChipOption } from "../components/ui";
+import { buildBrewIntakePrompt, parseBrewIntake, type BrewIntake } from "../qvac/intake";
 import { colors, fonts, spacing } from "../design/tokens";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "BrewForm">;
@@ -45,6 +46,7 @@ export function BrewFormScreen() {
   const insets = useSafeAreaInsets();
   const { params } = useRoute<Rt>();
   const editingId = params.brewId;
+  const [revealed, setRevealed] = useState(!!editingId);
 
   const [dose, setDose] = useState(""); const [water, setWater] = useState("");
   const [grind, setGrind] = useState(""); const [temp, setTemp] = useState("");
@@ -90,6 +92,20 @@ export function BrewFormScreen() {
       }
     })();
   }, [editingId]);
+
+  function applyParsed(p: BrewIntake) {
+    if (p.doseG != null) setDose(String(p.doseG));
+    if (p.waterG != null) setWater(String(p.waterG));
+    if (p.grind) setGrind(p.grind);
+    if (p.waterTempC != null) setTemp(String(p.waterTempC));
+    if (p.dripper) setDripper(p.dripper);
+    if (p.pours != null) setPours(String(p.pours));
+    if (p.pourIntervalS != null) setPourInterval(String(p.pourIntervalS));
+    if (p.totalTimeS != null) setTotalTime(String(p.totalTimeS));
+    if (p.filterType) setFilterType(p.filterType);
+    if (p.notes) setNotes(p.notes);
+    setRevealed(true);
+  }
 
   async function onSave() {
     const doseG = num(dose); const waterG = num(water);
@@ -148,43 +164,56 @@ export function BrewFormScreen() {
           </Pressable>
         </View>
 
-        <View style={styles.hero}>
-          <AppText variant="labelSm">{editingId ? "Edit brew" : "Log brew"}</AppText>
-          <AppText variant="headlineLg" style={styles.ratio}>{ratioPreview}</AppText>
-          <AppText variant="labelMd" style={styles.ratioCaption}>Ratio · dose to water</AppText>
-        </View>
+        {!revealed ? (
+          <NaturalLanguageIntake
+            kicker="Describe your brew"
+            placeholder="15g in, 250g out, V60, 94°C, 3 pours about 30s apart, ~2:45 total. Bright and juicy."
+            buildPrompt={buildBrewIntakePrompt}
+            parse={parseBrewIntake}
+            onParsed={applyParsed}
+            onManual={() => setRevealed(true)}
+          />
+        ) : (
+          <>
+            <View style={styles.hero}>
+              <AppText variant="labelSm">{editingId ? "Edit brew" : "Log brew"}</AppText>
+              <AppText variant="headlineLg" style={styles.ratio}>{ratioPreview}</AppText>
+              <AppText variant="labelMd" style={styles.ratioCaption}>Ratio · dose to water</AppText>
+            </View>
 
-        <SectionHeader>Recipe</SectionHeader>
-        <View style={styles.row}>
-          <TextField label="Dose (g)" value={dose} onChangeText={setDose} keyboardType="decimal-pad" placeholder="15" required style={styles.col} />
-          <TextField label="Water (g)" value={water} onChangeText={setWater} keyboardType="decimal-pad" placeholder="250" required style={styles.col} />
-        </View>
-        <TextField label="Grind" value={grind} onChangeText={setGrind} placeholder="medium-fine / 18 clicks" autoCapitalize="none" />
-        <TextField label="Water temp (°C)" value={temp} onChangeText={setTemp} keyboardType="decimal-pad" placeholder="94" />
-        <ChipSelect label="Dripper" options={DRIPPERS} value={dripper} onChange={setDripper} clearable={false} />
+            <SectionHeader>Recipe</SectionHeader>
+            <View style={styles.row}>
+              <TextField label="Dose (g)" value={dose} onChangeText={setDose} keyboardType="decimal-pad" placeholder="15" required style={styles.col} />
+              <TextField label="Water (g)" value={water} onChangeText={setWater} keyboardType="decimal-pad" placeholder="250" required style={styles.col} />
+            </View>
+            <TextField label="Grind" value={grind} onChangeText={setGrind} placeholder="medium-fine / 18 clicks" autoCapitalize="none" />
+            <TextField label="Water temp (°C)" value={temp} onChangeText={setTemp} keyboardType="decimal-pad" placeholder="94" />
+            <ChipSelect label="Dripper" options={DRIPPERS} value={dripper} onChange={setDripper} clearable={false} />
 
-        <SectionHeader>Process</SectionHeader>
-        <View style={styles.row}>
-          <TextField label="# Pours" value={pours} onChangeText={setPours} keyboardType="numeric" placeholder="3" style={styles.col} />
-          <TextField label="Interval (s)" value={pourInterval} onChangeText={setPourInterval} keyboardType="numeric" placeholder="30" style={styles.col} />
-          <TextField label="Total (s)" value={totalTime} onChangeText={setTotalTime} keyboardType="numeric" placeholder="165" style={styles.col} />
-        </View>
-        <ChipSelect label="Filter" options={FILTERS} value={filterType} onChange={setFilterType} />
+            <SectionHeader>Process</SectionHeader>
+            <View style={styles.row}>
+              <TextField label="# Pours" value={pours} onChangeText={setPours} keyboardType="numeric" placeholder="3" style={styles.col} />
+              <TextField label="Interval (s)" value={pourInterval} onChangeText={setPourInterval} keyboardType="numeric" placeholder="30" style={styles.col} />
+              <TextField label="Total (s)" value={totalTime} onChangeText={setTotalTime} keyboardType="numeric" placeholder="165" style={styles.col} />
+            </View>
+            <ChipSelect label="Filter" options={FILTERS} value={filterType} onChange={setFilterType} />
 
-        <SectionHeader>Taste</SectionHeader>
-        <View style={styles.taste}>
-          {TASTES.map((t) => (
-            <ScaleSelect key={t.key} label={t.label} value={taste[t.key] ?? ""} onChange={setTasteKey(t.key)} />
-          ))}
-        </View>
+            <SectionHeader>Taste</SectionHeader>
+            <View style={styles.taste}>
+              {TASTES.map((t) => (
+                <ScaleSelect key={t.key} label={t.label} value={taste[t.key] ?? ""} onChange={setTasteKey(t.key)} />
+              ))}
+            </View>
 
-        <SectionHeader>Notes</SectionHeader>
-        <TextField label="Tasting notes" value={notes} onChangeText={setNotes} multiline placeholder="bitter finish, muted acidity" />
+            <SectionHeader>Notes</SectionHeader>
+            <TextField label="Tasting notes" value={notes} onChangeText={setNotes} multiline placeholder="bitter finish, muted acidity" />
 
-        <View style={styles.actions}>
-          <PillButton label={editingId ? "Save changes" : "Save brew"} onPress={onSave} />
-          {editingId ? <PillButton label="Delete brew" variant="danger" onPress={onDelete} style={styles.delete} /> : null}
-        </View>
+            <View style={styles.actions}>
+              <PillButton label={editingId ? "Save changes" : "Save brew"} onPress={onSave} />
+              {editingId ? <PillButton label="Delete brew" variant="danger" onPress={onDelete} style={styles.delete} /> : null}
+            </View>
+          </>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
