@@ -1,4 +1,4 @@
-import { extractJson, buildBrewIntakePrompt, parseBrewIntake } from "../intake";
+import { extractJson, buildBrewIntakePrompt, parseBrewIntake, buildCoffeeIntakePrompt, parseCoffeeIntake } from "../intake";
 
 describe("extractJson", () => {
   it("parses a plain object", () => {
@@ -63,5 +63,31 @@ describe("parseBrewIntake", () => {
   });
   it("returns empty on garbage", () => {
     expect(parseBrewIntake("not json")).toEqual({});
+  });
+});
+
+describe("buildCoffeeIntakePrompt", () => {
+  it("is a system+user pair embedding the text and key list", () => {
+    const m = buildCoffeeIntakePrompt("Sey Kenya washed");
+    expect(m).toHaveLength(2);
+    expect(m[1].content).toContain("Sey Kenya washed");
+    expect(m[0].content).toContain("roastDate");
+  });
+});
+
+describe("parseCoffeeIntake", () => {
+  it("maps and trims fields", () => {
+    expect(
+      parseCoffeeIntake('{"roaster":" Sey ","name":"Kenya","origin":"Kenya","process":"washed","roastLevel":"light","roastDate":"2026-06-10","notes":"floral"}')
+    ).toEqual({ roaster: "Sey", name: "Kenya", origin: "Kenya", process: "washed", roastLevel: "light", roastDate: "2026-06-10", notes: "floral" });
+  });
+  it("drops a malformed roastDate", () => {
+    expect(parseCoffeeIntake('{"roastDate":"June 10"}')).toEqual({});
+  });
+  it("omits nulls and empty strings", () => {
+    expect(parseCoffeeIntake('{"roaster":"Sey","name":null,"origin":""}')).toEqual({ roaster: "Sey" });
+  });
+  it("returns empty on garbage", () => {
+    expect(parseCoffeeIntake("nope")).toEqual({});
   });
 });

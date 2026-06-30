@@ -82,3 +82,36 @@ export function parseBrewIntake(raw: string): BrewIntake {
   const notes = str(o.notes); if (notes) out.notes = notes;
   return out;
 }
+
+export type CoffeeIntake = {
+  roaster?: string; name?: string; origin?: string; process?: string;
+  roastLevel?: string; roastDate?: string; notes?: string;
+};
+
+const COFFEE_KEYS_DOC =
+  "roaster, name, origin, process (e.g. washed/natural/honey), roastLevel (e.g. light/medium), roastDate (YYYY-MM-DD), notes";
+
+export function buildCoffeeIntakePrompt(text: string): ChatMessage[] {
+  const system = [
+    "You convert a coffee lover's freeform description of a bag of coffee into JSON.",
+    `Return ONLY a JSON object with these keys: ${COFFEE_KEYS_DOC}.`,
+    "Use null for anything not stated. Do not invent values.",
+    "roastDate must be YYYY-MM-DD or null. notes holds any leftover descriptive/tasting prose.",
+  ].join("\n");
+  return [{ role: "system", content: system }, { role: "user", content: `Description:\n${text}` }];
+}
+
+export function parseCoffeeIntake(raw: string): CoffeeIntake {
+  const o = extractJson(raw);
+  if (!o) return {};
+  const out: CoffeeIntake = {};
+  const roaster = str(o.roaster); if (roaster) out.roaster = roaster;
+  const name = str(o.name); if (name) out.name = name;
+  const origin = str(o.origin); if (origin) out.origin = origin;
+  const process = str(o.process); if (process) out.process = process;
+  const roastLevel = str(o.roastLevel); if (roastLevel) out.roastLevel = roastLevel;
+  const roastDate = str(o.roastDate);
+  if (roastDate && /^\d{4}-\d{2}-\d{2}$/.test(roastDate)) out.roastDate = roastDate;
+  const notes = str(o.notes); if (notes) out.notes = notes;
+  return out;
+}
