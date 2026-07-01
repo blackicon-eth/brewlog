@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
@@ -8,9 +8,9 @@ import type { RootStackParamList } from "../navigation/types";
 import { getDb } from "../db/database";
 import { getCoffee, createCoffee, updateCoffee, deleteCoffee } from "../db/coffees";
 import { makeId } from "../lib/ids";
-import { AppText, TextField, PillButton, NaturalLanguageIntake } from "../components/ui";
+import { AppText, TextField, PillButton, NaturalLanguageIntake, Chevron, useAppModal } from "../components/ui";
 import { buildCoffeeIntakePrompt, parseCoffeeIntake, type CoffeeIntake } from "../qvac/intake";
-import { colors, fonts, radii, shadows, spacing } from "../design/tokens";
+import { colors, radii, shadows, spacing, screenTopGap } from "../design/tokens";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "CoffeeForm">;
 type Rt = RouteProp<RootStackParamList, "CoffeeForm">;
@@ -19,6 +19,7 @@ export function CoffeeFormScreen() {
   const nav = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
   const { params } = useRoute<Rt>();
+  const modal = useAppModal();
   const editingId = params?.coffeeId;
   const [revealed, setRevealed] = useState(!!editingId);
 
@@ -37,7 +38,7 @@ export function CoffeeFormScreen() {
       try {
         const c = await getCoffee(await getDb(), editingId);
         if (!c) {
-          Alert.alert("Couldn't open coffee", "Coffee not found.");
+          modal.alert("Couldn't open coffee", "Coffee not found.");
           nav.goBack();
           return;
         }
@@ -45,7 +46,7 @@ export function CoffeeFormScreen() {
         setProcess(c.process ?? ""); setRoastLevel(c.roastLevel ?? "");
         setRoastDate(c.roastDate ?? ""); setNotes(c.notes ?? ""); setCreatedAt(c.createdAt);
       } catch (e: any) {
-        Alert.alert("Couldn't open coffee", String(e?.message ?? e));
+        modal.alert("Couldn't open coffee", String(e?.message ?? e));
         nav.goBack();
       }
     })();
@@ -63,7 +64,7 @@ export function CoffeeFormScreen() {
   }
 
   async function onSave() {
-    if (!roaster.trim() || !name.trim()) { Alert.alert("Roaster and name are required."); return; }
+    if (!roaster.trim() || !name.trim()) { modal.alert("Missing details", "Roaster and name are required."); return; }
     try {
       const db = await getDb();
       const coffee = {
@@ -76,36 +77,38 @@ export function CoffeeFormScreen() {
       if (editingId) await updateCoffee(db, coffee); else await createCoffee(db, coffee);
       nav.goBack();
     } catch (e: any) {
-      Alert.alert("Couldn't save coffee", String(e?.message ?? e));
+      modal.alert("Couldn't save coffee", String(e?.message ?? e));
     }
   }
 
-  function onDelete() {
+  async function onDelete() {
     if (!editingId) return;
-    Alert.alert("Delete coffee?", "This removes the coffee and all its brews.", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: async () => {
-          try {
-            await deleteCoffee(await getDb(), editingId);
-            nav.navigate("Coffees");
-          } catch (e: any) {
-            Alert.alert("Couldn't delete coffee", String(e?.message ?? e));
-          }
-        } },
-    ]);
+    const ok = await modal.confirm({
+      title: "Delete coffee?",
+      message: "This removes the coffee and all its brews.",
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await deleteCoffee(await getDb(), editingId);
+      nav.navigate("Coffees");
+    } catch (e: any) {
+      modal.alert("Couldn't delete coffee", String(e?.message ?? e));
+    }
   }
 
   return (
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === "ios" ? "padding" : "height"}>
       <StatusBar style="dark" />
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 40 }]}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + screenTopGap, paddingBottom: insets.bottom + 40 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.topBar}>
-          <Pressable onPress={() => nav.goBack()} hitSlop={10}>
-            <Text style={styles.back}>←</Text>
+          <Pressable onPress={() => nav.goBack()} hitSlop={10} style={styles.backBtn}>
+            <Chevron direction="left" size={12} thickness={2.5} color={colors.onSurface} />
           </Pressable>
         </View>
         <AppText variant="labelSm">{editingId ? "Edit · Ledger" : "New · Ledger"}</AppText>
@@ -165,8 +168,8 @@ export function CoffeeFormScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: spacing.container },
-  topBar: { marginBottom: 14 },
-  back: { fontFamily: fonts.sansSemiBold, fontSize: 26, color: colors.onSurface, lineHeight: 28 },
+  topBar: { flexDirection: "row", marginBottom: 14 },
+  backBtn: { height: 34, justifyContent: "center" },
   title: { marginTop: 6, marginBottom: spacing.base },
   heroWrap: { marginTop: spacing.base, borderRadius: radii.lg, backgroundColor: colors.surfaceLowest, ...shadows.card },
   hero: { width: "100%", height: 160, borderRadius: radii.lg },

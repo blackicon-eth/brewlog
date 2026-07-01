@@ -1,6 +1,7 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { AppText } from "./AppText";
+import { Chevron } from "./Chevron";
 import { colors, fonts, radii, shadows } from "../../design/tokens";
 
 export type AiActionCardProps = {
@@ -33,7 +34,7 @@ export function AiActionCard({ title, subtitle, enabled, onPress }: AiActionCard
         <Text style={[styles.title, { color: enabled ? colors.onSurface : colors.onSurfaceVariant }]}>{title}</Text>
         <AppText variant="bodyMd" style={styles.subtitle}>{subtitle}</AppText>
       </View>
-      {enabled ? <Text style={styles.chevron}>→</Text> : null}
+      {enabled ? <Chevron direction="right" size={9} thickness={2.5} color={colors.primary} style={styles.chevron} /> : null}
     </Pressable>
   );
 }
@@ -60,5 +61,5 @@ const styles = StyleSheet.create({
   body: { flex: 1 },
   title: { fontFamily: fonts.sansSemiBold, fontSize: 16 },
   subtitle: { marginTop: 2 },
-  chevron: { color: colors.primary, fontSize: 18, fontFamily: fonts.sansSemiBold },
+  chevron: { marginRight: 2 },
 });

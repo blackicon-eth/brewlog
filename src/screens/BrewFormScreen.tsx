@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
@@ -9,9 +9,9 @@ import { getDb } from "../db/database";
 import { getBrew, createBrew, updateBrew, deleteBrew } from "../db/brews";
 import { computeRatio, formatRatio } from "../lib/ratio";
 import { makeId } from "../lib/ids";
-import { AppText, TextField, ChipSelect, ScaleSelect, PillButton, NaturalLanguageIntake, type ChipOption } from "../components/ui";
+import { AppText, TextField, ChipSelect, ScaleSelect, PillButton, NaturalLanguageIntake, Chevron, useAppModal, type ChipOption } from "../components/ui";
 import { buildBrewIntakePrompt, parseBrewIntake, type BrewIntake } from "../qvac/intake";
-import { colors, fonts, spacing } from "../design/tokens";
+import { colors, spacing, screenTopGap } from "../design/tokens";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "BrewForm">;
 type Rt = RouteProp<RootStackParamList, "BrewForm">;
@@ -45,6 +45,7 @@ export function BrewFormScreen() {
   const nav = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
   const { params } = useRoute<Rt>();
+  const modal = useAppModal();
   const editingId = params.brewId;
   const [revealed, setRevealed] = useState(!!editingId);
 
@@ -66,7 +67,7 @@ export function BrewFormScreen() {
       try {
         const b = await getBrew(await getDb(), editingId);
         if (!b) {
-          Alert.alert("Couldn't open brew", "Brew not found.");
+          modal.alert("Couldn't open brew", "Brew not found.");
           nav.goBack();
           return;
         }
@@ -87,7 +88,7 @@ export function BrewFormScreen() {
         });
         setNotes(b.notes ?? ""); setCreatedAt(b.createdAt); setBrewedAt(b.brewedAt);
       } catch (e: any) {
-        Alert.alert("Couldn't open brew", String(e?.message ?? e));
+        modal.alert("Couldn't open brew", String(e?.message ?? e));
         nav.goBack();
       }
     })();
@@ -110,7 +111,7 @@ export function BrewFormScreen() {
   async function onSave() {
     const doseG = num(dose); const waterG = num(water);
     if (doseG == null || waterG == null || doseG <= 0 || waterG <= 0) {
-      Alert.alert("Dose and water are required and must be > 0."); return;
+      modal.alert("Missing details", "Dose and water are required and must be greater than 0."); return;
     }
     try {
       const db = await getDb();
@@ -128,23 +129,25 @@ export function BrewFormScreen() {
       if (editingId) await updateBrew(db, brew); else await createBrew(db, brew);
       nav.goBack();
     } catch (e: any) {
-      Alert.alert("Couldn't save brew", String(e?.message ?? e));
+      modal.alert("Couldn't save brew", String(e?.message ?? e));
     }
   }
 
-  function onDelete() {
+  async function onDelete() {
     if (!editingId) return;
-    Alert.alert("Delete brew?", "This removes this brew log.", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: async () => {
-          try {
-            await deleteBrew(await getDb(), editingId);
-            nav.goBack();
-          } catch (e: any) {
-            Alert.alert("Couldn't delete brew", String(e?.message ?? e));
-          }
-        } },
-    ]);
+    const ok = await modal.confirm({
+      title: "Delete brew?",
+      message: "This removes this brew log.",
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await deleteBrew(await getDb(), editingId);
+      nav.goBack();
+    } catch (e: any) {
+      modal.alert("Couldn't delete brew", String(e?.message ?? e));
+    }
   }
 
   const d = num(dose), w = num(water);
@@ -154,13 +157,13 @@ export function BrewFormScreen() {
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === "ios" ? "padding" : "height"}>
       <StatusBar style="dark" />
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 40 }]}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + screenTopGap, paddingBottom: insets.bottom + 40 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.topBar}>
-          <Pressable onPress={() => nav.goBack()} hitSlop={10}>
-            <Text style={styles.back}>←</Text>
+          <Pressable onPress={() => nav.goBack()} hitSlop={10} style={styles.backBtn}>
+            <Chevron direction="left" size={12} thickness={2.5} color={colors.onSurface} />
           </Pressable>
         </View>
 
@@ -222,8 +225,8 @@ export function BrewFormScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: spacing.container },
-  topBar: { marginBottom: 8 },
-  back: { fontFamily: fonts.sansSemiBold, fontSize: 26, color: colors.onSurface, lineHeight: 28 },
+  topBar: { flexDirection: "row", marginBottom: 8 },
+  backBtn: { height: 34, justifyContent: "center" },
   hero: { alignItems: "center" },
   ratio: { fontSize: 44, lineHeight: 50, marginTop: 4 },
   ratioCaption: { color: colors.secondary, marginTop: 2 },

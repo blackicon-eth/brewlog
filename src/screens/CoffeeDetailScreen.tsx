@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { Alert, FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { FlatList, Image, Pressable, StyleSheet, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
@@ -11,8 +11,8 @@ import { listBrewsForCoffee } from "../db/brews";
 import type { Brew, Coffee } from "../models/types";
 import { formatRatio } from "../lib/ratio";
 import { formatSeconds } from "../lib/brewFormat";
-import { AppText, AiActionCard, BrewLogRow, Fab } from "../components/ui";
-import { colors, fonts, radii, shadows, spacing } from "../design/tokens";
+import { AppText, AiActionCard, BrewLogRow, Fab, Chevron, useAppModal } from "../components/ui";
+import { colors, radii, shadows, spacing, screenTopGap } from "../design/tokens";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "CoffeeDetail">;
 type Rt = RouteProp<RootStackParamList, "CoffeeDetail">;
@@ -29,6 +29,7 @@ export function CoffeeDetailScreen() {
   const nav = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
   const { params } = useRoute<Rt>();
+  const modal = useAppModal();
   const [coffee, setCoffee] = useState<Coffee | null>(null);
   const [brews, setBrews] = useState<Brew[]>([]);
 
@@ -39,10 +40,10 @@ export function CoffeeDetailScreen() {
         setCoffee(await getCoffee(db, params.coffeeId));
         setBrews(await listBrewsForCoffee(db, params.coffeeId));
       } catch (e: any) {
-        Alert.alert("Couldn't load coffee", String(e?.message ?? e));
+        modal.alert("Couldn't load coffee", String(e?.message ?? e));
       }
     })();
-  }, [params.coffeeId]);
+  }, [params.coffeeId, modal]);
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const hasBrews = brews.length > 0;
@@ -60,10 +61,10 @@ export function CoffeeDetailScreen() {
         contentContainerStyle={styles.list}
         ItemSeparatorComponent={() => <View style={styles.hairline} />}
         ListHeaderComponent={
-          <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+          <View style={[styles.header, { paddingTop: insets.top + screenTopGap }]}>
             <View style={styles.topBar}>
-              <Pressable onPress={() => nav.goBack()} hitSlop={10}>
-                <Text style={styles.back}>←</Text>
+              <Pressable onPress={() => nav.goBack()} hitSlop={10} style={styles.backBtn}>
+                <Chevron direction="left" size={12} thickness={2.5} color={colors.onSurface} />
               </Pressable>
               <Pressable
                 onPress={() => coffee && nav.navigate("CoffeeForm", { coffeeId: coffee.id })}
@@ -126,7 +127,7 @@ const styles = StyleSheet.create({
   list: { paddingHorizontal: spacing.container, paddingBottom: 128 },
   header: { paddingBottom: 4 },
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 18 },
-  back: { fontFamily: fonts.sansSemiBold, fontSize: 26, color: colors.onSurface, lineHeight: 28 },
+  backBtn: { height: 34, justifyContent: "center" },
   editBtn: { borderWidth: 1, borderColor: colors.outlineVariant, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 },
   editText: { color: colors.onSurfaceVariant },
   title: { marginTop: 6 },

@@ -11,4 +11,6 @@ export { PillButton, type PillButtonProps } from "./PillButton";
 export { ChipSelect, type ChipSelectProps, type ChipOption } from "./ChipSelect";
 export { ScaleSelect, type ScaleSelectProps } from "./ScaleSelect";
 export { ReasoningDisclosure, type ReasoningDisclosureProps } from "./ReasoningDisclosure";
+export { Chevron, type ChevronProps } from "./Chevron";
+export { AppModalProvider, useAppModal, type AppModalApi, type ConfirmOptions } from "./AppModal";
 export { NaturalLanguageIntake, type NaturalLanguageIntakeProps } from "./NaturalLanguageIntake";

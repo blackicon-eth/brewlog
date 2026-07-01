@@ -2,6 +2,7 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { AppText } from "./AppText";
 import { RatingChip } from "./RatingChip";
+import { Chevron } from "./Chevron";
 import { colors, fonts } from "../../design/tokens";
 
 export type BrewLogRowProps = {
@@ -27,8 +28,9 @@ export function BrewLogRow({ recipe, ratio, meta, rating, onPress, onDiagnose }:
       </View>
       <View style={styles.right}>
         {rating != null ? <RatingChip value={rating} /> : null}
-        <Pressable onPress={onDiagnose} hitSlop={8}>
-          <Text style={styles.diagnose}>Diagnose →</Text>
+        <Pressable onPress={onDiagnose} hitSlop={8} style={styles.diagnoseBtn}>
+          <Text style={styles.diagnose}>Diagnose</Text>
+          <Chevron direction="right" size={7} thickness={2} color={colors.primary} />
         </Pressable>
       </View>
     </Pressable>
@@ -44,5 +46,6 @@ const styles = StyleSheet.create({
   ratio: { fontFamily: fonts.sansMedium, fontSize: 13, color: colors.onSurfaceVariant },
   meta: { marginTop: 3 },
   right: { alignItems: "flex-end", gap: 7 },
+  diagnoseBtn: { flexDirection: "row", alignItems: "center", gap: 5 },
   diagnose: { fontFamily: fonts.sansBold, fontSize: 12, color: colors.primary },
 });

@@ -42,6 +42,10 @@ export const radii = { sm: 4, base: 8, md: 12, lg: 16, full: 9999 } as const;
 
 export const spacing = { base: 8, container: 20, stack: 16, section: 32, gutter: 12 } as const;
 
+// Uniform gap between the safe-area top inset and the first content on every
+// top-anchored page (masthead, detail, forms) — keeps their top margins equal.
+export const screenTopGap = 12;
+
 // Ambient shadows — soft brown lift for cards, prouder blue-tinted lift for the FAB.
 export const shadows: Record<"card" | "fab", ViewStyle> = {
   card: {

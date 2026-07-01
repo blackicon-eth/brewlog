@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, StyleSheet, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from "react-native";
 import { AppText } from "./AppText";
 import { PillButton } from "./PillButton";
+import { Chevron } from "./Chevron";
 import { useQvac } from "../../qvac/QvacProvider";
 import type { ChatMessage } from "../../qvac/advisor";
 import { colors, fonts, radii, spacing } from "../../design/tokens";
@@ -124,9 +125,10 @@ export function NaturalLanguageIntake<T>({
       </View>
 
       {!busy ? (
-        <AppText variant="labelMd" style={styles.manual} onPress={onManual} suppressHighlighting>
-          Enter manually ›
-        </AppText>
+        <Pressable onPress={onManual} hitSlop={8} style={styles.manualBtn}>
+          <AppText variant="labelMd" style={styles.manual}>Enter manually</AppText>
+          <Chevron direction="right" size={7} thickness={2} color={colors.onSurfaceVariant} />
+        </Pressable>
       ) : null}
     </View>
   );
@@ -154,5 +156,6 @@ const styles = StyleSheet.create({
   busyText: { color: colors.onSurfaceVariant },
   error: { color: colors.tertiary },
   actions: { marginTop: spacing.base },
-  manual: { color: colors.onSurfaceVariant, textAlign: "center", marginTop: spacing.base },
+  manualBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, marginTop: spacing.base },
+  manual: { color: colors.onSurfaceVariant },
 });

@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { Alert, FlatList, Image, StyleSheet, View } from "react-native";
+import { FlatList, Image, StyleSheet, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -9,8 +9,8 @@ import { getDb } from "../db/database";
 import { listCoffees } from "../db/coffees";
 import { listBrewsForCoffee, avgRating } from "../db/brews";
 import type { Coffee } from "../models/types";
-import { AppText, CoffeeCard, Fab, StatusPill } from "../components/ui";
-import { colors, spacing } from "../design/tokens";
+import { AppText, CoffeeCard, Fab, StatusPill, useAppModal } from "../components/ui";
+import { colors, spacing, screenTopGap } from "../design/tokens";
 import { useQvac } from "../qvac/QvacProvider";
 import * as Device from "expo-device";
 
@@ -21,6 +21,7 @@ export function CoffeesScreen() {
   const nav = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
   const { prepare } = useQvac();
+  const modal = useAppModal();
   const [rows, setRows] = useState<Row[]>([]);
 
   const load = useCallback(() => {
@@ -34,10 +35,10 @@ export function CoffeesScreen() {
         }));
         setRows(withStats);
       } catch (e: any) {
-        Alert.alert("Couldn't load coffees", String(e?.message ?? e));
+        modal.alert("Couldn't load coffees", String(e?.message ?? e));
       }
     })();
-  }, []);
+  }, [modal]);
 
   useFocusEffect(useCallback(() => { prepare(); load(); }, [prepare, load]));
 
@@ -46,34 +47,36 @@ export function CoffeesScreen() {
   return (
     <View style={styles.screen}>
       <StatusBar style="dark" />
+
+      {/* Fixed masthead — stays put while only the collection below scrolls. */}
+      <View style={[styles.masthead, { paddingTop: insets.top + screenTopGap }]}>
+        <View style={styles.titleRow}>
+          <View style={styles.titleLeft}>
+            <Image source={require("../../assets/logo-bean.png")} style={styles.logo} />
+            <AppText variant="headlineLg" style={styles.brandTitle}>Brewlog</AppText>
+          </View>
+          <View style={styles.pillWrap}>
+            <StatusPill />
+          </View>
+        </View>
+        {!Device.isDevice ? (
+          <View style={styles.notice}>
+            <AppText variant="bodyMd" style={styles.noticeText}>
+              Emulator detected — QVAC needs a physical device, so the AI advisor won't run here.
+            </AppText>
+          </View>
+        ) : null}
+      </View>
+
       <FlatList
         data={rows}
         keyExtractor={(c) => c.id}
         showsVerticalScrollIndicator={false}
+        style={styles.listArea}
         contentContainerStyle={styles.list}
         ItemSeparatorComponent={() => <View style={styles.gap} />}
         ListHeaderComponent={
-          <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
-            <View style={styles.titleRow}>
-              <View style={styles.titleLeft}>
-                <Image source={require("../../assets/logo-bean.png")} style={styles.logo} />
-                <AppText variant="headlineLg" style={styles.brandTitle}>Brewlog</AppText>
-              </View>
-              <View style={styles.pillWrap}>
-                <StatusPill />
-              </View>
-            </View>
-            {!Device.isDevice ? (
-              <View style={styles.notice}>
-                <AppText variant="bodyMd" style={styles.noticeText}>
-                  Emulator detected — QVAC needs a physical device, so the AI advisor won't run here.
-                </AppText>
-              </View>
-            ) : null}
-            {hasRows ? (
-              <AppText variant="labelMd" style={styles.section}>Your collection</AppText>
-            ) : null}
-          </View>
+          hasRows ? <AppText variant="labelMd" style={styles.section}>Your collection</AppText> : null
         }
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -100,12 +103,13 @@ export function CoffeesScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
+  masthead: { paddingHorizontal: spacing.container, paddingBottom: 4 },
+  listArea: { flex: 1 },
   list: { paddingHorizontal: spacing.container, paddingBottom: 128 },
   gap: { height: spacing.stack },
-  header: { paddingBottom: 4 },
   titleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 6 },
   titleLeft: { flexDirection: "row", alignItems: "center", gap: 6 },
-  brandTitle: { lineHeight: 44 },
+  brandTitle: { lineHeight: 48 },
   pillWrap: { marginTop: 8 },
   logo: { width: 34, height: 34 },
   section: { marginTop: spacing.section, marginBottom: spacing.stack },

@@ -14,6 +14,7 @@ import { HankenGrotesk_600SemiBold } from "@expo-google-fonts/hanken-grotesk/600
 import { HankenGrotesk_700Bold } from "@expo-google-fonts/hanken-grotesk/700Bold";
 import { RootNavigator } from "./src/navigation/RootNavigator";
 import { QvacProvider } from "./src/qvac/QvacProvider";
+import { AppModalProvider } from "./src/components/ui";
 import { colors } from "./src/design/tokens";
 
 export default function App() {
@@ -35,10 +36,12 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <QvacProvider>
-        <NavigationContainer>
-          <RootNavigator />
-          <StatusBar style="light" />
-        </NavigationContainer>
+        <AppModalProvider>
+          <NavigationContainer>
+            <RootNavigator />
+            <StatusBar style="light" />
+          </NavigationContainer>
+        </AppModalProvider>
       </QvacProvider>
     </SafeAreaProvider>
   );
