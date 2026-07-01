@@ -8,7 +8,8 @@ import type { RootStackParamList } from "../navigation/types";
 import { getDb } from "../db/database";
 import { getCoffee, createCoffee, updateCoffee, deleteCoffee } from "../db/coffees";
 import { makeId } from "../lib/ids";
-import { AppText, TextField, PillButton } from "../components/ui";
+import { AppText, TextField, PillButton, NaturalLanguageIntake } from "../components/ui";
+import { buildCoffeeIntakePrompt, parseCoffeeIntake, type CoffeeIntake } from "../qvac/intake";
 import { colors, fonts, radii, shadows, spacing } from "../design/tokens";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "CoffeeForm">;
@@ -19,6 +20,7 @@ export function CoffeeFormScreen() {
   const insets = useSafeAreaInsets();
   const { params } = useRoute<Rt>();
   const editingId = params?.coffeeId;
+  const [revealed, setRevealed] = useState(!!editingId);
 
   const [roaster, setRoaster] = useState("");
   const [name, setName] = useState("");
@@ -48,6 +50,17 @@ export function CoffeeFormScreen() {
       }
     })();
   }, [editingId]);
+
+  function applyParsed(p: CoffeeIntake) {
+    if (p.roaster) setRoaster(p.roaster);
+    if (p.name) setName(p.name);
+    if (p.origin) setOrigin(p.origin);
+    if (p.process) setProcess(p.process);
+    if (p.roastLevel) setRoastLevel(p.roastLevel);
+    if (p.roastDate) setRoastDate(p.roastDate);
+    if (p.notes) setNotes(p.notes);
+    setRevealed(true);
+  }
 
   async function onSave() {
     if (!roaster.trim() || !name.trim()) { Alert.alert("Roaster and name are required."); return; }
@@ -100,37 +113,50 @@ export function CoffeeFormScreen() {
           {editingId ? "Edit coffee" : "New coffee"}
         </AppText>
 
-        <View style={styles.heroWrap}>
-          <Image
-            source={editingId
-              ? require("../../assets/coffee-hero-edit.png")
-              : require("../../assets/coffee-hero-new.png")}
-            style={styles.hero}
-            resizeMode="cover"
+        {!revealed ? (
+          <NaturalLanguageIntake
+            kicker="Describe this coffee"
+            placeholder="Sey Coffee, Kenya Nyeri AA, washed, light roast, roasted 2026-06-10. Blackcurrant and floral."
+            buildPrompt={buildCoffeeIntakePrompt}
+            parse={parseCoffeeIntake}
+            onParsed={applyParsed}
+            onManual={() => setRevealed(true)}
           />
-        </View>
+        ) : (
+          <>
+            <View style={styles.heroWrap}>
+              <Image
+                source={editingId
+                  ? require("../../assets/coffee-hero-edit.png")
+                  : require("../../assets/coffee-hero-new.png")}
+                style={styles.hero}
+                resizeMode="cover"
+              />
+            </View>
 
-        <AppText variant="labelSm" style={styles.section}>The bean</AppText>
-        <TextField label="Roaster" value={roaster} onChangeText={setRoaster} placeholder="Sey Coffee" required autoCapitalize="words" />
-        <TextField label="Name / variety" value={name} onChangeText={setName} placeholder="Kenya Nyeri AA" required autoCapitalize="words" />
+            <AppText variant="labelSm" style={styles.section}>The bean</AppText>
+            <TextField label="Roaster" value={roaster} onChangeText={setRoaster} placeholder="Sey Coffee" required autoCapitalize="words" />
+            <TextField label="Name / variety" value={name} onChangeText={setName} placeholder="Kenya Nyeri AA" required autoCapitalize="words" />
 
-        <AppText variant="labelSm" style={styles.section}>Details</AppText>
-        <View style={styles.row}>
-          <TextField label="Origin" value={origin} onChangeText={setOrigin} placeholder="Kenya" autoCapitalize="words" style={styles.col} />
-          <TextField label="Process" value={process} onChangeText={setProcess} placeholder="washed" style={styles.col} />
-        </View>
-        <View style={styles.row}>
-          <TextField label="Roast level" value={roastLevel} onChangeText={setRoastLevel} placeholder="light" style={styles.col} />
-          <TextField label="Roast date" value={roastDate} onChangeText={setRoastDate} placeholder="2026-06-10" autoCapitalize="none" style={styles.col} />
-        </View>
+            <AppText variant="labelSm" style={styles.section}>Details</AppText>
+            <View style={styles.row}>
+              <TextField label="Origin" value={origin} onChangeText={setOrigin} placeholder="Kenya" autoCapitalize="words" style={styles.col} />
+              <TextField label="Process" value={process} onChangeText={setProcess} placeholder="washed" style={styles.col} />
+            </View>
+            <View style={styles.row}>
+              <TextField label="Roast level" value={roastLevel} onChangeText={setRoastLevel} placeholder="light" style={styles.col} />
+              <TextField label="Roast date" value={roastDate} onChangeText={setRoastDate} placeholder="2026-06-10" autoCapitalize="none" style={styles.col} />
+            </View>
 
-        <AppText variant="labelSm" style={styles.section}>Notes</AppText>
-        <TextField label="Tasting notes" value={notes} onChangeText={setNotes} multiline placeholder="blackcurrant, floral, juicy" />
+            <AppText variant="labelSm" style={styles.section}>Notes</AppText>
+            <TextField label="Tasting notes" value={notes} onChangeText={setNotes} multiline placeholder="blackcurrant, floral, juicy" />
 
-        <View style={styles.actions}>
-          <PillButton label={editingId ? "Save changes" : "Save coffee"} onPress={onSave} />
-          {editingId ? <PillButton label="Delete coffee" variant="danger" onPress={onDelete} style={styles.delete} /> : null}
-        </View>
+            <View style={styles.actions}>
+              <PillButton label={editingId ? "Save changes" : "Save coffee"} onPress={onSave} />
+              {editingId ? <PillButton label="Delete coffee" variant="danger" onPress={onDelete} style={styles.delete} /> : null}
+            </View>
+          </>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
