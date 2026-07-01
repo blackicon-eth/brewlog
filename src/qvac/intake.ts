@@ -7,20 +7,25 @@ export function extractJson(raw: string): Record<string, unknown> | null {
   const text = raw.replace(/```json/gi, "```").replace(/```/g, "");
   let depth = 0;
   let start = -1;
+  let inStr = false;
+  let esc = false;
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
-    if (ch === "{") {
-      if (depth === 0) start = i;
-      depth++;
-    } else if (ch === "}") {
+    if (inStr) {
+      if (esc) esc = false;
+      else if (ch === "\\") esc = true;
+      else if (ch === '"') inStr = false;
+      continue;
+    }
+    if (ch === '"') { inStr = true; continue; }
+    if (ch === "{") { if (depth === 0) start = i; depth++; }
+    else if (ch === "}") {
       depth--;
       if (depth === 0 && start >= 0) {
         try {
           const v = JSON.parse(text.slice(start, i + 1));
           if (v && typeof v === "object" && !Array.isArray(v)) return v as Record<string, unknown>;
-        } catch {
-          /* keep scanning for the next balanced object */
-        }
+        } catch { /* keep scanning */ }
         start = -1;
       }
     }

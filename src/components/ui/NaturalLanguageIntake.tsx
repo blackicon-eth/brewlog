@@ -23,6 +23,7 @@ export function NaturalLanguageIntake<T>({
   const { status, prepare, runAdvice } = useQvac();
   const [text, setText] = useState("");
   const [phase, setPhase] = useState<"idle" | "preparing" | "running" | "error">("idle");
+  const [notice, setNotice] = useState("");
   const wantRun = useRef(false);
   const running = useRef(false);
   const canceled = useRef(false);
@@ -34,6 +35,7 @@ export function NaturalLanguageIntake<T>({
     running.current = true;
     canceled.current = false;
     buf.current = "";
+    setNotice("");
     setPhase("running");
     const run = runAdvice(buildPrompt(text), {
       onContent: (t) => { buf.current += t; },
@@ -41,8 +43,17 @@ export function NaturalLanguageIntake<T>({
     });
     cancelRun.current = run.cancel;
     run.done
-      .then(() => { if (!canceled.current) onParsed(parse(buf.current)); })
-      .catch(() => { if (!canceled.current) setPhase("error"); })
+      .then(() => {
+        if (canceled.current) return;
+        const parsed = parse(buf.current);
+        if (parsed && typeof parsed === "object" && Object.keys(parsed as Record<string, unknown>).length === 0) {
+          setNotice("Couldn't read that — try again, or enter manually.");
+          setPhase("error");
+        } else {
+          onParsed(parsed);
+        }
+      })
+      .catch(() => { if (!canceled.current) { setNotice("Couldn't reach the advisor. Tap \"Enter manually\" below."); setPhase("error"); } })
       .finally(() => { running.current = false; });
   }
 
@@ -55,10 +66,16 @@ export function NaturalLanguageIntake<T>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
+  useEffect(() => () => {
+    canceled.current = true;
+    cancelRun.current?.();
+  }, []);
+
   function onAutofill() {
     if (!text.trim() || phase === "running" || phase === "preparing") return;
     prepare();
     if (status === "ready") beginRun();
+    else if (status === "error") { onManual(); return; }
     else { wantRun.current = true; setPhase("preparing"); }
   }
 
@@ -94,10 +111,8 @@ export function NaturalLanguageIntake<T>({
         </View>
       ) : null}
 
-      {phase === "error" ? (
-        <AppText variant="bodyMd" style={styles.error}>
-          ✕ Couldn't reach the advisor. Tap "Enter manually" below.
-        </AppText>
+      {phase === "error" && notice ? (
+        <AppText variant="bodyMd" style={styles.error}>✕ {notice}</AppText>
       ) : null}
 
       <View style={styles.actions}>

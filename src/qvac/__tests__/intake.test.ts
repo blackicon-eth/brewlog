@@ -16,6 +16,9 @@ describe("extractJson", () => {
   it("returns null on garbage", () => {
     expect(extractJson("no json here")).toBeNull();
   });
+  it("keeps braces inside string values", () => {
+    expect(extractJson('{"notes":"pour to ~60% }","doseG":15}')).toEqual({ notes: "pour to ~60% }", doseG: 15 });
+  });
 });
 
 describe("buildBrewIntakePrompt", () => {
