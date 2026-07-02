@@ -10,16 +10,20 @@ import { getCoffee } from "../db/coffees";
 import { listBrewsForCoffee } from "../db/brews";
 import type { Brew, Coffee } from "../models/types";
 import { formatRatio } from "../lib/ratio";
-import { formatSeconds, formatBrewDate } from "../lib/brewFormat";
+import { formatSeconds, formatBrewDate, formatBrewTime } from "../lib/brewFormat";
 import { AppText, AiActionCard, BrewLogRow, Fab, Chevron, ClockIcon, useAppModal } from "../components/ui";
 import { colors, spacing, screenTopGap } from "../design/tokens";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "CoffeeDetail">;
 type Rt = RouteProp<RootStackParamList, "CoffeeDetail">;
 
+// Keep the grinder note short so the recap line stays tidy.
+const GRIND_MAX = 12;
+const truncate = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s);
+
 function brewMeta(b: Brew): string {
   return [
-    b.grind,
+    b.grind ? truncate(b.grind, GRIND_MAX) : null,
     b.waterTempC != null ? `${b.waterTempC}°C` : null,
     b.totalTimeS != null ? formatSeconds(b.totalTimeS) : null,
   ].filter(Boolean).join(" · ");
@@ -159,7 +163,7 @@ export function CoffeeDetailScreen() {
           }
           renderItem={({ item }) => (
             <BrewLogRow
-              date={formatBrewDate(item.brewedAt)}
+              date={`${formatBrewDate(item.brewedAt)} · ${formatBrewTime(item.brewedAt)}`}
               recipe={`${item.doseG}g : ${item.waterG}g`}
               ratio={formatRatio(item.ratio)}
               meta={brewMeta(item)}

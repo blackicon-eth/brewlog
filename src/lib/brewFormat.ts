@@ -19,6 +19,12 @@ export function formatBrewDate(ts: number): string {
   return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
 }
 
+// 24-hour time, e.g. "14:30" — shown beside the brew date.
+export function formatBrewTime(ts: number): string {
+  const d = new Date(ts);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
 export function daysOffRoast(roastDate: string | null | undefined, now: number = Date.now()): number | null {
   if (!roastDate) return null;
   const t = Date.parse(roastDate);
