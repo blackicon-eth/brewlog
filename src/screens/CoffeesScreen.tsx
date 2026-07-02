@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { FlatList, Image, StyleSheet, View } from "react-native";
+import { FlatList, Image, Pressable, StyleSheet, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -8,6 +8,7 @@ import type { RootStackParamList } from "../navigation/types";
 import { getDb } from "../db/database";
 import { listCoffees } from "../db/coffees";
 import { listBrewsForCoffee, avgRating } from "../db/brews";
+import { seedSampleData, clearAllData } from "../db/seed";
 import type { Coffee } from "../models/types";
 import { AppText, CoffeeCard, Fab, StatusPill, useAppModal } from "../components/ui";
 import { colors, spacing, screenTopGap } from "../design/tokens";
@@ -42,6 +43,16 @@ export function CoffeesScreen() {
 
   useFocusEffect(useCallback(() => { prepare(); load(); }, [prepare, load]));
 
+  // Dev-only test-data controls (compiled out of production builds via __DEV__).
+  async function devSeed() {
+    try { await seedSampleData(await getDb()); load(); }
+    catch (e: any) { modal.alert("Seed failed", String(e?.message ?? e)); }
+  }
+  async function devClear() {
+    try { await clearAllData(await getDb()); load(); }
+    catch (e: any) { modal.alert("Clear failed", String(e?.message ?? e)); }
+  }
+
   const hasRows = rows.length > 0;
 
   return (
@@ -66,6 +77,17 @@ export function CoffeesScreen() {
             </AppText>
           </View>
         ) : null}
+        {__DEV__ ? (
+          <View style={styles.devRow}>
+            <Pressable onPress={devSeed} style={styles.devBtn}>
+              <AppText variant="labelSm" style={styles.devBtnText}>+ Seed</AppText>
+            </Pressable>
+            <Pressable onPress={devClear} style={styles.devBtn}>
+              <AppText variant="labelSm" style={styles.devBtnText}>Clear</AppText>
+            </Pressable>
+          </View>
+        ) : null}
+        {hasRows ? <AppText variant="labelMd" style={styles.section}>Your collection</AppText> : null}
       </View>
 
       <FlatList
@@ -75,9 +97,6 @@ export function CoffeesScreen() {
         style={styles.listArea}
         contentContainerStyle={styles.list}
         ItemSeparatorComponent={() => <View style={styles.gap} />}
-        ListHeaderComponent={
-          hasRows ? <AppText variant="labelMd" style={styles.section}>Your collection</AppText> : null
-        }
         ListEmptyComponent={
           <View style={styles.empty}>
             <AppText variant="headlineMd" style={styles.emptyTitle}>Your ledger is empty</AppText>
@@ -105,7 +124,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   masthead: { paddingHorizontal: spacing.container, paddingBottom: 4 },
   listArea: { flex: 1 },
-  list: { paddingHorizontal: spacing.container, paddingBottom: 128 },
+  list: { paddingHorizontal: spacing.container, paddingTop: 6, paddingBottom: 128 },
   gap: { height: spacing.stack },
   titleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 6 },
   titleLeft: { flexDirection: "row", alignItems: "center", gap: 6 },
@@ -121,6 +140,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   noticeText: { color: colors.onSurface },
+  devRow: { flexDirection: "row", gap: 8, marginTop: 12 },
+  devBtn: { borderWidth: 1, borderColor: colors.outlineVariant, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
+  devBtnText: { color: colors.primary },
   empty: { marginTop: 48, alignItems: "center", paddingHorizontal: 24 },
   emptyTitle: { textAlign: "center" },
   emptyBody: { textAlign: "center", marginTop: 8 },

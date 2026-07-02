@@ -41,7 +41,8 @@ export function CoffeeCard({ roaster, name, brewCount, avg, onPress }: CoffeeCar
 }
 
 const styles = StyleSheet.create({
-  name: { marginTop: 5 },
+  // Extra line height so EB Garamond's descenders (g/y tails) aren't clipped.
+  name: { marginTop: 5, lineHeight: 34 },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.outlineVariant, marginVertical: 14 },
   meta: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   unrated: { color: colors.outline },
