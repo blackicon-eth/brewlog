@@ -92,7 +92,7 @@ export function CoffeeFormScreen() {
     if (!ok) return;
     try {
       await deleteCoffee(await getDb(), editingId);
-      nav.navigate("Coffees");
+      nav.navigate("Main");
     } catch (e: any) {
       modal.alert("Couldn't delete coffee", String(e?.message ?? e));
     }

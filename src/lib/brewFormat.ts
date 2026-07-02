@@ -11,6 +11,50 @@ export function formatSeconds(totalSeconds: number | null | undefined): string {
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+
+// Stable per-calendar-day key ("2026-6-2", local time) used to bucket the brew ledger.
+export function dayKey(ts: number): string {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+// Ledger day header: "Today" / "Yesterday" / "Wed, 2 Jul" (year appended when it isn't
+// the current year, e.g. "Wed, 2 Jul 2025").
+export function formatDayHeader(ts: number, now: number = Date.now()): string {
+  const d = new Date(ts);
+  const n = new Date(now);
+  const diffDays = Math.round((startOfDay(n) - startOfDay(d)) / DAY_MS);
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  const base = `${WEEKDAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+  return d.getFullYear() === n.getFullYear() ? base : `${base} ${d.getFullYear()}`;
+}
+
+export type BrewDaySection<T extends { brewedAt: number }> = { key: string; title: string; data: T[] };
+
+// Groups brews into per-day sections, preserving the input order (which the DB returns
+// newest-first) so both the sections and the rows within them read newest → oldest.
+export function groupBrewsByDay<T extends { brewedAt: number }>(
+  brews: T[],
+  now: number = Date.now()
+): BrewDaySection<T>[] {
+  const sections: BrewDaySection<T>[] = [];
+  const byKey = new Map<string, BrewDaySection<T>>();
+  for (const b of brews) {
+    const key = dayKey(b.brewedAt);
+    let section = byKey.get(key);
+    if (!section) {
+      section = { key, title: formatDayHeader(b.brewedAt, now), data: [] };
+      byKey.set(key, section);
+      sections.push(section);
+    }
+    section.data.push(b);
+  }
+  return sections;
+}
 
 // Compact, locale-independent brew date, e.g. "28 Jun". Used as the ledger date stamp
 // on a brew row (and to make the "Recent" sort legible).

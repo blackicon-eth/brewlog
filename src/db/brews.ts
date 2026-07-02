@@ -34,6 +34,19 @@ export async function listBrewsForCoffee(db: Db, coffeeId: string): Promise<Brew
   return rows.map(rowToBrew);
 }
 
+// A brew paired with the identity of the coffee it belongs to — for the global brew
+// ledger, where brews from every coffee are interleaved and need a label.
+export type BrewWithCoffee = Brew & { roaster: string; coffeeName: string };
+
+export async function listAllBrews(db: Db): Promise<BrewWithCoffee[]> {
+  const rows = await db.getAllAsync<BrewRow & { c_roaster: string; c_name: string }>(
+    `SELECT b.*, c.roaster AS c_roaster, c.name AS c_name
+       FROM brews b JOIN coffees c ON c.id = b.coffee_id
+       ORDER BY b.brewed_at DESC`
+  );
+  return rows.map((r) => ({ ...rowToBrew(r), roaster: r.c_roaster, coffeeName: r.c_name }));
+}
+
 export async function getBrew(db: Db, id: string): Promise<Brew | null> {
   const row = await db.getFirstAsync<BrewRow>("SELECT * FROM brews WHERE id = ?", [id]);
   return row ? rowToBrew(row) : null;

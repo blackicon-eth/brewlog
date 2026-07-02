@@ -1,7 +1,7 @@
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { AppText } from "./AppText";
-import { colors, fonts, radii, shadows, spacing } from "../../design/tokens";
+import { colors, radii, shadows, spacing } from "../../design/tokens";
 
 export type FabProps = {
   label: string;
@@ -18,8 +18,10 @@ export function Fab({ label, onPress }: FabProps) {
       onPress={onPress}
       style={({ pressed }) => [styles.fab, pressed && styles.pressed]}
     >
+      {/* Hand-drawn "+" from two bars — pixel-centred against the label regardless of font metrics. */}
       <View style={styles.plusWrap}>
-        <Text style={styles.plus}>+</Text>
+        <View style={styles.plusH} />
+        <View style={styles.plusV} />
       </View>
       <AppText variant="labelMd" style={styles.label}>{label}</AppText>
     </Pressable>
@@ -42,7 +44,8 @@ const styles = StyleSheet.create({
     ...shadows.fab,
   },
   pressed: { opacity: 0.94, transform: [{ translateY: 1 }] },
-  plusWrap: { width: 20, alignItems: "center", justifyContent: "center" },
-  plus: { color: colors.onPrimary, fontSize: 24, lineHeight: 26, fontFamily: fonts.sansMedium },
+  plusWrap: { width: 18, height: 18, alignItems: "center", justifyContent: "center" },
+  plusH: { position: "absolute", width: 14, height: 2, borderRadius: 1, backgroundColor: colors.onPrimary },
+  plusV: { position: "absolute", width: 2, height: 14, borderRadius: 1, backgroundColor: colors.onPrimary },
   label: { color: colors.onPrimary },
 });

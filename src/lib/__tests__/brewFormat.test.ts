@@ -1,5 +1,10 @@
-import { formatSeconds, daysOffRoast, formatBrewLine, formatBrewsTable, formatBrewDetail } from "../brewFormat";
+import {
+  formatSeconds, daysOffRoast, formatBrewLine, formatBrewsTable, formatBrewDetail,
+  dayKey, formatDayHeader, groupBrewsByDay,
+} from "../brewFormat";
 import type { Brew } from "../../models/types";
+
+const at = (s: string) => new Date(s).getTime();
 
 const base: Brew = {
   id: "b1", coffeeId: "c1", brewedAt: 1000, doseG: 15, waterG: 250, ratio: 16.6667,
@@ -60,5 +65,50 @@ describe("formatBrewDetail", () => {
     expect(detail.startsWith("1) ")).toBe(false);
     expect(detail).toContain("1:16.7");
     expect(detail).toContain("15g:250g");
+  });
+});
+
+describe("dayKey", () => {
+  it("collapses different times on the same calendar day to one key", () => {
+    expect(dayKey(at("2026-07-02T08:00:00"))).toBe(dayKey(at("2026-07-02T23:30:00")));
+  });
+  it("separates adjacent days", () => {
+    expect(dayKey(at("2026-07-02T23:30:00"))).not.toBe(dayKey(at("2026-07-03T00:10:00")));
+  });
+});
+
+describe("formatDayHeader", () => {
+  const now = at("2026-07-02T12:00:00");
+  it("labels the current day 'Today'", () => {
+    expect(formatDayHeader(at("2026-07-02T07:00:00"), now)).toBe("Today");
+  });
+  it("labels the prior day 'Yesterday'", () => {
+    expect(formatDayHeader(at("2026-07-01T22:00:00"), now)).toBe("Yesterday");
+  });
+  it("uses weekday + date for older days in the same year", () => {
+    expect(formatDayHeader(at("2026-06-28T10:00:00"), now)).toBe("Sun, 28 Jun");
+  });
+  it("appends the year for days in a different year", () => {
+    expect(formatDayHeader(at("2025-12-31T10:00:00"), now)).toBe("Wed, 31 Dec 2025");
+  });
+});
+
+describe("groupBrewsByDay", () => {
+  const now = at("2026-07-02T12:00:00");
+  const b = (id: string, when: string): Pick<Brew, "brewedAt"> & { id: string } =>
+    ({ id, brewedAt: at(when) });
+
+  it("groups consecutive same-day brews under one section, preserving order", () => {
+    const sections = groupBrewsByDay(
+      [b("a", "2026-07-02T15:00:00"), b("b", "2026-07-02T09:00:00"), b("c", "2026-07-01T09:00:00")],
+      now
+    );
+    expect(sections.map((s) => s.title)).toEqual(["Today", "Yesterday"]);
+    expect(sections[0].data.map((x) => x.id)).toEqual(["a", "b"]);
+    expect(sections[1].data.map((x) => x.id)).toEqual(["c"]);
+  });
+
+  it("returns no sections for an empty list", () => {
+    expect(groupBrewsByDay([], now)).toEqual([]);
   });
 });

@@ -14,7 +14,7 @@ import { colors, spacing, screenTopGap } from "../design/tokens";
 import { useQvac } from "../qvac/QvacProvider";
 import * as Device from "expo-device";
 
-type Nav = NativeStackNavigationProp<RootStackParamList, "Coffees">;
+type Nav = NativeStackNavigationProp<RootStackParamList, "Main">;
 type Row = Coffee & { brewCount: number; avg: number | null };
 
 export function CoffeesScreen() {
@@ -66,7 +66,7 @@ export function CoffeesScreen() {
             </AppText>
           </View>
         ) : null}
-        {hasRows ? <AppText variant="labelMd" style={styles.section}>Your collection</AppText> : null}
+        {hasRows ? <AppText variant="labelMd" style={styles.section}>Your coffee collection</AppText> : null}
       </View>
 
       <FlatList

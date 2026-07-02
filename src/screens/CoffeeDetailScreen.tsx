@@ -168,7 +168,7 @@ export function CoffeeDetailScreen() {
               ratio={formatRatio(item.ratio)}
               meta={brewMeta(item)}
               rating={item.rating ?? null}
-              onPress={() => nav.navigate("BrewForm", { coffeeId: params.coffeeId, brewId: item.id })}
+              onPress={() => nav.navigate("BrewDetail", { coffeeId: params.coffeeId, brewId: item.id })}
               onDiagnose={() => nav.navigate("AdvisorResult", { kind: "diagnose", coffeeId: params.coffeeId, brewId: item.id, title: "Diagnose brew" })}
             />
           )}

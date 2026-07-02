@@ -1,6 +1,6 @@
 import { makeTestDb } from "../testdb";
 import { createCoffee } from "../coffees";
-import { createBrew, listBrewsForCoffee, getBrew, updateBrew, deleteBrew, avgRating } from "../brews";
+import { createBrew, listBrewsForCoffee, listAllBrews, getBrew, updateBrew, deleteBrew, avgRating } from "../brews";
 import type { Brew, Coffee } from "../../models/types";
 
 const coffee: Coffee = {
@@ -39,6 +39,18 @@ it("updates and deletes a brew", async () => {
   expect((await getBrew(db, "b1"))?.rating).toBe(5);
   await deleteBrew(db, "b1");
   expect(await getBrew(db, "b1")).toBeNull();
+});
+
+it("lists brews across all coffees newest first, tagged with coffee identity", async () => {
+  const db = await makeTestDb();
+  await createCoffee(db, coffee);
+  await createCoffee(db, { ...coffee, id: "c2", roaster: "Onyx", name: "Geometry" });
+  await createBrew(db, brew({ id: "a", coffeeId: "c1", brewedAt: 5 }));
+  await createBrew(db, brew({ id: "b", coffeeId: "c2", brewedAt: 9 }));
+  const all = await listAllBrews(db);
+  expect(all.map((x) => x.id)).toEqual(["b", "a"]);
+  expect(all[0]).toMatchObject({ coffeeId: "c2", roaster: "Onyx", coffeeName: "Geometry" });
+  expect(all[1]).toMatchObject({ coffeeId: "c1", roaster: "Sey", coffeeName: "Kenya" });
 });
 
 describe("avgRating", () => {
