@@ -16,7 +16,7 @@ type Nav = NativeStackNavigationProp<RootStackParamList, "Main">;
 
 // How many brews to pull per page. Reads are local SQLite, so this is generous — big enough
 // to fill a screen and rarely page, small enough that the first paint is instant.
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 20;
 
 // Keep the grinder note short so the process line stays tidy.
 const GRIND_MAX = 12;
