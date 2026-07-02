@@ -5,6 +5,7 @@ export { RatingChip, type RatingChipProps } from "./RatingChip";
 export { AiActionCard, type AiActionCardProps } from "./AiActionCard";
 export { BrewLogRow, type BrewLogRowProps } from "./BrewLogRow";
 export { BrewListRow, type BrewListRowProps } from "./BrewListRow";
+export { ChatBubble, type ChatBubbleProps } from "./ChatBubble";
 export { StatusPill } from "./StatusPill";
 export { Fab, type FabProps } from "./Fab";
 export { TextField, type TextFieldProps } from "./TextField";

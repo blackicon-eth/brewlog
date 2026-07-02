@@ -4,7 +4,7 @@ import { TabBar, HomeIcon, DropIcon, SparkGlyph, FlaskIcon, GearIcon, type TabIt
 import { colors } from "../design/tokens";
 import { CoffeesScreen } from "./CoffeesScreen";
 import { BrewsScreen } from "./BrewsScreen";
-import { CoachScreen } from "./CoachScreen";
+import { ChatScreen } from "./ChatScreen";
 import { ToolsScreen } from "./ToolsScreen";
 import { SettingsScreen } from "./SettingsScreen";
 
@@ -14,7 +14,7 @@ import { SettingsScreen } from "./SettingsScreen";
 const TABS: (TabItem & { render: () => React.ReactNode })[] = [
   { key: "home", label: "Home", icon: HomeIcon, render: () => <CoffeesScreen /> },
   { key: "brews", label: "Brews", icon: DropIcon, render: () => <BrewsScreen /> },
-  { key: "coach", label: "Coach", icon: SparkGlyph, render: () => <CoachScreen /> },
+  { key: "chat", label: "Chat", icon: SparkGlyph, render: () => <ChatScreen /> },
   { key: "tools", label: "Tools", icon: FlaskIcon, render: () => <ToolsScreen /> },
   { key: "settings", label: "Settings", icon: GearIcon, render: () => <SettingsScreen /> },
 ];

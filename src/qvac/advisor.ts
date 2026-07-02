@@ -1,8 +1,29 @@
 import type { Coffee, Brew } from "../models/types";
 import { formatBrewsTable, formatBrewDetail, daysOffRoast } from "../lib/brewFormat";
-import { RECENT_BREWS_CAP, BEST_RECIPE_BREWS_CAP, SYSTEM_PROMPT } from "./promptConfig";
+import { RECENT_BREWS_CAP, BEST_RECIPE_BREWS_CAP, SYSTEM_PROMPT, CHAT_SYSTEM_PROMPT, CHAT_BREVITY_HINT } from "./promptConfig";
 
 export type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
+
+// A single visible turn in the free-form coach chat. The screen carries richer per-turn
+// state (id, streamed thinking, pending flags); this is the slice the model needs.
+export type ChatTurn = { role: "user" | "assistant"; content: string };
+
+// Prepend the chat system prompt to the running transcript. The screen owns the turn list
+// (session-only, never persisted) and rebuilds the full history on every send. The brevity
+// hint rides on the newest user message only — restating "keep it short" on every turn is
+// where the on-device model reads it most reliably, without bloating the older turns.
+export function buildChatHistory(
+  turns: ChatTurn[], systemPrompt: string = CHAT_SYSTEM_PROMPT
+): ChatMessage[] {
+  const msgs: ChatMessage[] = turns.map((t) => ({ role: t.role, content: t.content }));
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    if (msgs[i].role === "user") {
+      msgs[i] = { ...msgs[i], content: msgs[i].content + CHAT_BREVITY_HINT };
+      break;
+    }
+  }
+  return [{ role: "system", content: systemPrompt }, ...msgs];
+}
 
 export function coffeeHeader(coffee: Coffee, now: number = Date.now()): string {
   const parts = [`${coffee.roaster} — ${coffee.name}`];

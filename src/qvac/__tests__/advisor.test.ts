@@ -1,5 +1,5 @@
-import { buildDiagnosePrompt, buildBestRecipePrompt, coffeeHeader } from "../advisor";
-import { RECENT_BREWS_CAP, BEST_RECIPE_BREWS_CAP } from "../promptConfig";
+import { buildDiagnosePrompt, buildBestRecipePrompt, coffeeHeader, buildChatHistory } from "../advisor";
+import { RECENT_BREWS_CAP, BEST_RECIPE_BREWS_CAP, CHAT_SYSTEM_PROMPT, CHAT_BREVITY_HINT } from "../promptConfig";
 import type { Brew, Coffee } from "../../models/types";
 
 const coffee: Coffee = {
@@ -62,5 +62,35 @@ describe("buildBestRecipePrompt", () => {
     const user = buildBestRecipePrompt(coffee, many, NOW)[1].content;
     const rows = user.split("\n").filter((l) => /^\d+\)/.test(l.trim()));
     expect(rows.length).toBe(BEST_RECIPE_BREWS_CAP);
+  });
+});
+
+describe("buildChatHistory", () => {
+  it("prepends the chat system prompt and appends the brevity hint to the newest user turn", () => {
+    const msgs = buildChatHistory([
+      { role: "user", content: "why sour?" },
+      { role: "assistant", content: "grind finer" },
+    ]);
+    expect(msgs).toEqual([
+      { role: "system", content: CHAT_SYSTEM_PROMPT },
+      { role: "user", content: "why sour?" + CHAT_BREVITY_HINT },
+      { role: "assistant", content: "grind finer" },
+    ]);
+  });
+  it("adds the brevity hint only to the last user message, leaving earlier ones untouched", () => {
+    const msgs = buildChatHistory([
+      { role: "user", content: "first" },
+      { role: "assistant", content: "ok" },
+      { role: "user", content: "second" },
+    ]);
+    expect(msgs[1]).toEqual({ role: "user", content: "first" });
+    expect(msgs[3]).toEqual({ role: "user", content: "second" + CHAT_BREVITY_HINT });
+  });
+  it("returns just the system prompt for an empty transcript", () => {
+    expect(buildChatHistory([])).toEqual([{ role: "system", content: CHAT_SYSTEM_PROMPT }]);
+  });
+  it("honours a custom system prompt", () => {
+    const msgs = buildChatHistory([{ role: "user", content: "hi" }], "SYS");
+    expect(msgs[0]).toEqual({ role: "system", content: "SYS" });
   });
 });
