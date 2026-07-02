@@ -38,13 +38,28 @@ export async function listBrewsForCoffee(db: Db, coffeeId: string): Promise<Brew
 // ledger, where brews from every coffee are interleaved and need a label.
 export type BrewWithCoffee = Brew & { roaster: string; coffeeName: string };
 
-export async function listAllBrews(db: Db): Promise<BrewWithCoffee[]> {
-  const rows = await db.getAllAsync<BrewRow & { c_roaster: string; c_name: string }>(
-    `SELECT b.*, c.roaster AS c_roaster, c.name AS c_name
+// Newest-first across all coffees. `id DESC` is a stable tiebreaker for brews sharing the
+// same `brewed_at` (times are often minute-precision), giving a total order so LIMIT/OFFSET
+// paging never skips or repeats a row. Omit `limit` to fetch everything.
+export async function listAllBrews(
+  db: Db,
+  opts: { limit?: number; offset?: number } = {}
+): Promise<BrewWithCoffee[]> {
+  let sql = `SELECT b.*, c.roaster AS c_roaster, c.name AS c_name
        FROM brews b JOIN coffees c ON c.id = b.coffee_id
-       ORDER BY b.brewed_at DESC`
-  );
+       ORDER BY b.brewed_at DESC, b.id DESC`;
+  const params: number[] = [];
+  if (opts.limit != null) {
+    sql += " LIMIT ? OFFSET ?";
+    params.push(opts.limit, opts.offset ?? 0);
+  }
+  const rows = await db.getAllAsync<BrewRow & { c_roaster: string; c_name: string }>(sql, params);
   return rows.map((r) => ({ ...rowToBrew(r), roaster: r.c_roaster, coffeeName: r.c_name }));
+}
+
+export async function countAllBrews(db: Db): Promise<number> {
+  const row = await db.getFirstAsync<{ n: number }>("SELECT COUNT(*) AS n FROM brews");
+  return row?.n ?? 0;
 }
 
 export async function getBrew(db: Db, id: string): Promise<Brew | null> {

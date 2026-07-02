@@ -53,6 +53,32 @@ it("lists brews across all coffees newest first, tagged with coffee identity", a
   expect(all[1]).toMatchObject({ coffeeId: "c1", roaster: "Sey", coffeeName: "Kenya" });
 });
 
+it("pages through all brews with limit/offset without gaps or repeats", async () => {
+  const db = await makeTestDb();
+  await createCoffee(db, coffee);
+  // Five brews, distinct times so the newest-first order is unambiguous.
+  for (let i = 0; i < 5; i++) await createBrew(db, brew({ id: `b${i}`, brewedAt: i }));
+
+  const page1 = await listAllBrews(db, { limit: 2, offset: 0 });
+  const page2 = await listAllBrews(db, { limit: 2, offset: 2 });
+  const page3 = await listAllBrews(db, { limit: 2, offset: 4 });
+  expect(page1.map((b) => b.id)).toEqual(["b4", "b3"]);
+  expect(page2.map((b) => b.id)).toEqual(["b2", "b1"]);
+  expect(page3.map((b) => b.id)).toEqual(["b0"]); // short final page => end reached
+});
+
+it("keeps a stable total order when brews share a brewed_at", async () => {
+  const db = await makeTestDb();
+  await createCoffee(db, coffee);
+  await createBrew(db, brew({ id: "a", brewedAt: 10 }));
+  await createBrew(db, brew({ id: "c", brewedAt: 10 }));
+  await createBrew(db, brew({ id: "b", brewedAt: 10 }));
+  // Same instant → id DESC breaks the tie, so paging across the boundary is deterministic.
+  const first = await listAllBrews(db, { limit: 2, offset: 0 });
+  const second = await listAllBrews(db, { limit: 2, offset: 2 });
+  expect([...first, ...second].map((b) => b.id)).toEqual(["c", "b", "a"]);
+});
+
 describe("avgRating", () => {
   it("averages defined ratings", () => {
     expect(avgRating([brew({ rating: 4 }), brew({ rating: 2 })])).toBe(3);

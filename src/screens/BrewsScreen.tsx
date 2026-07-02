@@ -1,18 +1,22 @@
-import React, { useCallback, useMemo, useState } from "react";
-import { SectionList, StyleSheet, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, SectionList, StyleSheet, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/types";
 import { getDb } from "../db/database";
-import { listAllBrews, type BrewWithCoffee } from "../db/brews";
+import { listAllBrews, countAllBrews, type BrewWithCoffee } from "../db/brews";
 import { formatRatio } from "../lib/ratio";
 import { formatSeconds, formatBrewTime, groupBrewsByDay } from "../lib/brewFormat";
 import { AppText, BrewListRow, useAppModal } from "../components/ui";
 import { colors, spacing, screenTopGap } from "../design/tokens";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "Main">;
+
+// How many brews to pull per page. Reads are local SQLite, so this is generous — big enough
+// to fill a screen and rarely page, small enough that the first paint is instant.
+const PAGE_SIZE = 25;
 
 // Keep the grinder note short so the process line stays tidy.
 const GRIND_MAX = 12;
@@ -31,14 +35,31 @@ export function BrewsScreen() {
   const insets = useSafeAreaInsets();
   const modal = useAppModal();
   const [brews, setBrews] = useState<BrewWithCoffee[]>([]);
+  const [total, setTotal] = useState(0);
   // Gate the empty state on the first load completing, so "No brews logged yet" can't
   // flash while the initial DB read is still in flight.
   const [loaded, setLoaded] = useState(false);
+  const [end, setEnd] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  // Mirrors of state read inside async callbacks (which capture stale state): how many rows
+  // are loaded, whether we've hit the end, and a guard against overlapping page fetches.
+  const loadedCountRef = useRef(0);
+  const endRef = useRef(false);
+  const fetchingRef = useRef(false);
+  useEffect(() => { loadedCountRef.current = brews.length; }, [brews.length]);
+  useEffect(() => { endRef.current = end; }, [end]);
 
-  const load = useCallback(() => {
+  // Refresh the top `count` brews in one query (used on focus and initial mount). Re-reading
+  // the whole loaded window keeps your place after returning from a brew while still picking
+  // up new/edited/deleted rows at the top.
+  const refresh = useCallback((count: number) => {
     (async () => {
       try {
-        setBrews(await listAllBrews(await getDb()));
+        const db = await getDb();
+        const [page, totalCount] = await Promise.all([listAllBrews(db, { limit: count }), countAllBrews(db)]);
+        setBrews(page);
+        setTotal(totalCount);
+        setEnd(page.length >= totalCount);
       } catch (e: any) {
         modal.alert("Couldn't load brews", String(e?.message ?? e));
       } finally {
@@ -46,10 +67,32 @@ export function BrewsScreen() {
       }
     })();
   }, [modal]);
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  useFocusEffect(useCallback(() => {
+    refresh(Math.max(PAGE_SIZE, loadedCountRef.current));
+  }, [refresh]));
+
+  // Append the next page when the list nears its end. Guarded so the many onEndReached
+  // events a scroll fires collapse into one fetch, and skipped before the first load lands.
+  const loadMore = useCallback(() => {
+    if (fetchingRef.current || endRef.current || loadedCountRef.current === 0) return;
+    fetchingRef.current = true;
+    setLoadingMore(true);
+    (async () => {
+      try {
+        const next = await listAllBrews(await getDb(), { limit: PAGE_SIZE, offset: loadedCountRef.current });
+        if (next.length) setBrews((prev) => [...prev, ...next]);
+        if (next.length < PAGE_SIZE) setEnd(true);
+      } catch (e: any) {
+        modal.alert("Couldn't load more brews", String(e?.message ?? e));
+      } finally {
+        fetchingRef.current = false;
+        setLoadingMore(false);
+      }
+    })();
+  }, [modal]);
 
   const sections = useMemo(() => groupBrewsByDay(brews), [brews]);
-  const hasBrews = brews.length > 0;
 
   return (
     <View style={styles.screen}>
@@ -58,9 +101,9 @@ export function BrewsScreen() {
       {/* Fixed masthead — only the ledger below scrolls. */}
       <View style={[styles.masthead, { paddingTop: insets.top + screenTopGap }]}>
         <AppText variant="headlineLg" style={styles.title}>Brew ledger</AppText>
-        {hasBrews ? (
+        {total > 0 ? (
           <AppText variant="labelMd" style={styles.subtitle}>
-            {brews.length} brew{brews.length === 1 ? "" : "s"}
+            {total} brew{total === 1 ? "" : "s"}
           </AppText>
         ) : null}
       </View>
@@ -72,6 +115,22 @@ export function BrewsScreen() {
         showsVerticalScrollIndicator={false}
         style={styles.listArea}
         contentContainerStyle={styles.list}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
+        // Fast-fling smoothing: Android's default subview clipping blanks the list mid-scroll
+        // (then snaps back when it settles), so disable it; render a wider window and a bigger
+        // batch so the recycler keeps up instead of showing empty space.
+        removeClippedSubviews={false}
+        initialNumToRender={12}
+        maxToRenderPerBatch={12}
+        windowSize={11}
+        ListFooterComponent={
+          loadingMore ? (
+            <View style={styles.footer}>
+              <ActivityIndicator color={colors.primary} />
+            </View>
+          ) : null
+        }
         renderSectionHeader={({ section }) => {
           const isFirst = section.key === sections[0]?.key;
           return (
@@ -116,7 +175,7 @@ const styles = StyleSheet.create({
   title: { marginTop: 6, lineHeight: 48 },
   subtitle: { marginTop: 8, color: colors.secondary },
   listArea: { flex: 1 },
-  list: { paddingHorizontal: spacing.container, paddingBottom: 128 },
+  list: { paddingHorizontal: spacing.container },
   // Sticky per-day break. Solid cream so the day's thread scrolls cleanly underneath. A
   // full-bleed top rule + extra top gap cut each new day apart — the only horizontal rule
   // in the list, so it never reads like the (rule-less, spine-linked) gap between same-day
@@ -136,6 +195,7 @@ const styles = StyleSheet.create({
   },
   dayTitle: { color: colors.onSurface },
   dayCount: { color: colors.outline },
+  footer: { paddingVertical: 20 },
   empty: { marginTop: 48, alignItems: "center", paddingHorizontal: 24 },
   emptyTitle: { textAlign: "center" },
   emptyBody: { textAlign: "center", marginTop: 8 },
