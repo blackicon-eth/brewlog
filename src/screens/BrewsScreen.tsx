@@ -31,6 +31,9 @@ export function BrewsScreen() {
   const insets = useSafeAreaInsets();
   const modal = useAppModal();
   const [brews, setBrews] = useState<BrewWithCoffee[]>([]);
+  // Gate the empty state on the first load completing, so "No brews logged yet" can't
+  // flash while the initial DB read is still in flight.
+  const [loaded, setLoaded] = useState(false);
 
   const load = useCallback(() => {
     (async () => {
@@ -38,6 +41,8 @@ export function BrewsScreen() {
         setBrews(await listAllBrews(await getDb()));
       } catch (e: any) {
         modal.alert("Couldn't load brews", String(e?.message ?? e));
+      } finally {
+        setLoaded(true);
       }
     })();
   }, [modal]);
@@ -79,12 +84,14 @@ export function BrewsScreen() {
           );
         }}
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <AppText variant="headlineMd" style={styles.emptyTitle}>No brews logged yet</AppText>
-            <AppText variant="bodyMd" style={styles.emptyBody}>
-              Open a coffee and log a pour — every brew you record lands here, newest first.
-            </AppText>
-          </View>
+          loaded ? (
+            <View style={styles.empty}>
+              <AppText variant="headlineMd" style={styles.emptyTitle}>No brews logged yet</AppText>
+              <AppText variant="bodyMd" style={styles.emptyBody}>
+                Open a coffee and log a pour — every brew you record lands here, newest first.
+              </AppText>
+            </View>
+          ) : null
         }
         renderItem={({ item }) => (
           <BrewListRow

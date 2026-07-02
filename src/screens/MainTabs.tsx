@@ -21,11 +21,12 @@ const TABS: (TabItem & { render: () => React.ReactNode })[] = [
 
 export function MainTabs() {
   const [activeKey, setActiveKey] = useState("home");
-  const active = TABS.find((t) => t.key === activeKey) ?? TABS[0];
 
-  // Directional slide + fade on tab change. `dir` is set in the tap handler (before the
-  // re-render) so the interpolation below reads a fresh value; +1 slides in from the right
-  // (moving to a later tab), -1 from the left. First paint skips the animation.
+  // Directional slide on tab change. `dir` is set in the tap handler (before the re-render)
+  // so the interpolation below reads a fresh value; +1 slides in from the right (moving to a
+  // later tab), -1 from the left. First paint skips the animation. Deliberately NOT an
+  // opacity fade: on Android, `elevation` shadows ignore view opacity, so fading a page of
+  // shadowed cards makes their shadows appear ahead of the content — a slide avoids that.
   const anim = useRef(new Animated.Value(1)).current;
   const dir = useRef(0);
   const first = useRef(true);
@@ -46,17 +47,28 @@ export function MainTabs() {
 
   return (
     <View style={styles.screen}>
-      <Animated.View
-        style={[
-          styles.content,
-          {
-            opacity: anim.interpolate({ inputRange: [0, 1], outputRange: [0.25, 1] }),
-            transform: [{ translateX: anim.interpolate({ inputRange: [0, 1], outputRange: [dir.current * 24, 0] }) }],
-          },
-        ]}
-      >
-        {active.render()}
-      </Animated.View>
+      <View style={styles.content}>
+        {/* Every tab stays mounted so a switch never remounts a screen — its loaded data and
+            scroll position survive, so there's no empty-list reflow flicker. Inactive tabs
+            are display:none (not opacity:0) so their Android elevation shadows don't bleed
+            through onto the visible tab. Only the active tab is laid out and slides in. */}
+        {TABS.map((t) => {
+          const isActive = t.key === activeKey;
+          return (
+            <Animated.View
+              key={t.key}
+              style={[
+                StyleSheet.absoluteFill,
+                isActive
+                  ? { transform: [{ translateX: anim.interpolate({ inputRange: [0, 1], outputRange: [dir.current * 24, 0] }) }] }
+                  : styles.hidden,
+              ]}
+            >
+              {t.render()}
+            </Animated.View>
+          );
+        })}
+      </View>
       <TabBar items={TABS} activeKey={activeKey} onSelect={select} />
     </View>
   );
@@ -65,4 +77,7 @@ export function MainTabs() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { flex: 1 },
+  // Fully removed from layout — the only reliable way to keep an inactive tab's Android
+  // elevation shadows from bleeding onto the active tab (opacity does not clip them).
+  hidden: { display: "none" },
 });

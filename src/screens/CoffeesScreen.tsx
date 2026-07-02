@@ -23,6 +23,9 @@ export function CoffeesScreen() {
   const { prepare } = useQvac();
   const modal = useAppModal();
   const [rows, setRows] = useState<Row[]>([]);
+  // Gate the empty state on the first load completing, so "Your ledger is empty" can't
+  // flash while the initial DB read is still in flight.
+  const [loaded, setLoaded] = useState(false);
 
   const load = useCallback(() => {
     (async () => {
@@ -36,6 +39,8 @@ export function CoffeesScreen() {
         setRows(withStats);
       } catch (e: any) {
         modal.alert("Couldn't load coffees", String(e?.message ?? e));
+      } finally {
+        setLoaded(true);
       }
     })();
   }, [modal]);
@@ -77,12 +82,14 @@ export function CoffeesScreen() {
         contentContainerStyle={styles.list}
         ItemSeparatorComponent={() => <View style={styles.gap} />}
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <AppText variant="headlineMd" style={styles.emptyTitle}>Your ledger is empty</AppText>
-            <AppText variant="bodyMd" style={styles.emptyBody}>
-              Add your first bag to start logging brews and tasting notes.
-            </AppText>
-          </View>
+          loaded ? (
+            <View style={styles.empty}>
+              <AppText variant="headlineMd" style={styles.emptyTitle}>Your ledger is empty</AppText>
+              <AppText variant="bodyMd" style={styles.emptyBody}>
+                Add your first bag to start logging brews and tasting notes.
+              </AppText>
+            </View>
+          ) : null
         }
         renderItem={({ item }) => (
           <CoffeeCard
