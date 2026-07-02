@@ -30,7 +30,9 @@ export function BrewLogRow({ date, recipe, ratio, meta, rating, onPress, onDiagn
         {meta ? <AppText variant="bodyMd" style={styles.meta}>{meta}</AppText> : null}
       </View>
       <View style={styles.right}>
-        {rating != null ? <RatingChip value={rating} /> : null}
+        <View style={styles.ratingWrap}>
+          {rating != null ? <RatingChip value={rating} /> : null}
+        </View>
         <Pressable onPress={onDiagnose} hitSlop={8} style={styles.diagnoseBtn}>
           <Text style={styles.diagnose}>Diagnose</Text>
           <Chevron direction="right" size={7} thickness={2} color={colors.primary} />
@@ -49,7 +51,9 @@ const styles = StyleSheet.create({
   recipe: { fontFamily: fonts.sansSemiBold, fontSize: 15, color: colors.onSurface },
   ratio: { fontFamily: fonts.sansMedium, fontSize: 13, color: colors.onSurfaceVariant },
   meta: { marginTop: 3 },
-  right: { alignItems: "flex-end", gap: 7 },
+  // Stretch to the row's full height so the rating can center and Diagnose sits at the bottom.
+  right: { alignSelf: "stretch", alignItems: "flex-end" },
+  ratingWrap: { flex: 1, justifyContent: "center" },
   diagnoseBtn: { flexDirection: "row", alignItems: "center", gap: 5 },
   diagnose: { fontFamily: fonts.sansBold, fontSize: 12, color: colors.primary },
 });

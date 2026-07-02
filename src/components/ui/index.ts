@@ -12,5 +12,6 @@ export { ChipSelect, type ChipSelectProps, type ChipOption } from "./ChipSelect"
 export { ScaleSelect, type ScaleSelectProps } from "./ScaleSelect";
 export { ReasoningDisclosure, type ReasoningDisclosureProps } from "./ReasoningDisclosure";
 export { Chevron, type ChevronProps } from "./Chevron";
+export { ClockIcon, type ClockIconProps } from "./ClockIcon";
 export { AppModalProvider, useAppModal, type AppModalApi, type ConfirmOptions } from "./AppModal";
 export { NaturalLanguageIntake, type NaturalLanguageIntakeProps } from "./NaturalLanguageIntake";

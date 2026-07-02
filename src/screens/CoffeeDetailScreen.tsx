@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo, useState } from "react";
-import { FlatList, Pressable, StyleSheet, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Animated, Easing, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
@@ -11,7 +11,7 @@ import { listBrewsForCoffee } from "../db/brews";
 import type { Brew, Coffee } from "../models/types";
 import { formatRatio } from "../lib/ratio";
 import { formatSeconds, formatBrewDate } from "../lib/brewFormat";
-import { AppText, AiActionCard, BrewLogRow, Fab, Chevron, useAppModal } from "../components/ui";
+import { AppText, AiActionCard, BrewLogRow, Fab, Chevron, ClockIcon, useAppModal } from "../components/ui";
 import { colors, spacing, screenTopGap } from "../design/tokens";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "CoffeeDetail">;
@@ -64,6 +64,17 @@ export function CoffeeDetailScreen() {
     return arr;
   }, [brews, sort]);
 
+  // --- sort-change animation (self-contained; safe to remove) ---
+  // A quick fade + rise on the list each time the sort flips.
+  const listAnim = useRef(new Animated.Value(1)).current;
+  const firstSort = useRef(true);
+  useEffect(() => {
+    if (firstSort.current) { firstSort.current = false; return; }
+    listAnim.setValue(0);
+    Animated.timing(listAnim, { toValue: 1, duration: 300, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+  }, [sort, listAnim]);
+  // --- end sort-change animation ---
+
   return (
     <View style={styles.screen}>
       <StatusBar style="dark" />
@@ -102,50 +113,63 @@ export function CoffeeDetailScreen() {
             <View style={styles.sortGroup}>
               <Pressable
                 onPress={() => setSort("recent")}
-                hitSlop={6}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Sort by most recent"
+                accessibilityState={{ selected: sort === "recent" }}
                 style={[styles.sortChip, sort === "recent" && styles.sortChipActive]}
               >
-                <AppText variant="labelSm" style={[styles.sortChipText, sort === "recent" && styles.sortChipTextActive]}>Recent</AppText>
+                <ClockIcon size={15} thickness={1.6} color={sort === "recent" ? colors.primary : colors.outline} />
               </Pressable>
               <Pressable
                 onPress={() => setSort("rating")}
-                hitSlop={6}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Sort by top rated"
+                accessibilityState={{ selected: sort === "rating" }}
                 style={[styles.sortChip, sort === "rating" && styles.sortChipActive]}
               >
-                <AppText variant="labelSm" style={[styles.sortChipText, sort === "rating" && styles.sortChipTextActive]}>Top rated</AppText>
+                <Text style={[styles.sortStar, { color: sort === "rating" ? colors.primary : colors.outline }]}>★</Text>
               </Pressable>
             </View>
           </View>
         ) : null}
       </View>
 
-      <FlatList
-        data={sortedBrews}
-        keyExtractor={(b) => b.id}
-        showsVerticalScrollIndicator={false}
-        style={styles.listArea}
-        contentContainerStyle={styles.list}
-        ItemSeparatorComponent={() => <View style={styles.hairline} />}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <AppText variant="headlineMd" style={styles.emptyTitle}>No brews logged yet</AppText>
-            <AppText variant="bodyMd" style={styles.emptyBody}>
-              Log your first pour to start dialing this coffee in.
-            </AppText>
-          </View>
-        }
-        renderItem={({ item }) => (
-          <BrewLogRow
-            date={formatBrewDate(item.brewedAt)}
-            recipe={`${item.doseG}g : ${item.waterG}g`}
-            ratio={formatRatio(item.ratio)}
-            meta={brewMeta(item)}
-            rating={item.rating ?? null}
-            onPress={() => nav.navigate("BrewForm", { coffeeId: params.coffeeId, brewId: item.id })}
-            onDiagnose={() => nav.navigate("AdvisorResult", { kind: "diagnose", coffeeId: params.coffeeId, brewId: item.id, title: "Diagnose brew" })}
-          />
-        )}
-      />
+      <Animated.View
+        style={[
+          styles.listArea,
+          { opacity: listAnim, transform: [{ translateY: listAnim.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }] },
+        ]}
+      >
+        <FlatList
+          data={sortedBrews}
+          keyExtractor={(b) => b.id}
+          showsVerticalScrollIndicator={false}
+          style={styles.listArea}
+          contentContainerStyle={styles.list}
+          ItemSeparatorComponent={() => <View style={styles.hairline} />}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <AppText variant="headlineMd" style={styles.emptyTitle}>No brews logged yet</AppText>
+              <AppText variant="bodyMd" style={styles.emptyBody}>
+                Log your first pour to start dialing this coffee in.
+              </AppText>
+            </View>
+          }
+          renderItem={({ item }) => (
+            <BrewLogRow
+              date={formatBrewDate(item.brewedAt)}
+              recipe={`${item.doseG}g : ${item.waterG}g`}
+              ratio={formatRatio(item.ratio)}
+              meta={brewMeta(item)}
+              rating={item.rating ?? null}
+              onPress={() => nav.navigate("BrewForm", { coffeeId: params.coffeeId, brewId: item.id })}
+              onDiagnose={() => nav.navigate("AdvisorResult", { kind: "diagnose", coffeeId: params.coffeeId, brewId: item.id, title: "Diagnose brew" })}
+            />
+          )}
+        />
+      </Animated.View>
       <Fab label="Log brew" onPress={() => nav.navigate("BrewForm", { coffeeId: params.coffeeId })} />
     </View>
   );
@@ -160,15 +184,15 @@ const styles = StyleSheet.create({
   backBtn: { height: 34, justifyContent: "center" },
   editBtn: { borderWidth: 1, borderColor: colors.outlineVariant, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 },
   editText: { color: colors.onSurfaceVariant },
-  title: { marginTop: 6 },
+  // Extra line height so EB Garamond's descenders (the "g" tail) aren't clipped on Android.
+  title: { marginTop: 6, lineHeight: 48 },
   tags: { marginTop: 10, color: colors.secondary },
   aiWrap: { marginTop: 24 },
   historyRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 24, marginBottom: 2 },
   sortGroup: { flexDirection: "row", gap: 6 },
-  sortChip: { paddingHorizontal: 11, paddingVertical: 5, borderRadius: 999 },
+  sortChip: { width: 30, height: 30, borderRadius: 999, alignItems: "center", justifyContent: "center" },
   sortChipActive: { backgroundColor: "rgba(0,74,198,0.10)" },
-  sortChipText: { color: colors.outline, letterSpacing: 0.4 },
-  sortChipTextActive: { color: colors.primary },
+  sortStar: { fontSize: 15, lineHeight: 15, marginTop: -1 },
   hairline: { height: StyleSheet.hairlineWidth, backgroundColor: colors.outlineVariant },
   empty: { marginTop: 40, alignItems: "center", paddingHorizontal: 24 },
   emptyTitle: { textAlign: "center" },
