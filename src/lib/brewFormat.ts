@@ -10,6 +10,15 @@ export function formatSeconds(totalSeconds: number | null | undefined): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// Compact, locale-independent brew date, e.g. "28 Jun". Used as the ledger date stamp
+// on a brew row (and to make the "Recent" sort legible).
+export function formatBrewDate(ts: number): string {
+  const d = new Date(ts);
+  return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+}
+
 export function daysOffRoast(roastDate: string | null | undefined, now: number = Date.now()): number | null {
   if (!roastDate) return null;
   const t = Date.parse(roastDate);

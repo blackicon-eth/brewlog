@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { FlatList, Pressable, StyleSheet, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -10,7 +10,7 @@ import { getCoffee } from "../db/coffees";
 import { listBrewsForCoffee } from "../db/brews";
 import type { Brew, Coffee } from "../models/types";
 import { formatRatio } from "../lib/ratio";
-import { formatSeconds } from "../lib/brewFormat";
+import { formatSeconds, formatBrewDate } from "../lib/brewFormat";
 import { AppText, AiActionCard, BrewLogRow, Fab, Chevron, useAppModal } from "../components/ui";
 import { colors, spacing, screenTopGap } from "../design/tokens";
 
@@ -32,6 +32,7 @@ export function CoffeeDetailScreen() {
   const modal = useAppModal();
   const [coffee, setCoffee] = useState<Coffee | null>(null);
   const [brews, setBrews] = useState<Brew[]>([]);
+  const [sort, setSort] = useState<"recent" | "rating">("recent");
 
   const load = useCallback(() => {
     (async () => {
@@ -50,6 +51,18 @@ export function CoffeeDetailScreen() {
   const tags = coffee
     ? [coffee.process, coffee.roastLevel ? `${coffee.roastLevel} roast` : null, coffee.origin].filter(Boolean).join(" · ")
     : "";
+
+  // "Recent" = most-recently brewed first (the DB's default order); "Top rated" = highest
+  // overall rating first, unrated last, ties broken by recency.
+  const sortedBrews = useMemo(() => {
+    const arr = [...brews];
+    if (sort === "rating") {
+      arr.sort((a, b) => (b.rating ?? -1) - (a.rating ?? -1) || b.brewedAt - a.brewedAt);
+    } else {
+      arr.sort((a, b) => b.brewedAt - a.brewedAt);
+    }
+    return arr;
+  }, [brews, sort]);
 
   return (
     <View style={styles.screen}>
@@ -83,11 +96,31 @@ export function CoffeeDetailScreen() {
           />
         </View>
 
-        {hasBrews ? <AppText variant="labelMd" style={styles.section}>Brew history</AppText> : null}
+        {hasBrews ? (
+          <View style={styles.historyRow}>
+            <AppText variant="labelMd">Brew history</AppText>
+            <View style={styles.sortGroup}>
+              <Pressable
+                onPress={() => setSort("recent")}
+                hitSlop={6}
+                style={[styles.sortChip, sort === "recent" && styles.sortChipActive]}
+              >
+                <AppText variant="labelSm" style={[styles.sortChipText, sort === "recent" && styles.sortChipTextActive]}>Recent</AppText>
+              </Pressable>
+              <Pressable
+                onPress={() => setSort("rating")}
+                hitSlop={6}
+                style={[styles.sortChip, sort === "rating" && styles.sortChipActive]}
+              >
+                <AppText variant="labelSm" style={[styles.sortChipText, sort === "rating" && styles.sortChipTextActive]}>Top rated</AppText>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
       </View>
 
       <FlatList
-        data={brews}
+        data={sortedBrews}
         keyExtractor={(b) => b.id}
         showsVerticalScrollIndicator={false}
         style={styles.listArea}
@@ -103,6 +136,7 @@ export function CoffeeDetailScreen() {
         }
         renderItem={({ item }) => (
           <BrewLogRow
+            date={formatBrewDate(item.brewedAt)}
             recipe={`${item.doseG}g : ${item.waterG}g`}
             ratio={formatRatio(item.ratio)}
             meta={brewMeta(item)}
@@ -120,7 +154,7 @@ export function CoffeeDetailScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   listArea: { flex: 1 },
-  list: { paddingHorizontal: spacing.container, paddingBottom: 128 },
+  list: { paddingHorizontal: spacing.container, paddingBottom: 104 },
   header: { paddingHorizontal: spacing.container, paddingBottom: 4 },
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 18 },
   backBtn: { height: 34, justifyContent: "center" },
@@ -129,7 +163,12 @@ const styles = StyleSheet.create({
   title: { marginTop: 6 },
   tags: { marginTop: 10, color: colors.secondary },
   aiWrap: { marginTop: 24 },
-  section: { marginTop: 24, marginBottom: 2 },
+  historyRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 24, marginBottom: 2 },
+  sortGroup: { flexDirection: "row", gap: 6 },
+  sortChip: { paddingHorizontal: 11, paddingVertical: 5, borderRadius: 999 },
+  sortChipActive: { backgroundColor: "rgba(0,74,198,0.10)" },
+  sortChipText: { color: colors.outline, letterSpacing: 0.4 },
+  sortChipTextActive: { color: colors.primary },
   hairline: { height: StyleSheet.hairlineWidth, backgroundColor: colors.outlineVariant },
   empty: { marginTop: 40, alignItems: "center", paddingHorizontal: 24 },
   emptyTitle: { textAlign: "center" },

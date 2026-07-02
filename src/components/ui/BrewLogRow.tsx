@@ -6,6 +6,7 @@ import { Chevron } from "./Chevron";
 import { colors, fonts } from "../../design/tokens";
 
 export type BrewLogRowProps = {
+  date: string; // "28 Jun" — ledger date stamp
   recipe: string; // "15g : 250g"
   ratio: string; // "1:16.7"
   meta: string; // "medium-fine · 94°C · 2:45"
@@ -14,12 +15,14 @@ export type BrewLogRowProps = {
   onDiagnose: () => void;
 };
 
-// A "visual log" entry — hairline-separated (divider supplied by the list), generous
-// vertical padding, recipe + ratio on the left, rating chip + Diagnose link on the right.
-export function BrewLogRow({ recipe, ratio, meta, rating, onPress, onDiagnose }: BrewLogRowProps) {
+// A "visual log" entry — hairline-separated (divider supplied by the list). Left column
+// reads like a dated ledger line (date stamp → recipe + ratio → process meta); the right
+// column pairs the rating chip with a Diagnose link, top-aligned with the date.
+export function BrewLogRow({ date, recipe, ratio, meta, rating, onPress, onDiagnose }: BrewLogRowProps) {
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
       <View style={styles.left}>
+        <AppText variant="labelSm" style={styles.date}>{date}</AppText>
         <View style={styles.recipeLine}>
           <Text style={styles.recipe}>{recipe}</Text>
           <Text style={styles.ratio}>{ratio}</Text>
@@ -38,9 +41,10 @@ export function BrewLogRow({ recipe, ratio, meta, rating, onPress, onDiagnose }:
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, paddingVertical: 16 },
+  row: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12, paddingVertical: 16 },
   pressed: { opacity: 0.6 },
   left: { flex: 1 },
+  date: { color: colors.secondary, marginBottom: 6 },
   recipeLine: { flexDirection: "row", alignItems: "baseline", gap: 8 },
   recipe: { fontFamily: fonts.sansSemiBold, fontSize: 15, color: colors.onSurface },
   ratio: { fontFamily: fonts.sansMedium, fontSize: 13, color: colors.onSurfaceVariant },
