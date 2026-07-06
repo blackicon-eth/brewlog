@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Brewlog",
-    "slug": "qvac-expo-chat",
+    "slug": "brewlog",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.qvacexpochat"
+      "bundleIdentifier": "com.anonymous.brewlog"
     },
     "android": {
       "adaptiveIcon": {
@@ -23,7 +23,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.qvacexpochat"
+      "package": "com.anonymous.brewlog"
     },
     "web": {
       "favicon": "./assets/favicon.png"

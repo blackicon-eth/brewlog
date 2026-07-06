@@ -726,7 +726,7 @@ Expected: tsc exit 0; all jest suites pass; Android bundle exports without error
 - [ ] **Step 2: Reload on device (Metro running, `adb reverse tcp:8081 tcp:8081` set)**
 
 ```bash
-adb shell am force-stop com.anonymous.qvacexpochat && adb shell monkey -p com.anonymous.qvacexpochat -c android.intent.category.LAUNCHER 1
+adb shell am force-stop com.anonymous.brewlog && adb shell monkey -p com.anonymous.brewlog -c android.intent.category.LAUNCHER 1
 ```
 
 - [ ] **Step 3: Manual smoke checklist (physical S23)**
