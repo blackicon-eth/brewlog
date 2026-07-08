@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, Pressable, StyleSheet, TextInput, View } from "react-native";
 import { AppText } from "../../../components/ui";
 import { ToolPage } from "../ToolPage";
-import { usePersistedState } from "../usePersistedState";
+import { usePersistedState } from "../../../hooks/usePersistedState";
 import type { ToolModule } from "../types";
 import { colors, fonts, motion, radii, shadows, spacing } from "../../../design/tokens";
 import { computeRatio, formatRatio, solveDose, solveWater } from "../../../lib/ratio";
@@ -31,10 +31,10 @@ function toNumber(text: string): number {
 // of {dose, water, ratio} they already know and this solves the third live, with the solved
 // value as the page's hero (large serif readout) and the full recipe underneath.
 function RatioScreen() {
-  const [solveFor, setSolveFor] = usePersistedState<SolveFor>("ratio:solveFor", "water");
-  const [doseText, setDoseText] = usePersistedState("ratio:dose", DEFAULT_DOSE);
-  const [waterText, setWaterText] = usePersistedState("ratio:water", DEFAULT_WATER);
-  const [ratioText, setRatioText] = usePersistedState("ratio:ratio", DEFAULT_RATIO);
+  const [solveFor, setSolveFor] = usePersistedState<SolveFor>("tool:ratio:solveFor", "water");
+  const [doseText, setDoseText] = usePersistedState("tool:ratio:dose", DEFAULT_DOSE);
+  const [waterText, setWaterText] = usePersistedState("tool:ratio:water", DEFAULT_WATER);
+  const [ratioText, setRatioText] = usePersistedState("tool:ratio:ratio", DEFAULT_RATIO);
 
   // Sliding pill under the segment labels: one Animated index eased with a soft spring, so
   // switching modes reads as the same pill gliding rather than two pills swapping.

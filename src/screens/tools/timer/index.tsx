@@ -12,7 +12,7 @@ import {
   type PourStep,
 } from "../../../lib/pourSchedule";
 import { TimerGlyph } from "./TimerGlyph";
-import { usePersistedState } from "../usePersistedState";
+import { usePersistedState } from "../../../hooks/usePersistedState";
 import { Stepper } from "./Stepper";
 import { useStopwatch } from "./useStopwatch";
 
@@ -39,11 +39,11 @@ function pulse() {
 
 function TimerScreen() {
   // Setup state (numeric, bounded). Bloom is set directly in grams; total water is explicit.
-  const [bloomG, setBloomG] = usePersistedState("timer:bloomG", BLOOM_G.default);
-  const [bloomTimeS, setBloomTimeS] = usePersistedState("timer:bloomTimeS", BLOOM_T.default);
-  const [totalG, setTotalG] = usePersistedState("timer:totalG", TOTAL.default);
-  const [mainPours, setMainPours] = usePersistedState("timer:mainPours", POURS.default);
-  const [pourIntervalS, setPourIntervalS] = usePersistedState("timer:pourIntervalS", INTERVAL.default);
+  const [bloomG, setBloomG] = usePersistedState("tool:timer:bloomG", BLOOM_G.default);
+  const [bloomTimeS, setBloomTimeS] = usePersistedState("tool:timer:bloomTimeS", BLOOM_T.default);
+  const [totalG, setTotalG] = usePersistedState("tool:timer:totalG", TOTAL.default);
+  const [mainPours, setMainPours] = usePersistedState("tool:timer:mainPours", POURS.default);
+  const [pourIntervalS, setPourIntervalS] = usePersistedState("tool:timer:pourIntervalS", INTERVAL.default);
 
   // Built once per input change; the steppers keep bloom < total, so this never throws in
   // practice. doseG×bloomMultiplier is the lib's bloom target, so dose=bloomG with a 1×

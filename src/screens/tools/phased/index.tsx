@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 import { AppText, Card, ChipSelect, TextField } from "../../../components/ui";
 import { colors, fonts, radii, spacing } from "../../../design/tokens";
 import { ToolPage } from "../ToolPage";
-import { usePersistedState } from "../usePersistedState";
+import { usePersistedState } from "../../../hooks/usePersistedState";
 import type { ToolModule } from "../types";
 import { formatSeconds } from "../../../lib/brewFormat";
 import { formatRatio } from "../../../lib/ratio";
@@ -28,10 +28,10 @@ const BIAS_OPTIONS: { label: string; value: FirstPourBias }[] = [
 const PHASE_LABEL: Record<PhasedPour["phase"], string> = { taste: "Taste — 40%", strength: "Strength — 60%" };
 
 function PhasedScreen() {
-  const [doseText, setDoseText] = usePersistedState("phased:dose", String(DEFAULT_DOSE_G));
-  const [ratioText, setRatioText] = usePersistedState("phased:ratio", String(DEFAULT_RATIO));
-  const [phase60Pours, setPhase60Pours] = usePersistedState("phased:phase60Pours", DEFAULT_PHASE60_POURS);
-  const [bias, setBias] = usePersistedState<FirstPourBias>("phased:bias", "balanced");
+  const [doseText, setDoseText] = usePersistedState("tool:phased:dose", String(DEFAULT_DOSE_G));
+  const [ratioText, setRatioText] = usePersistedState("tool:phased:ratio", String(DEFAULT_RATIO));
+  const [phase60Pours, setPhase60Pours] = usePersistedState("tool:phased:phase60Pours", DEFAULT_PHASE60_POURS);
+  const [bias, setBias] = usePersistedState<FirstPourBias>("tool:phased:bias", "balanced");
 
   const doseG = parseFloat(doseText.replace(",", "."));
   const ratio = parseFloat(ratioText.replace(",", "."));

@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { AppText, TextField } from "../../../components/ui";
 import { ToolPage } from "../ToolPage";
-import { usePersistedState } from "../usePersistedState";
+import { usePersistedState } from "../../../hooks/usePersistedState";
 import type { ToolModule } from "../types";
 import { colors, fonts, radii, shadows, spacing } from "../../../design/tokens";
 import { formatRatio } from "../../../lib/ratio";
@@ -49,11 +49,11 @@ function toNumber(text: string): number {
 // extraction-yield %: the hero number, color-banded and captioned with a taste verdict, over
 // a strip of the derived numbers (strength, ratio, dissolved solids, water retained).
 function ExtractionScreen() {
-  const [bevSource, setBevSource] = usePersistedState<BevSource>("extraction:bevSource", "measured");
-  const [doseText, setDoseText] = usePersistedState("extraction:dose", "18");
-  const [tdsText, setTdsText] = usePersistedState("extraction:tds", "1.35");
-  const [beverageText, setBeverageText] = usePersistedState("extraction:beverage", "264");
-  const [waterText, setWaterText] = usePersistedState("extraction:water", "300");
+  const [bevSource, setBevSource] = usePersistedState<BevSource>("tool:extraction:bevSource", "measured");
+  const [doseText, setDoseText] = usePersistedState("tool:extraction:dose", "18");
+  const [tdsText, setTdsText] = usePersistedState("tool:extraction:tds", "1.35");
+  const [beverageText, setBeverageText] = usePersistedState("tool:extraction:beverage", "264");
+  const [waterText, setWaterText] = usePersistedState("tool:extraction:water", "300");
 
   const dose = toNumber(doseText);
   const tds = toNumber(tdsText);

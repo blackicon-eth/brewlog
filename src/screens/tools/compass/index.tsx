@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { AppText, TextField } from "../../../components/ui";
 import { ToolPage } from "../ToolPage";
-import { usePersistedState } from "../usePersistedState";
+import { usePersistedState } from "../../../hooks/usePersistedState";
 import type { ToolModule } from "../types";
 import { colors, fonts, radii } from "../../../design/tokens";
 import {
@@ -30,8 +30,8 @@ function parseNum(raw: string): number | null {
 }
 
 function CompassScreen() {
-  const [eyText, setEyText] = usePersistedState("compass:ey", String(DEFAULT_POINT.ey));
-  const [tdsText, setTdsText] = usePersistedState("compass:tds", String(DEFAULT_POINT.tds));
+  const [eyText, setEyText] = usePersistedState("tool:compass:ey", String(DEFAULT_POINT.ey));
+  const [tdsText, setTdsText] = usePersistedState("tool:compass:tds", String(DEFAULT_POINT.tds));
   // Measured inner-plot size, so the dot maps precisely on any device (S23 included).
   const [plot, setPlot] = useState(0);
 

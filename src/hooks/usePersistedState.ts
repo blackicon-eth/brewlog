@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import Storage from "expo-sqlite/kv-store";
 
-// Drop-in useState replacement for a tool's dial-in values, so every tool reopens exactly
-// as the brewer left it — across navigation and full app restarts. Hydrates synchronously
-// from the SQLite-backed key-value store (no flash of defaults on first render) and writes
-// back debounced, so hold-to-repeat steppers don't hit the disk ~28 times a second.
-// Keys are namespaced per tool: usePersistedState("timer:bloomG", 30).
+// Drop-in useState replacement for small preferences and dial-in values, so screens reopen
+// exactly as the user left them — across navigation and full app restarts. Hydrates
+// synchronously from the SQLite-backed key-value store (no flash of defaults on first
+// render) and writes back debounced, so hold-to-repeat steppers don't hit the disk ~28
+// times a second. Namespace keys by owner: "tool:timer:bloomG", "settings:ai:enabled".
 const WRITE_DEBOUNCE_MS = 300;
 
 export function usePersistedState<T>(key: string, initial: T): [T, Dispatch<SetStateAction<T>>] {
-  const storageKey = `tool:${key}`;
+  const storageKey = key;
 
   const [value, setValue] = useState<T>(() => {
     try {
