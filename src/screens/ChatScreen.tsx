@@ -7,7 +7,7 @@ import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { buildChatHistory } from "../qvac/advisor";
 import { useQvac } from "../qvac/QvacProvider";
-import { AppText, ChatBubble } from "../components/ui";
+import { AppText, ChatBubble, PillButton } from "../components/ui";
 import { colors, fonts, radii, spacing, screenTopGap } from "../design/tokens";
 
 // One visible turn. `pending` marks the coach bubble that's currently being generated (or
@@ -37,7 +37,7 @@ function cleanErrorMessage(raw: string): string {
 
 export function ChatScreen() {
   const insets = useSafeAreaInsets();
-  const { status, prepare, retry, runAdvice } = useQvac();
+  const { status, prepare, retry, runAdvice, aiEnabled, setAiEnabled } = useQvac();
 
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
@@ -153,6 +153,34 @@ export function ChatScreen() {
 
   const canSend = input.trim().length > 0 && !generating;
   const isEmpty = turns.length === 0;
+
+  // The coach is off: the tab stays reachable (hiding it would reflow the whole bar and
+  // bury the feature), but the canvas explains itself and offers the switch right here.
+  if (!aiEnabled) {
+    return (
+      <View style={styles.screen}>
+        <StatusBar style="dark" />
+        <View style={[styles.masthead, { paddingTop: insets.top + screenTopGap }]}>
+          <AppText variant="headlineLg" style={styles.title}>Chat</AppText>
+          <AppText variant="labelMd" style={styles.subtitle}>On-device brewing coach</AppText>
+        </View>
+        <View style={styles.offWrap}>
+          <AppText style={styles.spark}>✦</AppText>
+          <AppText variant="headlineMd" style={styles.emptyTitle}>The coach is off</AppText>
+          <AppText variant="bodyMd" style={styles.emptyBody}>
+            Turn on the on-device AI to chat about grind, ratio, water and technique.
+            Everything runs privately on your phone — nothing you brew ever leaves it.
+          </AppText>
+          <PillButton
+            label="Turn on the coach"
+            variant="primary"
+            style={styles.offBtn}
+            onPress={() => { setAiEnabled(true); prepare(); }}
+          />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>
@@ -309,6 +337,8 @@ const styles = StyleSheet.create({
   emptyTitle: {},
   emptyBody: { marginTop: 8, lineHeight: 22 },
   suggestions: { marginTop: spacing.section, gap: 10 },
+  offWrap: { flex: 1, justifyContent: "center", paddingHorizontal: spacing.container, paddingBottom: 80 },
+  offBtn: { marginTop: spacing.section },
   suggestion: {
     backgroundColor: colors.surfaceLowest,
     borderWidth: 1,

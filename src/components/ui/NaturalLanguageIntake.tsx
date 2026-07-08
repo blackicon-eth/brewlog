@@ -21,7 +21,7 @@ export type NaturalLanguageIntakeProps<T> = {
 export function NaturalLanguageIntake<T>({
   kicker, placeholder, buildPrompt, parse, onParsed, onManual,
 }: NaturalLanguageIntakeProps<T>) {
-  const { status, prepare, runAdvice } = useQvac();
+  const { status, prepare, runAdvice, aiEnabled } = useQvac();
   const [text, setText] = useState("");
   const [phase, setPhase] = useState<"idle" | "preparing" | "running" | "error">("idle");
   const [notice, setNotice] = useState("");
@@ -89,6 +89,10 @@ export function NaturalLanguageIntake<T>({
   }
 
   const busy = phase === "preparing" || phase === "running";
+
+  // Coach off: the box simply isn't there — the form works manually, and a prompt
+  // mid-form-filling would be an interruption, not an invitation.
+  if (!aiEnabled) return null;
 
   return (
     <View style={styles.wrap}>

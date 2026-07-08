@@ -11,6 +11,7 @@ import type { Brew } from "../models/types";
 import { formatRatio } from "../lib/ratio";
 import { formatSeconds, formatBrewDate, formatBrewTime } from "../lib/brewFormat";
 import { AppText, PillButton, RatingChip, Chevron, useAppModal } from "../components/ui";
+import { useAdvisorGate } from "../hooks/useAdvisorGate";
 import { colors, fonts, spacing, screenTopGap } from "../design/tokens";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "BrewDetail">;
@@ -53,6 +54,7 @@ export function BrewDetailScreen() {
   const insets = useSafeAreaInsets();
   const { params } = useRoute<Rt>();
   const modal = useAppModal();
+  const gate = useAdvisorGate();
   const [brew, setBrew] = useState<Brew | null>(null);
 
   const load = useCallback(() => {
@@ -156,7 +158,7 @@ export function BrewDetailScreen() {
             <PillButton
               label="✦  Diagnose this brew"
               variant="primary"
-              onPress={() => nav.navigate("AdvisorResult", { kind: "diagnose", coffeeId: params.coffeeId, brewId: params.brewId, title: "Diagnose brew" })}
+              onPress={() => void gate(() => nav.navigate("AdvisorResult", { kind: "diagnose", coffeeId: params.coffeeId, brewId: params.brewId, title: "Diagnose brew" }))}
             />
           </View>
         </ScrollView>

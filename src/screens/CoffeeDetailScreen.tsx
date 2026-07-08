@@ -12,6 +12,7 @@ import type { Brew, Coffee } from "../models/types";
 import { formatRatio } from "../lib/ratio";
 import { formatSeconds, formatBrewDate, formatBrewTime } from "../lib/brewFormat";
 import { AppText, AiActionCard, BrewLogRow, Fab, Chevron, ClockIcon, useAppModal } from "../components/ui";
+import { useAdvisorGate } from "../hooks/useAdvisorGate";
 import { colors, motion, spacing, screenTopGap } from "../design/tokens";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "CoffeeDetail">;
@@ -34,6 +35,7 @@ export function CoffeeDetailScreen() {
   const insets = useSafeAreaInsets();
   const { params } = useRoute<Rt>();
   const modal = useAppModal();
+  const gate = useAdvisorGate();
   const [coffee, setCoffee] = useState<Coffee | null>(null);
   const [brews, setBrews] = useState<Brew[]>([]);
   const [sort, setSort] = useState<"recent" | "rating">("recent");
@@ -107,7 +109,7 @@ export function CoffeeDetailScreen() {
             title="Best recipe"
             subtitle={hasBrews ? "AI-dialed from your brews" : "Log a brew to unlock AI insights"}
             enabled={hasBrews}
-            onPress={() => nav.navigate("AdvisorResult", { kind: "bestRecipe", coffeeId: params.coffeeId, title: "Best recipe" })}
+            onPress={() => void gate(() => nav.navigate("AdvisorResult", { kind: "bestRecipe", coffeeId: params.coffeeId, title: "Best recipe" }))}
           />
         </View>
 
@@ -169,7 +171,7 @@ export function CoffeeDetailScreen() {
               meta={brewMeta(item)}
               rating={item.rating ?? null}
               onPress={() => nav.navigate("BrewDetail", { coffeeId: params.coffeeId, brewId: item.id })}
-              onDiagnose={() => nav.navigate("AdvisorResult", { kind: "diagnose", coffeeId: params.coffeeId, brewId: item.id, title: "Diagnose brew" })}
+              onDiagnose={() => void gate(() => nav.navigate("AdvisorResult", { kind: "diagnose", coffeeId: params.coffeeId, brewId: item.id, title: "Diagnose brew" }))}
             />
           )}
         />
