@@ -3,23 +3,9 @@ import { Animated, Easing, Modal, Pressable, ScrollView, StyleSheet, View } from
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText, Chevron, SparkGlyph, useAppModal } from "../components/ui";
-import { usePersistedState } from "../hooks/usePersistedState";
+import { useQvac } from "../qvac/QvacProvider";
+import { AI_MODELS, resolveModel, type AiModel } from "../lib/aiModels";
 import { colors, fonts, motion, radii, spacing, screenTopGap } from "../design/tokens";
-
-// The chat models the advisor can run, smallest first — the mobile-class picks from the
-// QVAC SDK's model registry (ids are the SDK's own constants; sizes are the registry's
-// expectedSize). Selection is persisted; the QVAC service reads it when the advisor next
-// starts (download wiring lands with that work).
-type ModelChoice = { id: string; name: string; size: string; note: string };
-
-const MODELS: ModelChoice[] = [
-  { id: "QWEN3_600M_INST_Q4", name: "Qwen3 0.6B", size: "0.4 GB", note: "Featherweight — instant, simple advice" },
-  { id: "LLAMA_3_2_1B_INST_Q4_0", name: "Llama 3.2 1B", size: "0.8 GB", note: "Meta's pocket model — quick and chatty" },
-  { id: "QWEN3_1_7B_INST_Q4", name: "Qwen3 1.7B", size: "1.1 GB", note: "Balanced — the everyday sweet spot" },
-  { id: "QWEN3_4B_INST_Q4_K_M", name: "Qwen3 4B", size: "2.5 GB", note: "Deepest reasoning — too heavy for most phones" },
-];
-
-const DEFAULT_MODEL_ID = "QWEN3_1_7B_INST_Q4";
 
 // Settings — the colophon of the ledger: the quiet back page where the machinery is
 // disclosed. Two paper cards: the on-device advisor (switch + model choice) and the data
@@ -28,12 +14,10 @@ export function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const modal = useAppModal();
 
-  const [aiEnabled, setAiEnabled] = usePersistedState("settings:ai:enabled", true);
-  const [modelId, setModelId] = usePersistedState("settings:ai:model", DEFAULT_MODEL_ID);
+  const { aiEnabled, setAiEnabled, modelId, setModel } = useQvac();
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  // A stored id that no longer exists in the registry list falls back to the default.
-  const selected = MODELS.find((m) => m.id === modelId) ?? MODELS.find((m) => m.id === DEFAULT_MODEL_ID)!;
+  const selected = resolveModel(modelId);
 
   return (
     <View style={styles.screen}>
@@ -59,7 +43,7 @@ export function SettingsScreen() {
               <AppText variant="bodyLg" style={styles.cardTitle}>On-device AI</AppText>
               <AppText variant="bodyMd" style={styles.cardBlurb}>Private and local</AppText>
             </View>
-            <LedgerSwitch value={aiEnabled} onToggle={() => setAiEnabled((v) => !v)} />
+            <LedgerSwitch value={aiEnabled} onToggle={() => setAiEnabled(!aiEnabled)} />
           </View>
 
           <View style={styles.divider} />
@@ -110,7 +94,7 @@ export function SettingsScreen() {
         visible={pickerOpen}
         selectedId={selected.id}
         onSelect={(id) => {
-          setModelId(id);
+          setModel(id);
           setPickerOpen(false);
         }}
         onClose={() => setPickerOpen(false)}
@@ -161,12 +145,12 @@ function ModelPicker({ visible, selectedId, onSelect, onClose }: {
           <AppText variant="labelSm" style={styles.pickerKicker}>On-device library</AppText>
           <AppText variant="headlineMd" style={styles.pickerTitle}>Choose a model</AppText>
 
-          {MODELS.map((m, i) => (
+          {AI_MODELS.map((m, i) => (
             <ModelRow
               key={m.id}
               model={m}
               active={selectedId === m.id}
-              last={i === MODELS.length - 1}
+              last={i === AI_MODELS.length - 1}
               onSelect={() => onSelect(m.id)}
             />
           ))}
@@ -207,7 +191,7 @@ function LedgerSwitch({ value, onToggle }: { value: boolean; onToggle: () => voi
 
 // One selectable model: hand-drawn radio, grotesk name (machinery, not soul), size chip
 // that flips to an "Active" pill on the chosen row.
-function ModelRow({ model, active, last, onSelect }: { model: ModelChoice; active: boolean; last: boolean; onSelect: () => void }) {
+function ModelRow({ model, active, last, onSelect }: { model: AiModel; active: boolean; last: boolean; onSelect: () => void }) {
   return (
     <Pressable
       accessibilityRole="radio"

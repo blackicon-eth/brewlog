@@ -6,22 +6,23 @@ import { colors, fonts, radii } from "../../design/tokens";
 // Advisor status as a small hollow pill with a state dot. Blue = ready, cherry = error,
 // quiet outline while idle/loading. Mirrors the old StatusBadge logic, new design.
 export function StatusPill() {
-  const { status, progress, retry } = useQvac();
+  const { status, progress, retry, aiEnabled } = useQvac();
 
   const label =
+    !aiEnabled ? "Advisor off" :
     status === "ready" ? "Advisor ready" :
     status === "downloading" ? `Downloading ${progress}%` :
     status === "loading" ? `Loading ${progress}%` :
     status === "error" ? "Advisor unavailable" : "Advisor idle";
   const dot =
-    status === "ready" ? colors.primary :
-    status === "error" ? colors.tertiary : colors.outline;
+    aiEnabled && status === "ready" ? colors.primary :
+    aiEnabled && status === "error" ? colors.tertiary : colors.outline;
 
   return (
     <View style={styles.pill}>
       <View style={[styles.dot, { backgroundColor: dot }]} />
       <Text style={styles.text}>{label}</Text>
-      {status === "error" ? (
+      {aiEnabled && status === "error" ? (
         <Pressable onPress={retry} hitSlop={8}>
           <Text style={styles.retry}>Retry</Text>
         </Pressable>
