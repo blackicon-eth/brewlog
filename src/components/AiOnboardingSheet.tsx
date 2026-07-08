@@ -115,7 +115,12 @@ export function AiOnboardingSheet() {
                 {statusLine}
               </AppText>
               {status === "error" ? (
-                <PillButton label="Try again" variant="primary" onPress={retry} />
+                <>
+                  <PillButton label="Try again" variant="primary" onPress={retry} />
+                  <Pressable accessibilityRole="button" onPress={later} style={({ pressed }) => [styles.laterBtn, pressed && styles.pressed]}>
+                    <AppText variant="labelMd" style={styles.laterText}>Maybe later</AppText>
+                  </Pressable>
+                </>
               ) : (
                 <PillButton
                   label={status === "ready" ? "Done" : "Keep brewing — it'll finish itself"}

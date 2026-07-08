@@ -46,8 +46,10 @@ export function ChatScreen() {
   // Mirrors read inside the async send loop (which captures stale state).
   const turnsRef = useRef<Turn[]>([]);
   const statusRef = useRef(status);
+  const aiEnabledRef = useRef(aiEnabled);
   useEffect(() => { turnsRef.current = turns; }, [turns]);
   useEffect(() => { statusRef.current = status; }, [status]);
+  useEffect(() => { aiEnabledRef.current = aiEnabled; }, [aiEnabled]);
 
   // The one in-flight generation: its SDK cancel + a flag the wait-loop watches.
   const genRef = useRef<{ cancel: () => void; cancelled: boolean } | null>(null);
@@ -103,6 +105,8 @@ export function ChatScreen() {
         // Hold until the model is loaded; the user may send before the download finishes.
         while (statusRef.current !== "ready") {
           if (gen.cancelled) return;
+          // The coach was turned off mid-wait: status pins at "idle", so bail out.
+          if (!aiEnabledRef.current) { gen.cancelled = true; return; }
           if (statusRef.current === "error") {
             throw new Error("The coach couldn't load — check your connection and try again.");
           }
