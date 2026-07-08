@@ -9,26 +9,41 @@ export type LoadStatus = "idle" | "downloading" | "loading" | "ready" | "error";
 export type StreamHandlers = { onContent: (t: string) => void; onThinking?: (t: string) => void };
 
 let modelId: string | null = null;      // SDK handle for the resident model
-let loadedKey: string | null = null;    // picker id the handle (or in-flight load) belongs to
-let loadingPromise: Promise<void> | null = null;
-let releasing: Promise<void> | null = null;
+let loadedKey: string | null = null;    // picker id the resident handle belongs to
 const activeRequests = new Set<string>(); // in-flight completions, cancelled before unload
+
+// Every ensure/release runs as one whole turn on this FIFO chain — turns never
+// interleave, so each one sees exactly the resident state the previous turn left.
+let chain: Promise<void> = Promise.resolve();
+function serialize<T>(fn: () => Promise<T>): Promise<T> {
+  const run = chain.then(fn, fn);
+  chain = run.then(() => {}, () => {}); // the chain itself never rejects or stalls
+  return run;
+}
+
+// The last-REQUESTED desired state, recorded synchronously at call time (not when the
+// turn runs). A queued ensureModel whose key no longer matches was superseded — the
+// coach got disabled or switched away — before its turn came; it aborts instead of
+// loading a model nobody wants anymore.
+let wantKey: string | null = null;
 
 export async function ensureModel(
   key: string,
   onProgress?: (pct: number, status: LoadStatus) => void
 ): Promise<void> {
-  if (releasing) await releasing.catch(() => {});
-  if (modelId && loadedKey === key) return;
-  if (loadingPromise && loadedKey === key) return loadingPromise;
-  // A different model is resident from before a settings change settled — clear it out
-  // (deleteFile: it was switched away from, so its download goes too).
-  if (modelId || loadingPromise) await releaseModel({ deleteFile: true });
-
-  loadedKey = key;
-  const src = sdkModelFor(key);
-  loadingPromise = (async () => {
+  wantKey = key;
+  return serialize(async () => {
+    if (wantKey !== key) return; // superseded while queued — abort silently
+    if (modelId && loadedKey === key) return; // already resident
+    if (modelId) {
+      // A different model is resident — a switch, so its download goes too.
+      await unloadModel({ modelId, clearStorage: true }).catch(() => {});
+      modelId = null;
+      loadedKey = null;
+    }
+    const src = sdkModelFor(key);
     try {
+      loadedKey = key;
       onProgress?.(0, "downloading");
       await downloadAsset({
         assetSrc: src,
@@ -43,39 +58,32 @@ export async function ensureModel(
       });
       onProgress?.(100, "ready");
     } catch (e) {
-      onProgress?.(0, "error");
-      loadingPromise = null; // allow retry
+      modelId = null; // allow retry
       loadedKey = null;
+      onProgress?.(0, "error");
       throw e;
     }
-  })();
-  return loadingPromise;
+  });
 }
 
 // Unload the resident model (if any). `deleteFile` also removes its download from disk —
 // only possible while a model is resident: the SDK has no API to delete a not-loaded
-// asset, so a switch that happens while nothing is loaded leaves the old file behind
+// asset, so a release that runs while nothing is loaded leaves the old file behind
 // (harmless — switching back to it becomes an instant load instead of a re-download).
-// Waits out an in-flight load first so settings changes mid-download settle correctly.
+// Runs on the same FIFO chain as ensureModel, so an in-flight load settles first and is
+// torn down here rather than surviving the toggle.
 export async function releaseModel(opts: { deleteFile: boolean }): Promise<void> {
-  const run = (async () => {
+  wantKey = null;
+  return serialize(async () => {
     // Kill any streaming answer first (a chat mid-generation when the user toggles the
     // coach off) so the unload doesn't race a live completion.
     for (const requestId of activeRequests) void cancel({ requestId }).catch(() => {});
-    if (loadingPromise) await loadingPromise.catch(() => {});
     if (modelId) {
       await unloadModel({ modelId, clearStorage: opts.deleteFile }).catch(() => {});
     }
     modelId = null;
     loadedKey = null;
-    loadingPromise = null;
-  })();
-  releasing = run;
-  try {
-    await run;
-  } finally {
-    if (releasing === run) releasing = null;
-  }
+  });
 }
 
 export async function shutdown(): Promise<void> {
