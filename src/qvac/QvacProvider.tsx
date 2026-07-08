@@ -30,6 +30,13 @@ export function QvacProvider({ children }: { children: React.ReactNode }) {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const started = useRef(false);
+  // Bumped whenever an in-flight load is abandoned (disable/switch resets to idle).
+  // releaseModel() only waits out the in-flight ensureModel() call — it doesn't cancel
+  // it — so that call's onProgress/catch can still fire after resetToIdle() has run.
+  // Callbacks compare their captured generation against the current one and no-op if
+  // they've been superseded, so a stale load can never write status/progress/error
+  // after AI has been turned off or the model switched.
+  const loadGen = useRef(0);
 
   // The AI settings live here — the single owner. Settings/Chat/gates all read and write
   // through this context. Enabled defaults to FALSE: the coach is opt-in (onboarding
@@ -51,7 +58,13 @@ export function QvacProvider({ children }: { children: React.ReactNode }) {
     if (started.current) return;            // already loading or loaded
     started.current = true;
     setError(null);
-    ensureModel(modelIdRef.current, (pct, s) => { setProgress(pct); setStatus(s); }).catch((e) => {
+    const gen = ++loadGen.current;
+    ensureModel(modelIdRef.current, (pct, s) => {
+      if (gen !== loadGen.current) return; // superseded by a disable/switch — stale load, ignore
+      setProgress(pct);
+      setStatus(s);
+    }).catch((e) => {
+      if (gen !== loadGen.current) return;
       setError(e?.message ?? String(e));
       setStatus("error");
       // Intentionally leave started.current = true: do NOT auto-retry on
@@ -65,6 +78,7 @@ export function QvacProvider({ children }: { children: React.ReactNode }) {
   }, [prepare]);
 
   const resetToIdle = useCallback(() => {
+    loadGen.current++; // invalidate any in-flight load's callbacks before resetting state
     started.current = false;
     setStatus("idle");
     setProgress(0);
