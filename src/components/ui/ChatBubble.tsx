@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { Animated, StyleSheet, View } from "react-native";
 import { AppText } from "./AppText";
-import { colors, fonts, radii, spacing } from "../../design/tokens";
+import { colors, fonts, motion, radii, spacing } from "../../design/tokens";
 
 export type ChatBubbleProps = {
   role: "user" | "assistant";
@@ -19,8 +19,8 @@ function StreamingCaret() {
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(opacity, { toValue: 0, duration: 480, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 1, duration: 480, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0, duration: motion.pulse, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 1, duration: motion.pulse, useNativeDriver: true }),
       ]),
     );
     loop.start();

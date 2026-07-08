@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { Animated, Easing, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { TabIconProps } from "./TabIcons";
-import { colors, fonts } from "../../design/tokens";
+import { colors, fonts, motion } from "../../design/tokens";
 
 export type TabItem = {
   key: string;
@@ -33,7 +33,7 @@ export function TabBar({ items, activeKey, onSelect }: TabBarProps) {
       items.map((item, i) =>
         Animated.timing(progress[i], {
           toValue: item.key === activeKey ? 1 : 0,
-          duration: 220,
+          duration: motion.quick,
           easing: Easing.out(Easing.quad),
           useNativeDriver: false,
         })

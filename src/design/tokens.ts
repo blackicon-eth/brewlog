@@ -46,6 +46,20 @@ export const spacing = { base: 8, container: 20, stack: 16, section: 32, gutter:
 // top-anchored page (masthead, detail, forms) — keeps their top margins equal.
 export const screenTopGap = 12;
 
+// Motion — one shared speed ramp so every animation in the app agrees. Durations in ms
+// (Animated.timing); springs are ready-made presets for Animated.spring.
+export const motion = {
+  fast: 120, // exits & dismissals — get out of the way
+  quick: 160, // small state flips: color fades, active-tab tints
+  standard: 200, // structural moves: screen crossfades, list entrances, sheet travel
+  pulse: 420, // ambient loops: streaming carets (half-period of the blink)
+  gentle: 450, // soft state fades: phase hand-offs, cue decays
+  slow: 550, // decorative swells & ripples
+  springGlide: { friction: 10, tension: 210 }, // selector pills gliding between options
+  springPop: { bounciness: 3, speed: 18 }, // modals & sheets arriving
+  springSnap: { bounciness: 0, speed: 22 }, // drag-release snap-back
+} as const;
+
 // Ambient shadows — soft brown lift for cards, prouder blue-tinted lift for the FAB.
 export const shadows: Record<"card" | "fab", ViewStyle> = {
   card: {

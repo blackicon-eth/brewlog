@@ -1,7 +1,7 @@
 import React, { useLayoutEffect, useRef, useState } from "react";
 import { Animated, Easing, StyleSheet, View } from "react-native";
 import { TabBar, HomeIcon, DropIcon, SparkGlyph, FlaskIcon, GearIcon, type TabItem } from "../components/ui";
-import { colors } from "../design/tokens";
+import { colors, motion } from "../design/tokens";
 import { CoffeesScreen } from "./CoffeesScreen";
 import { BrewsScreen } from "./BrewsScreen";
 import { ChatScreen } from "./ChatScreen";
@@ -42,7 +42,7 @@ export function MainTabs() {
   useLayoutEffect(() => {
     if (first.current) { first.current = false; return; }
     anim.setValue(0);
-    Animated.timing(anim, { toValue: 1, duration: 240, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+    Animated.timing(anim, { toValue: 1, duration: motion.standard, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
   }, [activeKey, anim]);
 
   return (

@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "./types";
 import { theme } from "../theme";
 import { MainTabs } from "../screens/MainTabs";
+import { ToolScreen } from "../screens/ToolScreen";
 import { CoffeeFormScreen } from "../screens/CoffeeFormScreen";
 import { CoffeeDetailScreen } from "../screens/CoffeeDetailScreen";
 import { BrewDetailScreen } from "../screens/BrewDetailScreen";
@@ -21,6 +22,7 @@ export function RootNavigator() {
       }}
     >
       <Stack.Screen name="Main" component={MainTabs} options={{ title: "Brewlog", headerShown: false }} />
+      <Stack.Screen name="Tool" component={ToolScreen} options={{ title: "Tool", headerShown: false }} />
       <Stack.Screen name="CoffeeForm" component={CoffeeFormScreen} options={{ title: "Coffee", headerShown: false }} />
       <Stack.Screen name="CoffeeDetail" component={CoffeeDetailScreen} options={{ title: "Coffee", headerShown: false }} />
       <Stack.Screen name="BrewDetail" component={BrewDetailScreen} options={{ title: "Brew", headerShown: false }} />

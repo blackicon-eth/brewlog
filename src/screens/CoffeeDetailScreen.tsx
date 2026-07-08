@@ -12,7 +12,7 @@ import type { Brew, Coffee } from "../models/types";
 import { formatRatio } from "../lib/ratio";
 import { formatSeconds, formatBrewDate, formatBrewTime } from "../lib/brewFormat";
 import { AppText, AiActionCard, BrewLogRow, Fab, Chevron, ClockIcon, useAppModal } from "../components/ui";
-import { colors, spacing, screenTopGap } from "../design/tokens";
+import { colors, motion, spacing, screenTopGap } from "../design/tokens";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "CoffeeDetail">;
 type Rt = RouteProp<RootStackParamList, "CoffeeDetail">;
@@ -75,7 +75,7 @@ export function CoffeeDetailScreen() {
   useEffect(() => {
     if (firstSort.current) { firstSort.current = false; return; }
     listAnim.setValue(0);
-    Animated.timing(listAnim, { toValue: 1, duration: 300, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+    Animated.timing(listAnim, { toValue: 1, duration: motion.standard, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
   }, [sort, listAnim]);
   // --- end sort-change animation ---
 

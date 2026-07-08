@@ -20,3 +20,4 @@ export { NaturalLanguageIntake, type NaturalLanguageIntakeProps } from "./Natura
 export { TabBar, type TabItem, type TabBarProps } from "./TabBar";
 export { HomeIcon, DropIcon, SparkGlyph, FlaskIcon, GearIcon, type TabIconProps } from "./TabIcons";
 export { ComingSoon, type ComingSoonProps } from "./ComingSoon";
+export { ToolCard, type ToolCardProps } from "./ToolCard";

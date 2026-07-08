@@ -13,7 +13,7 @@ import { getBrew, listBrewsForCoffee } from "../db/brews";
 import { buildDiagnosePrompt, buildBestRecipePrompt, type ChatMessage } from "../qvac/advisor";
 import { useQvac } from "../qvac/QvacProvider";
 import { AppText, PillButton, ReasoningDisclosure } from "../components/ui";
-import { colors, fonts, radii, spacing } from "../design/tokens";
+import { colors, fonts, motion, radii, spacing } from "../design/tokens";
 
 type Rt = RouteProp<RootStackParamList, "AdvisorResult">;
 
@@ -25,8 +25,8 @@ function StreamingCaret() {
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(opacity, { toValue: 0, duration: 480, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 1, duration: 480, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0, duration: motion.pulse, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 1, duration: motion.pulse, useNativeDriver: true }),
       ]),
     );
     loop.start();
@@ -58,8 +58,8 @@ export function AdvisorResultScreen() {
     if (closing.current) return;
     closing.current = true;
     Animated.parallel([
-      Animated.timing(translateY, { toValue: sheetH.current, duration: 220, useNativeDriver: true }),
-      Animated.timing(backdrop, { toValue: 0, duration: 220, useNativeDriver: true }),
+      Animated.timing(translateY, { toValue: sheetH.current, duration: motion.standard, useNativeDriver: true }),
+      Animated.timing(backdrop, { toValue: 0, duration: motion.standard, useNativeDriver: true }),
     ]).start(() => nav.goBack());
   }, [nav, translateY, backdrop]);
 
@@ -69,8 +69,8 @@ export function AdvisorResultScreen() {
     opened.current = true;
     translateY.setValue(sheetH.current);
     Animated.parallel([
-      Animated.spring(translateY, { toValue: 0, useNativeDriver: true, bounciness: 2, speed: 14 }),
-      Animated.timing(backdrop, { toValue: 1, duration: 260, useNativeDriver: true }),
+      Animated.spring(translateY, { toValue: 0, useNativeDriver: true, ...motion.springPop }),
+      Animated.timing(backdrop, { toValue: 1, duration: motion.standard, useNativeDriver: true }),
     ]).start();
   }, [translateY, backdrop]);
 
@@ -81,7 +81,7 @@ export function AdvisorResultScreen() {
       onPanResponderMove: (_, g) => { if (g.dy > 0) translateY.setValue(g.dy); },
       onPanResponderRelease: (_, g) => {
         if (g.dy > 110 || g.vy > 0.8) close();
-        else Animated.spring(translateY, { toValue: 0, useNativeDriver: true, bounciness: 0, speed: 18 }).start();
+        else Animated.spring(translateY, { toValue: 0, useNativeDriver: true, ...motion.springSnap }).start();
       },
     }),
   ).current;

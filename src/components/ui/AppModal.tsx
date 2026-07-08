@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { Animated, Modal, Pressable, StyleSheet, View } from "react-native";
 import { AppText } from "./AppText";
 import { PillButton } from "./PillButton";
-import { colors, radii, spacing } from "../../design/tokens";
+import { colors, motion, radii, spacing } from "../../design/tokens";
 
 // A themed replacement for the stark native Alert dialog. Exposed as an imperative
 // context API (alert / confirm) so call sites read like the Alert.alert they replace,
@@ -62,14 +62,14 @@ export function AppModalProvider({ children }: { children: React.ReactNode }) {
   // Spring the card in whenever a fresh slot appears.
   useEffect(() => {
     if (!slot) return;
-    Animated.spring(anim, { toValue: 1, useNativeDriver: true, bounciness: 5, speed: 16 }).start();
+    Animated.spring(anim, { toValue: 1, useNativeDriver: true, ...motion.springPop }).start();
   }, [slot, anim]);
 
   // Animate out, then clear and run the caller's resolve exactly once.
   const dismiss = useCallback((finish: () => void) => {
     if (closing.current) return;
     closing.current = true;
-    Animated.timing(anim, { toValue: 0, duration: 150, useNativeDriver: true }).start(() => {
+    Animated.timing(anim, { toValue: 0, duration: motion.fast, useNativeDriver: true }).start(() => {
       setVisible(false);
       setSlot(null);
       finish();
