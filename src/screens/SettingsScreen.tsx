@@ -57,7 +57,7 @@ export function SettingsScreen() {
             </View>
             <View style={styles.cardHeadText}>
               <AppText variant="bodyLg" style={styles.cardTitle}>On-device AI</AppText>
-              <AppText variant="bodyMd" style={styles.cardBlurb}>Private — runs entirely on this phone</AppText>
+              <AppText variant="bodyMd" style={styles.cardBlurb}>Private and local</AppText>
             </View>
             <LedgerSwitch value={aiEnabled} onToggle={() => setAiEnabled((v) => !v)} />
           </View>
@@ -310,8 +310,6 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     backgroundColor: colors.surfaceLowest,
-    borderWidth: 1,
-    borderColor: colors.outlineVariant,
   },
 
   // Selected model row + change affordance
