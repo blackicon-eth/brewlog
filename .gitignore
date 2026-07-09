@@ -48,3 +48,7 @@ TOOLS.md
 
 # QVAC generated Bare worker bundle (regenerated at prebuild)
 /qvac
+
+# superpowers workflow artifacts (kept local)
+docs/superpowers/
+.superpowers/
