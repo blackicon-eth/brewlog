@@ -3,10 +3,16 @@ import { Animated, Easing, Modal, Pressable, ScrollView, StyleSheet, View } from
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Device from "expo-device";
+import { Directory, File } from "expo-file-system";
 import { AppText, Chevron, SparkGlyph, useAppModal } from "../components/ui";
 import { useQvac } from "../qvac/QvacProvider";
 import { AI_MODELS, modelFits, resolveModel, type AiModel } from "../lib/aiModels";
 import { colors, fonts, motion, radii, spacing, screenTopGap } from "../design/tokens";
+import { getDb } from "../db/database";
+import { listCoffees } from "../db/coffees";
+import { countAllBrews, listAllBrews } from "../db/brews";
+import { ledgerFilename, parseLedgerFile, serializeLedger } from "../lib/ledgerFile";
+import { replaceLedger } from "../db/importLedger";
 
 // Settings — the colophon of the ledger: the quiet back page where the machinery is
 // disclosed. Two paper cards: the on-device advisor (switch + model choice) and the data
@@ -17,6 +23,101 @@ export function SettingsScreen() {
 
   const { aiEnabled, setAiEnabled, modelId, setModel } = useQvac();
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  // One data operation at a time — a double-tap must not stack two pickers.
+  const busyRef = useRef(false);
+
+  const counts = (nCoffees: number, nBrews: number) =>
+    `${nCoffees} ${nCoffees === 1 ? "coffee" : "coffees"} and ${nBrews} ${nBrews === 1 ? "brew" : "brews"}`;
+
+  const exportLedger = async () => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    try {
+      let dir: Awaited<ReturnType<typeof Directory.pickDirectoryAsync>>;
+      try {
+        dir = await Directory.pickDirectoryAsync();
+      } catch {
+        return; // picker dismissed — the quiet outcome
+      }
+      const db = await getDb();
+      const coffees = await listCoffees(db);
+      const brews = await listAllBrews(db);
+      const name = ledgerFilename(new Date());
+      try {
+        const file = dir.createFile(name, "application/json");
+        file.write(serializeLedger(coffees, brews, new Date().toISOString()));
+      } catch (e) {
+        await modal.alert(
+          "Couldn't save the file",
+          e instanceof Error ? e.message : "Something went wrong while writing."
+        );
+        return;
+      }
+      await modal.alert("Ledger saved", `${name} holds ${counts(coffees.length, brews.length)}.`);
+    } finally {
+      busyRef.current = false;
+    }
+  };
+
+  const importLedger = async () => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    try {
+      let picked: Awaited<ReturnType<typeof File.pickFileAsync>>;
+      try {
+        picked = await File.pickFileAsync(undefined, "application/json");
+      } catch {
+        return; // picker dismissed
+      }
+      const file = Array.isArray(picked) ? picked[0] : picked;
+      if (!file) return;
+
+      let text: string;
+      try {
+        text = await file.text();
+      } catch {
+        await modal.alert("Couldn't read the file", "The file couldn't be opened.");
+        return;
+      }
+
+      const parsed = parseLedgerFile(text);
+      if (!parsed.ok) {
+        await modal.alert("Can't import this file", parsed.reason);
+        return;
+      }
+
+      const db = await getDb();
+      const curCoffees = (await listCoffees(db)).length;
+      const curBrews = await countAllBrews(db);
+      const proceed = await modal.confirm({
+        title: "Replace your ledger?",
+        message:
+          `This file holds ${counts(parsed.payload.coffees.length, parsed.payload.brews.length)}. ` +
+          `Importing replaces everything currently in Brewlog — your current ` +
+          `${counts(curCoffees, curBrews)} will be lost.`,
+        confirmLabel: "Replace everything",
+        destructive: true,
+      });
+      if (!proceed) return;
+
+      try {
+        await replaceLedger(db, parsed.payload);
+      } catch {
+        await modal.alert(
+          "Import failed",
+          "Nothing was changed — your current ledger is intact."
+        );
+        return;
+      }
+      await modal.alert(
+        "Ledger restored",
+        `Brewlog now holds ${counts(parsed.payload.coffees.length, parsed.payload.brews.length)}.`
+      );
+    } finally {
+      busyRef.current = false;
+    }
+  };
 
   const selected = resolveModel(modelId);
 
@@ -80,13 +181,13 @@ export function SettingsScreen() {
             caption="Save everything to a file"
             direction="up"
             accent
-            onPress={() => modal.alert("Export is on the bench", "The button is ready — wiring it to a real file comes next.")}
+            onPress={() => void exportLedger()}
           />
           <DataAction
             title="Import ledger"
             caption="Restore from a file"
             direction="down"
-            onPress={() => modal.alert("Import is on the bench", "The button is ready — wiring it to a real file comes next.")}
+            onPress={() => void importLedger()}
           />
         </View>
       </ScrollView>
@@ -390,7 +491,7 @@ const styles = StyleSheet.create({
   // Tray glyph: arrow above a shallow open tray, drawn from borders (no icon library).
   trayGlyph: { width: 24, height: 24, alignItems: "center", justifyContent: "center" },
   trayArrowDown: { marginBottom: 3 },
-  trayArrowUp: { marginBottom: 5 },
+  trayArrowUp: { marginBottom: 2 },
   tray: {
     width: 18,
     height: 7,
