@@ -20,7 +20,7 @@ const BREW_OPTIONAL_NUMBERS = [
 ] as const;
 const BREW_OPTIONAL_STRINGS = ["grind", "dripper", "filterType", "notes"] as const;
 
-function coffeeOut(c: Coffee): Coffee {
+function coffeeOut(c: Coffee): Required<Coffee> {
   return {
     id: c.id, roaster: c.roaster, name: c.name,
     origin: c.origin ?? null, process: c.process ?? null, roastLevel: c.roastLevel ?? null,
@@ -28,7 +28,7 @@ function coffeeOut(c: Coffee): Coffee {
   };
 }
 
-function brewOut(b: Brew): Brew {
+function brewOut(b: Brew): Required<Brew> {
   return {
     id: b.id, coffeeId: b.coffeeId, brewedAt: b.brewedAt,
     doseG: b.doseG, waterG: b.waterG, ratio: b.ratio,

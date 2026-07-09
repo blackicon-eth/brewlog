@@ -34,27 +34,36 @@ export function SettingsScreen() {
     if (busyRef.current) return;
     busyRef.current = true;
     try {
-      let dir: Awaited<ReturnType<typeof Directory.pickDirectoryAsync>>;
       try {
-        dir = await Directory.pickDirectoryAsync();
+        let dir: Awaited<ReturnType<typeof Directory.pickDirectoryAsync>>;
+        try {
+          dir = await Directory.pickDirectoryAsync();
+        } catch {
+          return; // picker dismissed — the quiet outcome
+        }
+        const db = await getDb();
+        const coffees = await listCoffees(db);
+        const brews = await listAllBrews(db);
+        const name = ledgerFilename(new Date());
+        let file: ReturnType<typeof dir.createFile>;
+        try {
+          file = dir.createFile(name, "application/json");
+          file.write(serializeLedger(coffees, brews, new Date().toISOString()));
+        } catch (e) {
+          await modal.alert(
+            "Couldn't save the file",
+            e instanceof Error ? e.message : "Something went wrong while writing."
+          );
+          return;
+        }
+        // Android SAF may auto-rename on collision — report the file it actually made.
+        // (expo-file-system's picker typings resolve `dir` via the base native class, so
+        // `createFile`'s return type here loses the `.name` getter the real File has.)
+        const savedName = (file as unknown as InstanceType<typeof File>).name;
+        await modal.alert("Ledger saved", `${savedName} holds ${counts(coffees.length, brews.length)}.`);
       } catch {
-        return; // picker dismissed — the quiet outcome
+        await modal.alert("Something went wrong", "The operation didn't finish. Your ledger is unchanged.");
       }
-      const db = await getDb();
-      const coffees = await listCoffees(db);
-      const brews = await listAllBrews(db);
-      const name = ledgerFilename(new Date());
-      try {
-        const file = dir.createFile(name, "application/json");
-        file.write(serializeLedger(coffees, brews, new Date().toISOString()));
-      } catch (e) {
-        await modal.alert(
-          "Couldn't save the file",
-          e instanceof Error ? e.message : "Something went wrong while writing."
-        );
-        return;
-      }
-      await modal.alert("Ledger saved", `${name} holds ${counts(coffees.length, brews.length)}.`);
     } finally {
       busyRef.current = false;
     }
@@ -64,56 +73,60 @@ export function SettingsScreen() {
     if (busyRef.current) return;
     busyRef.current = true;
     try {
-      let picked: Awaited<ReturnType<typeof File.pickFileAsync>>;
       try {
-        picked = await File.pickFileAsync(undefined, "application/json");
-      } catch {
-        return; // picker dismissed
-      }
-      const file = Array.isArray(picked) ? picked[0] : picked;
-      if (!file) return;
+        let picked: Awaited<ReturnType<typeof File.pickFileAsync>>;
+        try {
+          picked = await File.pickFileAsync(undefined, "application/json");
+        } catch {
+          return; // picker dismissed
+        }
+        const file = Array.isArray(picked) ? picked[0] : picked;
+        if (!file) return;
 
-      let text: string;
-      try {
-        text = await file.text();
-      } catch {
-        await modal.alert("Couldn't read the file", "The file couldn't be opened.");
-        return;
-      }
+        let text: string;
+        try {
+          text = await file.text();
+        } catch {
+          await modal.alert("Couldn't read the file", "The file couldn't be opened.");
+          return;
+        }
 
-      const parsed = parseLedgerFile(text);
-      if (!parsed.ok) {
-        await modal.alert("Can't import this file", parsed.reason);
-        return;
-      }
+        const parsed = parseLedgerFile(text);
+        if (!parsed.ok) {
+          await modal.alert("Can't import this file", parsed.reason);
+          return;
+        }
 
-      const db = await getDb();
-      const curCoffees = (await listCoffees(db)).length;
-      const curBrews = await countAllBrews(db);
-      const proceed = await modal.confirm({
-        title: "Replace your ledger?",
-        message:
-          `This file holds ${counts(parsed.payload.coffees.length, parsed.payload.brews.length)}. ` +
-          `Importing replaces everything currently in Brewlog — your current ` +
-          `${counts(curCoffees, curBrews)} will be lost.`,
-        confirmLabel: "Replace everything",
-        destructive: true,
-      });
-      if (!proceed) return;
+        const db = await getDb();
+        const curCoffees = (await listCoffees(db)).length;
+        const curBrews = await countAllBrews(db);
+        const proceed = await modal.confirm({
+          title: "Replace your ledger?",
+          message:
+            `This file holds ${counts(parsed.payload.coffees.length, parsed.payload.brews.length)}. ` +
+            `Importing replaces everything currently in Brewlog — your current ` +
+            `${counts(curCoffees, curBrews)} will be lost.`,
+          confirmLabel: "Replace everything",
+          destructive: true,
+        });
+        if (!proceed) return;
 
-      try {
-        await replaceLedger(db, parsed.payload);
-      } catch {
+        try {
+          await replaceLedger(db, parsed.payload);
+        } catch {
+          await modal.alert(
+            "Import failed",
+            "Nothing was changed — your current ledger is intact."
+          );
+          return;
+        }
         await modal.alert(
-          "Import failed",
-          "Nothing was changed — your current ledger is intact."
+          "Ledger restored",
+          `Brewlog now holds ${counts(parsed.payload.coffees.length, parsed.payload.brews.length)}.`
         );
-        return;
+      } catch {
+        await modal.alert("Something went wrong", "The operation didn't finish. Your ledger is unchanged.");
       }
-      await modal.alert(
-        "Ledger restored",
-        `Brewlog now holds ${counts(parsed.payload.coffees.length, parsed.payload.brews.length)}.`
-      );
     } finally {
       busyRef.current = false;
     }
