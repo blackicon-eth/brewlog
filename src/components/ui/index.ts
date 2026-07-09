@@ -6,7 +6,7 @@ export { AiActionCard, type AiActionCardProps } from "./AiActionCard";
 export { BrewLogRow, type BrewLogRowProps } from "./BrewLogRow";
 export { BrewListRow, type BrewListRowProps } from "./BrewListRow";
 export { ChatBubble, type ChatBubbleProps } from "./ChatBubble";
-export { StatusPill } from "./StatusPill";
+export { AdvisorBadge } from "./AdvisorBadge";
 export { Fab, type FabProps } from "./Fab";
 export { TextField, type TextFieldProps } from "./TextField";
 export { PillButton, type PillButtonProps } from "./PillButton";

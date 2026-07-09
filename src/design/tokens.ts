@@ -55,6 +55,7 @@ export const motion = {
   pulse: 420, // ambient loops: streaming carets (half-period of the blink)
   gentle: 450, // soft state fades: phase hand-offs, cue decays
   slow: 550, // decorative swells & ripples
+  drift: 1100, // ambient loops: water surfaces & waves (one full travel period)
   springGlide: { friction: 10, tension: 210 }, // selector pills gliding between options
   springPop: { bounciness: 3, speed: 18 }, // modals & sheets arriving
   springSnap: { bounciness: 0, speed: 22 }, // drag-release snap-back

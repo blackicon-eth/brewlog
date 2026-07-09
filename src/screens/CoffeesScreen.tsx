@@ -9,7 +9,7 @@ import { getDb } from "../db/database";
 import { listCoffees } from "../db/coffees";
 import { listBrewsForCoffee, avgRating } from "../db/brews";
 import type { Coffee } from "../models/types";
-import { AppText, CoffeeCard, Fab, StatusPill, useAppModal } from "../components/ui";
+import { AppText, AdvisorBadge, CoffeeCard, Fab, useAppModal } from "../components/ui";
 import { colors, spacing, screenTopGap } from "../design/tokens";
 import { useQvac } from "../qvac/QvacProvider";
 import * as Device from "expo-device";
@@ -61,7 +61,7 @@ export function CoffeesScreen() {
             <AppText variant="headlineLg" style={styles.brandTitle}>Brewlog</AppText>
           </View>
           <View style={styles.pillWrap}>
-            <StatusPill />
+            <AdvisorBadge />
           </View>
         </View>
         {!Device.isDevice ? (
