@@ -87,6 +87,15 @@ confirmation. Also tighten the export icon (arrow closer to its tray).
   picked directory → success modal naming the file and the counts ("Saved
   brewlog-ledger-2026-07-09.json — X coffees, Y brews."). Picker cancel (throws /
   returns nothing) is silent. Write failures show a plain error modal.
+  - **Amendment (on-device feedback):** Android refuses to grant apps the Downloads
+    *root* through the folder picker (system privacy restriction), forcing a one-time
+    subfolder choice. So the folder is picked **once** and remembered
+    (`settings:data:exportDir` in kv-store; the SAF grant is persistable — the native
+    picker takes `takePersistableUriPermission` read+write). Later exports write
+    straight to the remembered folder with no picker. The first pick opens
+    pre-navigated to Downloads via `EXTRA_INITIAL_URI`. If the folder disappears or
+    the grant is revoked (`exists` false, reconstruction throws, or the write fails),
+    the remembered URI is forgotten and the picker returns on the next export.
 - **Import ledger:** `File.pickFileAsync()` (MIME `application/json`) → read text →
   `parseLedgerFile`. Invalid → error modal with the specific reason, data untouched.
   Valid → destructive confirm via the existing AppModal `confirm` with the dangerSolid

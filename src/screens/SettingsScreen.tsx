@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Device from "expo-device";
 import { Directory, File } from "expo-file-system";
+import Storage from "expo-sqlite/kv-store";
 import { AppText, Chevron, SparkGlyph, useAppModal } from "../components/ui";
 import { useQvac } from "../qvac/QvacProvider";
 import { AI_MODELS, modelFits, resolveModel, type AiModel } from "../lib/aiModels";
@@ -13,6 +14,39 @@ import { listCoffees } from "../db/coffees";
 import { countAllBrews, listAllBrews } from "../db/brews";
 import { ledgerFilename, parseLedgerFile, serializeLedger } from "../lib/ledgerFile";
 import { replaceLedger } from "../db/importLedger";
+
+// Export destination — picked once, then remembered. Android bars apps from writing to
+// the Downloads root itself ("to protect your privacy…"), so the user creates or picks a
+// subfolder (e.g. Downloads/Brewlog) on the first export; the SAF grant persists across
+// restarts, so every later export writes there without asking.
+const EXPORT_DIR_KEY = "settings:data:exportDir";
+// Hint that opens the system folder picker already inside Downloads.
+const DOWNLOADS_URI = "content://com.android.externalstorage.documents/document/primary%3ADownload";
+
+type ExportDir = { dir: InstanceType<typeof Directory>; fresh: boolean };
+
+// Returns the remembered export folder if it still exists and is readable, otherwise
+// asks the user to pick one (null = picker dismissed).
+async function acquireExportDir(): Promise<ExportDir | null> {
+  const saved = Storage.getItemSync(EXPORT_DIR_KEY);
+  if (saved) {
+    try {
+      const dir = new Directory(saved);
+      if (dir.exists) return { dir, fresh: false };
+    } catch {
+      // The folder is gone or the grant was revoked — fall through to the picker.
+    }
+  }
+  try {
+    // The picker's declared return type resolves to the base native class; the runtime
+    // object is the full Directory (same quirk as File.pickFileAsync below).
+    const dir = (await Directory.pickDirectoryAsync(DOWNLOADS_URI)) as InstanceType<typeof Directory>;
+    Storage.setItemSync(EXPORT_DIR_KEY, dir.uri);
+    return { dir, fresh: true };
+  } catch {
+    return null; // picker dismissed — the quiet outcome
+  }
+}
 
 // Settings — the colophon of the ledger: the quiet back page where the machinery is
 // disclosed. Two paper cards: the on-device advisor (switch + model choice) and the data
@@ -35,32 +69,35 @@ export function SettingsScreen() {
     busyRef.current = true;
     try {
       try {
-        let dir: Awaited<ReturnType<typeof Directory.pickDirectoryAsync>>;
-        try {
-          dir = await Directory.pickDirectoryAsync();
-        } catch {
-          return; // picker dismissed — the quiet outcome
-        }
+        const dest = await acquireExportDir();
+        if (!dest) return; // picker dismissed — the quiet outcome
         const db = await getDb();
         const coffees = await listCoffees(db);
         const brews = await listAllBrews(db);
         const name = ledgerFilename(new Date());
-        let file: ReturnType<typeof dir.createFile>;
+        let file: InstanceType<typeof File>;
         try {
-          file = dir.createFile(name, "application/json");
+          file = dest.dir.createFile(name, "application/json") as InstanceType<typeof File>;
           file.write(serializeLedger(coffees, brews, new Date().toISOString()));
         } catch (e) {
+          // A remembered folder can go stale in ways `exists` misses — forget it so the
+          // next attempt asks for a folder again.
+          Storage.removeItemSync(EXPORT_DIR_KEY);
           await modal.alert(
             "Couldn't save the file",
-            e instanceof Error ? e.message : "Something went wrong while writing."
+            e instanceof Error
+              ? `${e.message} Try exporting again to choose a folder.`
+              : "Something went wrong while writing. Try exporting again to choose a folder."
           );
           return;
         }
         // Android SAF may auto-rename on collision — report the file it actually made.
-        // (expo-file-system's picker typings resolve `dir` via the base native class, so
-        // `createFile`'s return type here loses the `.name` getter the real File has.)
-        const savedName = (file as unknown as InstanceType<typeof File>).name;
-        await modal.alert("Ledger saved", `${savedName} holds ${counts(coffees.length, brews.length)}.`);
+        const savedName = file.name;
+        await modal.alert(
+          "Ledger saved",
+          `${savedName} holds ${counts(coffees.length, brews.length)}.` +
+            (dest.fresh ? " Exports will land in this folder from now on." : "")
+        );
       } catch {
         await modal.alert("Something went wrong", "The operation didn't finish. Your ledger is unchanged.");
       }
