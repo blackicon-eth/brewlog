@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { FlatList, Image, StyleSheet, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -8,6 +8,7 @@ import type { RootStackParamList } from "../navigation/types";
 import { getDb } from "../db/database";
 import { listCoffees } from "../db/coffees";
 import { listBrewsForCoffee, avgRating } from "../db/brews";
+import { onLedgerReplaced } from "../lib/ledgerEvents";
 import type { Coffee } from "../models/types";
 import { AppText, AdvisorBadge, CoffeeCard, Fab, useAppModal } from "../components/ui";
 import { colors, spacing, screenTopGap } from "../design/tokens";
@@ -46,6 +47,8 @@ export function CoffeesScreen() {
   }, [modal]);
 
   useFocusEffect(useCallback(() => { prepare(); load(); }, [prepare, load]));
+  // An import swaps the ledger out from under this always-mounted tab — refetch on the spot.
+  useEffect(() => onLedgerReplaced(load), [load]);
 
   const hasRows = rows.length > 0;
 

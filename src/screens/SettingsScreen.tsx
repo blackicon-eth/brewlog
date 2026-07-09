@@ -13,6 +13,7 @@ import { getDb } from "../db/database";
 import { listCoffees } from "../db/coffees";
 import { countAllBrews, listAllBrews } from "../db/brews";
 import { ledgerFilename, parseLedgerFile, serializeLedger } from "../lib/ledgerFile";
+import { emitLedgerReplaced } from "../lib/ledgerEvents";
 import { replaceLedger } from "../db/importLedger";
 
 // Export destination — picked once, then remembered. Android bars apps from writing to
@@ -96,7 +97,7 @@ export function SettingsScreen() {
         await modal.alert(
           "Ledger saved",
           `${savedName} holds ${counts(coffees.length, brews.length)}.` +
-            (dest.fresh ? " Exports will land in this folder from now on." : "")
+          (dest.fresh ? " Exports will land in this folder from now on." : "")
         );
       } catch {
         await modal.alert("Something went wrong", "The operation didn't finish. Your ledger is unchanged.");
@@ -141,9 +142,9 @@ export function SettingsScreen() {
           title: "Replace your ledger?",
           message:
             `This file holds ${counts(parsed.payload.coffees.length, parsed.payload.brews.length)}. ` +
-            `Importing replaces everything currently in Brewlog — your current ` +
+            `Importing replaces everything currently in Brewlog. Your current ` +
             `${counts(curCoffees, curBrews)} will be lost.`,
-          confirmLabel: "Replace everything",
+          confirmLabel: "Replace",
           destructive: true,
         });
         if (!proceed) return;
@@ -157,6 +158,9 @@ export function SettingsScreen() {
           );
           return;
         }
+        // The mounted Home/Brews tabs refetch behind this modal — tab switches never
+        // fire navigation focus, so they'd otherwise show the old ledger.
+        emitLedgerReplaced();
         await modal.alert(
           "Ledger restored",
           `Brewlog now holds ${counts(parsed.payload.coffees.length, parsed.payload.brews.length)}.`

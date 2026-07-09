@@ -7,6 +7,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/types";
 import { getDb } from "../db/database";
 import { listAllBrews, countAllBrews, type BrewWithCoffee } from "../db/brews";
+import { onLedgerReplaced } from "../lib/ledgerEvents";
 import { formatRatio } from "../lib/ratio";
 import { formatSeconds, formatBrewTime, groupBrewsByDay } from "../lib/brewFormat";
 import { AppText, BrewListRow, useAppModal } from "../components/ui";
@@ -71,6 +72,10 @@ export function BrewsScreen() {
   useFocusEffect(useCallback(() => {
     refresh(Math.max(PAGE_SIZE, loadedCountRef.current));
   }, [refresh]));
+
+  // An import swaps the ledger out from under this always-mounted tab — refetch on the
+  // spot, back to the first page (the old scroll depth belongs to data that's gone).
+  useEffect(() => onLedgerReplaced(() => refresh(PAGE_SIZE)), [refresh]);
 
   // Append the next page when the list nears its end. Guarded so the many onEndReached
   // events a scroll fires collapse into one fetch, and skipped before the first load lands.
