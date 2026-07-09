@@ -157,7 +157,7 @@ export function BrewsScreen() {
             </View>
           ) : null
         }
-        renderItem={({ item }) => (
+        renderItem={({ item, index, section }) => (
           <BrewListRow
             roaster={item.roaster}
             coffeeName={item.coffeeName}
@@ -166,6 +166,8 @@ export function BrewsScreen() {
             ratio={formatRatio(item.ratio)}
             meta={brewMeta(item)}
             rating={item.rating ?? null}
+            first={index === 0}
+            last={index === section.data.length - 1}
             onPress={() => nav.navigate("BrewDetail", { coffeeId: item.coffeeId, brewId: item.id })}
           />
         )}
@@ -190,7 +192,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     backgroundColor: colors.background,
-    paddingBottom: 10,
+    // Mirrors BrewListRow's content pad (12.5): header→first-brew totals 25, the same
+    // gap as brew→brew and last-brew→rule.
+    paddingBottom: 12.5,
   },
   dayHeaderFirst: { paddingTop: 6 },
   dayHeaderRest: {
