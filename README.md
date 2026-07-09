@@ -1,12 +1,28 @@
 # Brewlog
 
-On-device pour-over coffee journal with an offline AI brewing advisor (QVAC + Qwen3 1.7B).
-Log coffees and brews; the advisor reasons over your own data to suggest next-brew
-adjustments and the best recipe per bean. Everything runs locally — no cloud, no account.
+On-device pour-over coffee journal with an offline AI assistant (QVAC + Qwen3). Log
+coffees and brews in a warm paper ledger; the assistant reasons over your own data to
+chat about your brewing, autofill forms from plain English, diagnose a brew, and propose
+the best recipe per bean. Everything runs locally — no cloud, no account.
+
+## What's inside
+
+- **Journal** — coffees and their brews (dose, water, ratio, grind, temperature, time,
+  rating, tasting notes); deleting a coffee removes its brews.
+- **AI assistant** (opt-in, fully on-device) — freeform chat, "Autofill with AI" on the
+  coffee/brew forms, per-brew **Diagnose**, and a **Best recipe** per bean. A model
+  picker in Settings offers Qwen3 0.6B–4B and Llama 3.2 1B; models too big for the
+  device's RAM are disabled.
+- **Tools** — deterministic offline calculators: **Brew Ratio** and a guided **Brew
+  Timer** live today; Extraction Yield, 4:6 Method, and Coffee Compass are built but
+  gated behind "coming soon" cards.
+- **Your data** — export the ledger to a versioned JSON file and import it back
+  (validated, all-or-nothing replace).
 
 ## Requirements
 
-- A **physical** Android device with **8 GB+ RAM** (developed/tested on a Galaxy S23). QVAC
+- A **physical** Android device (developed/tested on a Galaxy S23; its 8 GB RAM runs the
+  default Qwen3 1.7B comfortably — lower-RAM devices are offered smaller models). QVAC
   uses llama.cpp and does **not** run on emulators/simulators.
 - **JDK 17** (newer JDKs break the React Native 0.81 Gradle build).
 - Node ≥ 22.17, npm ≥ 10.9.
@@ -24,8 +40,9 @@ npm run prebuild       # = expo prebuild + strip the bare-posix addon (see Notes
 npx expo run:android   # builds the native app, installs it, starts Metro
 ```
 
-First time the advisor is used, it downloads the model (**~1.1 GB** for Qwen3 1.7B) — keep the
-phone on Wi-Fi and watch the terminal. The model is cached on-device after that.
+The assistant is opt-in: the first launch offers it (you can also enable it later in
+Settings → The advisor), and enabling downloads the model — **~1.1 GB** for the default
+Qwen3 1.7B — so keep the phone on Wi-Fi. The model is cached on-device after that.
 
 > The debug build loads its JavaScript from the **Metro** dev server on this machine (over
 > `adb reverse tcp:8081`). Keep Metro running while using the app. To launch **without** the
@@ -37,8 +54,11 @@ phone on Wi-Fi and watch the terminal. The model is cached on-device after that.
 npm test
 ```
 
-Covers ratio math, brew formatting, the SQLite data layer (in-memory `better-sqlite3`), and
-the prompt builders. 34 tests; `npx tsc --noEmit` is clean.
+Covers the tool math (ratio, extraction yield, 4:6, pour schedules, coffee compass),
+brew formatting, the SQLite data layer (in-memory `better-sqlite3` behind the same `Db`
+interface), the ledger file format/validation and the import transaction, the prompt
+builders, and the assistant's model lifecycle. 202 tests across 16 suites;
+`npx tsc --noEmit` is clean.
 
 ## Android setup from scratch
 
@@ -125,20 +145,34 @@ npx expo run:android   # first native build takes several minutes
 
 ### 6. First launch
 
-The advisor pill shows **Downloading… %** while it fetches the model (~1.1 GB, one time). Then
-it goes **Loading → Advisor ready**, and Diagnose / Best recipe stream token-by-token.
+The app opens on the Home ledger with a two-step welcome card: a short overview, then an
+optional offer to enable the assistant (model download progress shows in the card).
+Decline and Brewlog is a plain journal — enable the assistant any time in **Settings →
+The advisor**. Once ready, chat, Diagnose, and Best recipe stream token-by-token.
 
 ## Manual on-device checklist
 
-- [ ] App launches to the Coffees list.
+- [ ] App launches to the Home ledger; all five tabs (Home, Brews, Chat, Tools, Settings)
+      switch instantly with no flicker.
 - [ ] Add / edit / delete a coffee.
 - [ ] Log / edit / delete a brew; ratio preview updates live; brews sort newest-first.
 - [ ] Deleting a coffee removes its brews.
-- [ ] Advisor status pill shows downloading → loading → ready.
-- [ ] Diagnose streams reasoning + suggestion token-by-token.
-- [ ] Best recipe streams a justified recipe.
+- [ ] "Autofill with AI" prefills the coffee/brew form from a plain-English description;
+      "Enter manually" skips it.
+- [ ] The Home advisor badge fills with download progress, then reads ready; it shows a
+      cross seal while the assistant is off.
+- [ ] Chat streams replies; Diagnose streams reasoning + suggestion; Best recipe streams
+      a justified recipe.
 - [ ] Stop halts a stream; leaving the screen mid-stream doesn't crash.
 - [ ] Backgrounding then foregrounding the app keeps the advisor working (suspend/resume).
+- [ ] Settings: toggling the assistant off unloads the model (the file stays cached);
+      switching model downloads the new one immediately.
+- [ ] Tools: Brew Ratio solves the third value from any two; Brew Timer walks a pour
+      schedule; tool inputs survive an app restart.
+- [ ] Export ledger writes `brewlog-ledger-YYYY-MM-DD.json` into the folder you picked
+      once (remembered afterwards).
+- [ ] Import ledger validates the file, warns before replacing a non-empty ledger, and
+      every tab shows the imported data without a reload.
 
 ## Troubleshooting
 
@@ -149,27 +183,40 @@ it goes **Loading → Advisor ready**, and Diagnose / Best recipe stream token-b
 | `Could not find device with name: ip:port` | Don't pass `--device ip:port`; with one phone connected just run `npx expo run:android`. |
 | `:react-native-bare-kit:link` exits **139** | bare-posix still in the addon manifest — run `npm run prebuild` (or `node scripts/fix-addons-manifest.js`). |
 | Startup crash: `TurboModuleRegistry … 'PlatformConstants' could not be found` | bare-kit 0.15.0 regression; this repo pins **0.14.5** (see Notes). Re-run `npm install`. |
-| App self-closes to home a few seconds after "loading 100%" | Out-of-memory: the model is too big for free RAM. We ship 1.7B; don't switch to 4B without more headroom (`src/qvac/modelConfig.ts`). |
+| App self-closes to home a few seconds after "loading 100%" | Out-of-memory: the model is too big for free RAM. Pick a smaller model in Settings; the picker's RAM floors live in `src/lib/aiModels.ts` — don't loosen them without headroom. |
 | White screen / crash when reopening during dev | Metro isn't running, or you resumed a stale activity. Start Metro (`npx expo start`) and **fully close + reopen** the app (cold start). |
 | App stuck "Downloading…" | Phone needs Wi-Fi for the one-time model fetch; watch the terminal logs. |
 | SDK location not found | Ensure `ANDROID_HOME` is set; `android/local.properties` should contain `sdk.dir`. |
 
 ## Architecture
 
-- `src/db` — SQLite schema + data layer (testable via a `better-sqlite3` adapter).
-- `src/lib` — pure helpers (ratio, formatting, ids).
-- `src/qvac` — all `@qvac/sdk` use: model lifecycle, streaming, prompt builders, React context.
-- `src/screens` — five screens wired through `@react-navigation/native-stack`.
+A pure, Jest-tested core with a thin UI layer on top:
 
-Design + plan: `docs/superpowers/specs/` and `docs/superpowers/plans/`.
+- `src/lib` — pure helpers: ratio and tool math, brew formatting, the ledger file
+  format/validation, the cross-tab `ledgerEvents` pub-sub.
+- `src/db` — SQLite schema + data layer behind a minimal async `Db` interface (tested via
+  an in-memory `better-sqlite3` adapter); `importLedger.ts` replaces the ledger in one
+  transaction.
+- `src/qvac` — all `@qvac/sdk` use: serialized model lifecycle (`service.ts`), React
+  context + persisted AI settings (`QvacProvider.tsx`), pure prompt builders.
+- `src/screens` — a native-stack root over `MainTabs`, a hand-rolled tab container that
+  keeps all five tabs mounted (so tab switches never fire navigation focus — cross-tab
+  refreshes go through `ledgerEvents`). Each tool under `src/screens/tools/` is its own
+  module, assembled in `registry.ts`.
+- `src/components/ui` + `src/design/tokens.ts` — hand-styled UI kit on shared design
+  tokens (colors, spacing, type, motion).
+
+Agent/contributor guide: `AGENTS.md`.
 
 ## Notes (QVAC workarounds & versions)
 
 These are pinned/scripted because of upstream QVAC SDK issues found while bringing the app up on
 a real device:
 
-- **Model: `QWEN3_1_7B_INST_Q4`** (~1.1 GB), set in `src/qvac/modelConfig.ts`. The larger
-  `QWEN3_4B_INST_Q4_K_M` pins ~2.5 GB on the GPU and gets OOM-killed on an 8 GB phone.
+- **Default model: `QWEN3_1_7B_INST_Q4`** (~1.1 GB). The model shelf and its RAM floors
+  live in `src/lib/aiModels.ts` (SDK asset mapping in `src/qvac/modelConfig.ts`): the 4B
+  pins ~2.5 GB on the GPU and gets OOM-killed on an 8 GB phone, so it requires 12 GB and
+  is never auto-picked.
 - **`react-native-bare-kit` is pinned to `0.14.5`** via a `package.json` `overrides` block.
   0.15.0's android binary links the platform-private `libnativehelper.so`, which can't load in
   an app and crashes startup with the `PlatformConstants` error above.
