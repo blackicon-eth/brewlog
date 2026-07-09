@@ -1,10 +1,10 @@
 import type { Brew, Coffee } from "../models/types";
-import { methodSpec } from "./brewMethods";
+import { isBrewMethodId, methodSpec } from "./brewMethods";
 
 // The standardized ledger file: a versioned JSON envelope around the camel-case
 // domain models. Pure module — no Expo imports — so Jest covers every branch.
 export const LEDGER_FORMAT = "brewlog-ledger";
-export const LEDGER_VERSION = 1;
+export const LEDGER_VERSION = 2;
 
 export type LedgerPayload = { coffees: Coffee[]; brews: Brew[] };
 export type LedgerParseResult =
@@ -92,6 +92,7 @@ export function parseLedgerFile(text: string): LedgerParseResult {
   }
   if (!Array.isArray(raw.coffees)) return { ok: false, reason: "The file has no list of coffees." };
   if (!Array.isArray(raw.brews)) return { ok: false, reason: "The file has no list of brews." };
+  const fileVersion = raw.version as number;
 
   const coffees: Coffee[] = [];
   const coffeeIds = new Set<string>();
@@ -130,6 +131,17 @@ export function parseLedgerFile(text: string): LedgerParseResult {
     }
     for (const field of BREW_OPTIONAL_STRINGS) {
       if (!optionalOk(b[field], "string")) return { ok: false, reason: `${label} has an invalid ${field}.` };
+    }
+    if (fileVersion >= 2) {
+      if (!isBrewMethodId(b.method)) {
+        return { ok: false, reason: `${label} has an invalid method.` };
+      }
+      if (!(b.preheat === undefined || b.preheat === null || typeof b.preheat === "boolean")) {
+        return { ok: false, reason: `${label} has an invalid preheat.` };
+      }
+      if (!(b.heat === undefined || b.heat === null || b.heat === "low" || b.heat === "medium" || b.heat === "high")) {
+        return { ok: false, reason: `${label} has an invalid heat.` };
+      }
     }
     if (brewIds.has(b.id as string)) {
       return { ok: false, reason: `${label} repeats the id of an earlier brew.` };

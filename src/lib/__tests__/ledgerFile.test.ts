@@ -46,7 +46,7 @@ describe("serializeLedger", () => {
     const parsed = JSON.parse(serializeLedger([], [], "2026-07-09T12:00:00.000Z"));
     expect(parsed).toEqual({
       format: "brewlog-ledger",
-      version: 1,
+      version: 2,
       exportedAt: "2026-07-09T12:00:00.000Z",
       coffees: [],
       brews: [],
@@ -82,7 +82,7 @@ describe("parseLedgerFile rejections", () => {
   });
 
   it("rejects a version newer than the app understands", () => {
-    const res = parseLedgerFile(validFile({ version: 2 }));
+    const res = parseLedgerFile(validFile({ version: 3 }));
     expect(res).toEqual({
       ok: false,
       reason: "This ledger was made by a newer version of Brewlog. Update the app to import it.",
@@ -137,7 +137,7 @@ describe("parseLedgerFile rejections", () => {
   it("accepts optionals that are absent, null, or valid", () => {
     const sparse = { id: "c9", roaster: "R", name: "N", createdAt: 5 };
     const sparseBrew = {
-      id: "b9", coffeeId: "c9", brewedAt: 1, doseG: 15, waterG: 250, ratio: 16.7, createdAt: 1,
+      id: "b9", coffeeId: "c9", brewedAt: 1, method: "v60", doseG: 15, waterG: 250, ratio: 16.7, createdAt: 1,
     };
     const res = parseLedgerFile(validFile({ coffees: [sparse], brews: [sparseBrew] }));
     expect(res.ok).toBe(true);
@@ -145,6 +145,73 @@ describe("parseLedgerFile rejections", () => {
       expect(res.payload.coffees[0].origin).toBeNull();
       expect(res.payload.brews[0].rating).toBeNull();
     }
+  });
+});
+
+describe("ledger v2 (methods)", () => {
+  it("round-trips a moka and an espresso brew", () => {
+    const moka = brew({
+      id: "b1", method: "moka" as const, preheat: true, heat: "medium" as const,
+    });
+    const espresso = brew({ id: "b2", method: "espresso" as const, preheat: null, heat: null });
+    const text = serializeLedger([coffee()], [moka, espresso], "2026-07-09T12:00:00.000Z");
+    const res = parseLedgerFile(text);
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.payload.brews[0].method).toBe("moka");
+      expect(res.payload.brews[0].preheat).toBe(true);
+      expect(res.payload.brews[0].heat).toBe("medium");
+      expect(res.payload.brews[1].method).toBe("espresso");
+    }
+  });
+
+  it("accepts a version-1 file and defaults its brews to v60", () => {
+    const parsed = JSON.parse(
+      serializeLedger([coffee()], [brew({ method: "moka" as const, preheat: true, heat: "high" as const })], "2026-07-09T12:00:00.000Z")
+    );
+    parsed.version = 1;
+    for (const b of parsed.brews) {
+      delete b.method;
+      delete b.preheat;
+      delete b.heat;
+    }
+    const res = parseLedgerFile(JSON.stringify(parsed));
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      for (const b of res.payload.brews) {
+        expect(b.method).toBe("v60");
+        expect(b.preheat).toBeNull();
+        expect(b.heat).toBeNull();
+      }
+    }
+  });
+
+  it("rejects version 3 as newer", () => {
+    const res = parseLedgerFile(validFile({ version: 3 }));
+    expect(res).toEqual({
+      ok: false,
+      reason: "This ledger was made by a newer version of Brewlog. Update the app to import it.",
+    });
+  });
+
+  it("rejects an invalid method in a v2 file", () => {
+    const res = parseLedgerFile(validFile({ brews: [{ ...brew(), method: "aeropress" }] }));
+    expect(res).toEqual({ ok: false, reason: "Brew 1 has an invalid method." });
+  });
+
+  it("rejects a missing method in a v2 file", () => {
+    const missing = { ...brew() } as Record<string, unknown>;
+    delete missing.method;
+    const res = parseLedgerFile(validFile({ brews: [missing] }));
+    expect(res).toEqual({ ok: false, reason: "Brew 1 has an invalid method." });
+  });
+
+  it("rejects an invalid preheat and an invalid heat", () => {
+    const badPreheat = parseLedgerFile(validFile({ brews: [{ ...brew(), preheat: "yes" }] }));
+    expect(badPreheat).toEqual({ ok: false, reason: "Brew 1 has an invalid preheat." });
+
+    const badHeat = parseLedgerFile(validFile({ brews: [{ ...brew(), heat: "max" }] }));
+    expect(badHeat).toEqual({ ok: false, reason: "Brew 1 has an invalid heat." });
   });
 });
 
