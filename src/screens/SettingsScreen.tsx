@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Device from "expo-device";
 import { Directory, File } from "expo-file-system";
 import Storage from "expo-sqlite/kv-store";
-import { AppText, Chevron, SparkGlyph, useAppModal } from "../components/ui";
+import { AppText, Chevron, PillButton, SparkGlyph, useAppModal } from "../components/ui";
 import { useQvac } from "../qvac/QvacProvider";
 import { AI_MODELS, modelFits, resolveModel, type AiModel } from "../lib/aiModels";
 import { colors, fonts, motion, radii, spacing, screenTopGap } from "../design/tokens";
@@ -176,6 +176,36 @@ export function SettingsScreen() {
     }
   };
 
+  // Testing-only kill switch: wipes every coffee and brew via the same transactional
+  // replace the import uses, then tells the mounted tabs to refetch.
+  const eraseLedger = async () => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    try {
+      try {
+        const db = await getDb();
+        const curCoffees = (await listCoffees(db)).length;
+        const curBrews = await countAllBrews(db);
+        const proceed = await modal.confirm({
+          title: "Erase the ledger?",
+          message:
+            `Every coffee and brew on this phone will be deleted — ` +
+            `${counts(curCoffees, curBrews)} right now. There's no undo.`,
+          confirmLabel: "Erase",
+          destructive: true,
+        });
+        if (!proceed) return;
+        await replaceLedger(db, { coffees: [], brews: [] });
+        emitLedgerReplaced();
+        await modal.alert("Ledger erased", "Brewlog is back to a blank book.");
+      } catch {
+        await modal.alert("Something went wrong", "The operation didn't finish.");
+      }
+    } finally {
+      busyRef.current = false;
+    }
+  };
+
   const selected = resolveModel(modelId);
 
   return (
@@ -246,6 +276,13 @@ export function SettingsScreen() {
             direction="down"
             onPress={() => void importLedger()}
           />
+
+          {/* Testing-only kill switch — remove before any real release. */}
+          <View style={styles.divider} />
+          <AppText variant="bodyMd" style={styles.benchNote}>
+            For testing — wipes every coffee and brew.
+          </AppText>
+          <PillButton label="Erase the ledger" variant="danger" onPress={() => void eraseLedger()} />
         </View>
       </ScrollView>
 
@@ -531,6 +568,7 @@ const styles = StyleSheet.create({
 
   // Data actions
   dataBlurb: { marginBottom: 14 },
+  benchNote: { marginBottom: 10, color: colors.secondary },
   dataBtn: {
     flexDirection: "row",
     alignItems: "center",
