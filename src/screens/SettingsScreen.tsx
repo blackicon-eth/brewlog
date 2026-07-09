@@ -138,16 +138,19 @@ export function SettingsScreen() {
         const db = await getDb();
         const curCoffees = (await listCoffees(db)).length;
         const curBrews = await countAllBrews(db);
-        const proceed = await modal.confirm({
-          title: "Replace your ledger?",
-          message:
-            `This file holds ${counts(parsed.payload.coffees.length, parsed.payload.brews.length)}. ` +
-            `Importing replaces everything currently in Brewlog. Your current ` +
-            `${counts(curCoffees, curBrews)} will be lost.`,
-          confirmLabel: "Replace",
-          destructive: true,
-        });
-        if (!proceed) return;
+        // An empty ledger has nothing to lose — only warn when the import overwrites data.
+        if (curCoffees > 0 || curBrews > 0) {
+          const proceed = await modal.confirm({
+            title: "Replace your ledger?",
+            message:
+              `This file holds ${counts(parsed.payload.coffees.length, parsed.payload.brews.length)}. ` +
+              `Importing replaces everything currently in Brewlog. Your current ` +
+              `${counts(curCoffees, curBrews)} will be lost.`,
+            confirmLabel: "Replace",
+            destructive: true,
+          });
+          if (!proceed) return;
+        }
 
         try {
           await replaceLedger(db, parsed.payload);

@@ -202,6 +202,7 @@ const styles = StyleSheet.create({
   dayCount: { color: colors.outline },
   footer: { paddingVertical: 20 },
   empty: { marginTop: 48, alignItems: "center", paddingHorizontal: 24 },
-  emptyTitle: { textAlign: "center" },
+  // Roomy line box so EB Garamond descenders (the "gg" tails) don't clip on Android.
+  emptyTitle: { textAlign: "center", lineHeight: 34, includeFontPadding: false },
   emptyBody: { textAlign: "center", marginTop: 8 },
 });

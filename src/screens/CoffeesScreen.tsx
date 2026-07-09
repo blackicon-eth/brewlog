@@ -130,6 +130,7 @@ const styles = StyleSheet.create({
   },
   noticeText: { color: colors.onSurface },
   empty: { marginTop: 48, alignItems: "center", paddingHorizontal: 24 },
-  emptyTitle: { textAlign: "center" },
+  // Roomy line box so EB Garamond descenders (the "y"/"g" tails) don't clip on Android.
+  emptyTitle: { textAlign: "center", lineHeight: 34, includeFontPadding: false },
   emptyBody: { textAlign: "center", marginTop: 8 },
 });
