@@ -1,5 +1,6 @@
 import type { Brew } from "../models/types";
 import { formatRatio } from "./ratio";
+import { methodSpec } from "./brewMethods";
 
 const DAY_MS = 86_400_000;
 
@@ -77,14 +78,21 @@ export function daysOffRoast(roastDate: string | null | undefined, now: number =
 }
 
 export function formatBrewLine(brew: Brew, index: number): string {
-  const parts: string[] = [`${index})`];
-  parts.push(`${brew.doseG}g:${brew.waterG}g (${formatRatio(brew.ratio)})`);
+  const spec = methodSpec(brew.method);
+  const out = brew.method === "espresso" ? " out" : "";
+  const parts: string[] = [`${index}) ${spec.label}`];
+  parts.push(`${brew.doseG}g:${brew.waterG}g${out} (${formatRatio(brew.ratio)})`);
   if (brew.grind) parts.push(`grind ${brew.grind}`);
   if (brew.waterTempC != null) parts.push(`${brew.waterTempC}C`);
   if (brew.dripper) parts.push(brew.dripper);
   if (brew.pours != null) parts.push(`${brew.pours} pours`);
   if (brew.pourIntervalS != null) parts.push(`pour every ${brew.pourIntervalS}s`);
-  if (brew.totalTimeS != null) parts.push(formatSeconds(brew.totalTimeS));
+  if (brew.preheat != null) parts.push(brew.preheat ? "preheated water" : "cold water");
+  if (brew.heat) parts.push(`${brew.heat} heat`);
+  if (brew.totalTimeS != null) {
+    const t = formatSeconds(brew.totalTimeS);
+    parts.push(brew.method === "french_press" ? `steep ${t}` : brew.method === "espresso" ? `shot ${t}` : t);
+  }
   const taste: string[] = [];
   if (brew.acidity != null) taste.push(`acid${brew.acidity}`);
   if (brew.sweetness != null) taste.push(`sweet${brew.sweetness}`);

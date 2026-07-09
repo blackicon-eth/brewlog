@@ -32,9 +32,15 @@ describe("daysOffRoast", () => {
 });
 
 describe("formatBrewLine", () => {
+  const mk = (over: Partial<Brew>): Brew => ({
+    id: "b", coffeeId: "c", brewedAt: 0, method: "v60",
+    doseG: 15, waterG: 250, ratio: 16.7, createdAt: 0, ...over,
+  });
+
   it("includes index, ratio, grind, temp, time, rating", () => {
     const line = formatBrewLine(base, 1);
     expect(line).toContain("1)");
+    expect(line).toContain("V60");
     expect(line).toContain("15g:250g");
     expect(line).toContain("1:16.7");
     expect(line).toContain("medium-fine");
@@ -42,11 +48,37 @@ describe("formatBrewLine", () => {
     expect(line).toContain("2:45");
     expect(line).toContain("4/5");
   });
+
   it("omits fields that are null", () => {
     const sparse: Brew = { ...base, grind: null, waterTempC: null, rating: null };
     const line = formatBrewLine(sparse, 2);
     expect(line).not.toContain("grind");
     expect(line).not.toContain("/5 overall");
+  });
+
+  it("labels a v60 line with its method", () => {
+    expect(formatBrewLine(mk({ grind: "medium", waterTempC: 94, pours: 3, totalTimeS: 165 }), 1))
+      .toBe("1) V60 | 15g:250g (1:16.7) | grind medium | 94C | 3 pours | 2:45");
+  });
+
+  it("formats espresso as yield out with a shot time", () => {
+    expect(formatBrewLine(mk({ method: "espresso", doseG: 18, waterG: 36, ratio: 2, totalTimeS: 28 }), 1))
+      .toBe("1) Espresso | 18g:36g out (1:2.0) | shot 0:28");
+  });
+
+  it("formats a french press steep", () => {
+    expect(formatBrewLine(mk({ method: "french_press", doseG: 30, waterG: 500, ratio: 16.7, totalTimeS: 240 }), 1))
+      .toBe("1) French Press | 30g:500g (1:16.7) | steep 4:00");
+  });
+
+  it("formats moka preheat and heat", () => {
+    expect(formatBrewLine(mk({ method: "moka", doseG: 16, waterG: 200, ratio: 12.5, preheat: true, heat: "medium", totalTimeS: 270 }), 1))
+      .toBe("1) Moka | 16g:200g (1:12.5) | preheated water | medium heat | 4:30");
+  });
+
+  it("says cold water when preheat is explicitly false", () => {
+    expect(formatBrewLine(mk({ method: "moka", doseG: 16, waterG: 200, ratio: 12.5, preheat: false }), 1))
+      .toBe("1) Moka | 16g:200g (1:12.5) | cold water");
   });
 });
 
@@ -63,6 +95,7 @@ describe("formatBrewDetail", () => {
   it("returns brew content without leading index prefix", () => {
     const detail = formatBrewDetail(base);
     expect(detail.startsWith("1) ")).toBe(false);
+    expect(detail.startsWith("V60 | ")).toBe(true);
     expect(detail).toContain("1:16.7");
     expect(detail).toContain("15g:250g");
   });
