@@ -12,7 +12,10 @@ async function open(): Promise<Db> {
   // EXISTS won't alter an existing table, so add new columns here (idempotent: a second
   // run throws "duplicate column name", which we ignore). Older bloom/agitation columns
   // are left in place on existing DBs — harmless, just no longer read or written.
-  for (const col of ["pours INTEGER", "pour_interval_s INTEGER"]) {
+  for (const col of [
+    "pours INTEGER", "pour_interval_s INTEGER",
+    "method TEXT NOT NULL DEFAULT 'v60'", "preheat INTEGER", "heat TEXT",
+  ]) {
     try {
       await db.execAsync(`ALTER TABLE brews ADD COLUMN ${col};`);
     } catch {

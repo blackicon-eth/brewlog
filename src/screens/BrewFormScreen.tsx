@@ -117,7 +117,7 @@ export function BrewFormScreen() {
       const db = await getDb();
       const brew = {
         id: editingId ?? makeId(), coffeeId: params.coffeeId,
-        brewedAt: brewedAt ?? Date.now(), doseG, waterG, ratio: computeRatio(doseG, waterG),
+        brewedAt: brewedAt ?? Date.now(), method: "v60" as const, doseG, waterG, ratio: computeRatio(doseG, waterG),
         grind: grind.trim() || null, waterTempC: num(temp), dripper: dripper.trim() || null,
         pours: int(pours), pourIntervalS: int(pourInterval), totalTimeS: int(totalTime),
         filterType: filterType.trim() || null, tds: null, ey: null,

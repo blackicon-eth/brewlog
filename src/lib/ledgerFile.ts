@@ -1,4 +1,5 @@
 import type { Brew, Coffee } from "../models/types";
+import { methodSpec } from "./brewMethods";
 
 // The standardized ledger file: a versioned JSON envelope around the camel-case
 // domain models. Pure module — no Expo imports — so Jest covers every branch.
@@ -31,10 +32,13 @@ function coffeeOut(c: Coffee): Required<Coffee> {
 function brewOut(b: Brew): Required<Brew> {
   return {
     id: b.id, coffeeId: b.coffeeId, brewedAt: b.brewedAt,
+    method: methodSpec(b.method).id,
     doseG: b.doseG, waterG: b.waterG, ratio: b.ratio,
     grind: b.grind ?? null, waterTempC: b.waterTempC ?? null, dripper: b.dripper ?? null,
     pours: b.pours ?? null, pourIntervalS: b.pourIntervalS ?? null,
     totalTimeS: b.totalTimeS ?? null, filterType: b.filterType ?? null,
+    preheat: typeof b.preheat === "boolean" ? b.preheat : null,
+    heat: b.heat === "low" || b.heat === "medium" || b.heat === "high" ? b.heat : null,
     tds: b.tds ?? null, ey: b.ey ?? null,
     acidity: b.acidity ?? null, sweetness: b.sweetness ?? null, bitterness: b.bitterness ?? null,
     body: b.body ?? null, clarity: b.clarity ?? null, rating: b.rating ?? null,

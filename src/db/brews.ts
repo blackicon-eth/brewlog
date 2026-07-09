@@ -1,13 +1,18 @@
 import type { Db } from "./types";
 import type { Brew, BrewRow } from "../models/types";
+import { methodSpec } from "../lib/brewMethods";
 
 export function rowToBrew(r: BrewRow): Brew {
   return {
     id: r.id, coffeeId: r.coffee_id, brewedAt: r.brewed_at,
+    method: methodSpec(r.method).id,
     doseG: r.dose_g, waterG: r.water_g, ratio: r.ratio,
     grind: r.grind, waterTempC: r.water_temp_c, dripper: r.dripper,
     pours: r.pours, pourIntervalS: r.pour_interval_s, totalTimeS: r.total_time_s,
-    filterType: r.filter_type, tds: r.tds, ey: r.ey,
+    filterType: r.filter_type,
+    preheat: r.preheat == null ? null : r.preheat !== 0,
+    heat: r.heat === "low" || r.heat === "medium" || r.heat === "high" ? r.heat : null,
+    tds: r.tds, ey: r.ey,
     acidity: r.acidity, sweetness: r.sweetness, bitterness: r.bitterness,
     body: r.body, clarity: r.clarity, rating: r.rating, notes: r.notes, createdAt: r.created_at,
   };
@@ -15,13 +20,13 @@ export function rowToBrew(r: BrewRow): Brew {
 
 export async function createBrew(db: Db, b: Brew): Promise<void> {
   await db.runAsync(
-    `INSERT INTO brews (id, coffee_id, brewed_at, dose_g, water_g, ratio, grind, water_temp_c,
-       dripper, pours, pour_interval_s, total_time_s, filter_type, tds, ey,
+    `INSERT INTO brews (id, coffee_id, brewed_at, method, dose_g, water_g, ratio, grind, water_temp_c,
+       dripper, pours, pour_interval_s, total_time_s, filter_type, preheat, heat, tds, ey,
        acidity, sweetness, bitterness, body, clarity, rating, notes, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [b.id, b.coffeeId, b.brewedAt, b.doseG, b.waterG, b.ratio, b.grind ?? null, b.waterTempC ?? null,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [b.id, b.coffeeId, b.brewedAt, b.method, b.doseG, b.waterG, b.ratio, b.grind ?? null, b.waterTempC ?? null,
      b.dripper ?? null, b.pours ?? null, b.pourIntervalS ?? null, b.totalTimeS ?? null,
-     b.filterType ?? null, b.tds ?? null, b.ey ?? null,
+     b.filterType ?? null, b.preheat == null ? null : b.preheat ? 1 : 0, b.heat ?? null, b.tds ?? null, b.ey ?? null,
      b.acidity ?? null, b.sweetness ?? null, b.bitterness ?? null, b.body ?? null,
      b.clarity ?? null, b.rating ?? null, b.notes ?? null, b.createdAt]
   );
@@ -67,15 +72,24 @@ export async function getBrew(db: Db, id: string): Promise<Brew | null> {
   return row ? rowToBrew(row) : null;
 }
 
+// Newest brew for a coffee — the form uses its method as the default for a new log.
+export async function getLatestBrew(db: Db, coffeeId: string): Promise<Brew | null> {
+  const row = await db.getFirstAsync<BrewRow>(
+    "SELECT * FROM brews WHERE coffee_id = ? ORDER BY brewed_at DESC, id DESC LIMIT 1", [coffeeId]
+  );
+  return row ? rowToBrew(row) : null;
+}
+
 export async function updateBrew(db: Db, b: Brew): Promise<void> {
   await db.runAsync(
-    `UPDATE brews SET brewed_at=?, dose_g=?, water_g=?, ratio=?, grind=?, water_temp_c=?, dripper=?,
-       pours=?, pour_interval_s=?, total_time_s=?, filter_type=?, tds=?, ey=?,
+    `UPDATE brews SET brewed_at=?, method=?, dose_g=?, water_g=?, ratio=?, grind=?, water_temp_c=?, dripper=?,
+       pours=?, pour_interval_s=?, total_time_s=?, filter_type=?, preheat=?, heat=?, tds=?, ey=?,
        acidity=?, sweetness=?, bitterness=?, body=?, clarity=?, rating=?, notes=?
      WHERE id = ?`,
-    [b.brewedAt, b.doseG, b.waterG, b.ratio, b.grind ?? null, b.waterTempC ?? null, b.dripper ?? null,
+    [b.brewedAt, b.method, b.doseG, b.waterG, b.ratio, b.grind ?? null, b.waterTempC ?? null, b.dripper ?? null,
      b.pours ?? null, b.pourIntervalS ?? null, b.totalTimeS ?? null,
-     b.filterType ?? null, b.tds ?? null, b.ey ?? null, b.acidity ?? null, b.sweetness ?? null,
+     b.filterType ?? null, b.preheat == null ? null : b.preheat ? 1 : 0, b.heat ?? null,
+     b.tds ?? null, b.ey ?? null, b.acidity ?? null, b.sweetness ?? null,
      b.bitterness ?? null, b.body ?? null, b.clarity ?? null, b.rating ?? null, b.notes ?? null, b.id]
   );
 }

@@ -7,7 +7,7 @@ import type { Brew } from "../../models/types";
 const at = (s: string) => new Date(s).getTime();
 
 const base: Brew = {
-  id: "b1", coffeeId: "c1", brewedAt: 1000, doseG: 15, waterG: 250, ratio: 16.6667,
+  id: "b1", coffeeId: "c1", brewedAt: 1000, method: "v60" as const, doseG: 15, waterG: 250, ratio: 16.6667,
   grind: "medium-fine", waterTempC: 94, dripper: "V60", pours: 3, pourIntervalS: 30,
   totalTimeS: 165, filterType: null, tds: null, ey: null,
   acidity: 4, sweetness: 3, bitterness: 2, body: 3, clarity: 4, rating: 4,
