@@ -10,7 +10,7 @@ import { useQvac } from "../qvac/QvacProvider";
 import { AppText, ChatBubble, PillButton } from "../components/ui";
 import { colors, fonts, radii, spacing, screenTopGap } from "../design/tokens";
 
-// One visible turn. `pending` marks the coach bubble that's currently being generated (or
+// One visible turn. `pending` marks the assistant bubble that's currently being generated (or
 // waited on); `error` flips it to a cherry failure note. The whole list lives in component
 // state only — it's the single app session's chat, never written to the database.
 type Turn = { id: string; role: "user" | "assistant"; content: string; pending?: boolean; error?: boolean };
@@ -105,10 +105,10 @@ export function ChatScreen() {
         // Hold until the model is loaded; the user may send before the download finishes.
         while (statusRef.current !== "ready") {
           if (gen.cancelled) return;
-          // The coach was turned off mid-wait: status pins at "idle", so bail out.
+          // The assistant was turned off mid-wait: status pins at "idle", so bail out.
           if (!aiEnabledRef.current) { gen.cancelled = true; return; }
           if (statusRef.current === "error") {
-            throw new Error("The coach couldn't load — check your connection and try again.");
+            throw new Error("The assistant couldn't load — check your connection and try again.");
           }
           await sleep(250);
         }
@@ -129,7 +129,7 @@ export function ChatScreen() {
           patch(botId, (b) => ({ ...b, error: true, content: b.content || msg }));
         }
       } finally {
-        // If it was stopped before a single token landed, drop the empty coach bubble.
+        // If it was stopped before a single token landed, drop the empty assistant bubble.
         setTurns((prev) =>
           prev.flatMap((t) => {
             if (t.id !== botId) return [t];
@@ -158,7 +158,7 @@ export function ChatScreen() {
   const canSend = input.trim().length > 0 && !generating;
   const isEmpty = turns.length === 0;
 
-  // The coach is off: the tab stays reachable (hiding it would reflow the whole bar and
+  // The assistant is off: the tab stays reachable (hiding it would reflow the whole bar and
   // bury the feature), but the canvas explains itself and offers the switch right here.
   if (!aiEnabled) {
     return (
@@ -166,17 +166,17 @@ export function ChatScreen() {
         <StatusBar style="dark" />
         <View style={[styles.masthead, { paddingTop: insets.top + screenTopGap }]}>
           <AppText variant="headlineLg" style={styles.title}>Chat</AppText>
-          <AppText variant="labelMd" style={styles.subtitle}>On-device brewing coach</AppText>
+          <AppText variant="labelMd" style={styles.subtitle}>On-device brewing assistant</AppText>
         </View>
         <View style={styles.offWrap}>
           <AppText style={styles.spark}>✦</AppText>
-          <AppText variant="headlineMd" style={styles.emptyTitle}>The coach is off</AppText>
+          <AppText variant="headlineMd" style={styles.emptyTitle}>The assistant is off</AppText>
           <AppText variant="bodyMd" style={styles.emptyBody}>
             Turn on the on-device AI to chat about grind, ratio, water and technique.
             Everything runs privately on your phone — nothing you brew ever leaves it.
           </AppText>
           <PillButton
-            label="Turn on the coach"
+            label="Turn on the assistant"
             variant="primary"
             style={styles.offBtn}
             onPress={() => { setAiEnabled(true); prepare(); }}
@@ -193,7 +193,7 @@ export function ChatScreen() {
       {/* Fixed masthead — matches the Brews ledger header. */}
       <View style={[styles.masthead, { paddingTop: insets.top + screenTopGap }]}>
         <AppText variant="headlineLg" style={styles.title}>Chat</AppText>
-        <AppText variant="labelMd" style={styles.subtitle}>On-device brewing coach</AppText>
+        <AppText variant="labelMd" style={styles.subtitle}>On-device brewing assistant</AppText>
       </View>
 
       <KeyboardAvoidingView
@@ -203,7 +203,7 @@ export function ChatScreen() {
         {isEmpty ? (
           <View style={styles.emptyWrap}>
             <AppText style={styles.spark}>✦</AppText>
-            <AppText variant="headlineMd" style={styles.emptyTitle}>Ask your brewing coach</AppText>
+            <AppText variant="headlineMd" style={styles.emptyTitle}>Ask your brewing assistant</AppText>
             <AppText variant="bodyMd" style={styles.emptyBody}>
               On-device answers on grind, ratio, water and technique. Nothing leaves your phone,
               and this chat clears when you close the app.
@@ -232,14 +232,14 @@ export function ChatScreen() {
             keyboardDismissMode="interactive"
           >
             {turns.map((t) => {
-              // Coach bubble with nothing streamed yet: show a loader + status line instead.
+              // Assistant bubble with nothing streamed yet: show a loader + status line instead.
               if (t.pending && !t.content) {
                 return (
                   <View key={t.id} style={styles.typingRow}>
                     <View style={styles.typingBubble}>
                       <ActivityIndicator size="small" color={colors.secondary} />
                       <AppText variant="bodyMd" style={styles.typingText}>
-                        {status === "ready" ? "Thinking…" : "Waking the coach…"}
+                        {status === "ready" ? "Thinking…" : "Waking the assistant…"}
                       </AppText>
                     </View>
                   </View>
@@ -260,7 +260,7 @@ export function ChatScreen() {
 
         {status === "error" ? (
           <View style={styles.banner}>
-            <AppText variant="bodyMd" style={styles.bannerText}>Coach unavailable offline.</AppText>
+            <AppText variant="bodyMd" style={styles.bannerText}>Assistant unavailable offline.</AppText>
             <Pressable onPress={retry} hitSlop={8}>
               <AppText variant="labelMd" style={styles.bannerRetry}>Retry</AppText>
             </Pressable>
@@ -338,7 +338,8 @@ const styles = StyleSheet.create({
   // Empty canvas
   emptyWrap: { flex: 1, justifyContent: "center", paddingHorizontal: spacing.container, paddingBottom: 40 },
   spark: { fontFamily: fonts.sansMedium, fontSize: 30, lineHeight: 40, includeFontPadding: false, color: colors.primary, marginBottom: 6 },
-  emptyTitle: {},
+  // EB Garamond descenders clip on Android — give headlineMd explicit room.
+  emptyTitle: { lineHeight: 34, includeFontPadding: false },
   emptyBody: { marginTop: 8, lineHeight: 22 },
   suggestions: { marginTop: spacing.section, gap: 10 },
   offWrap: { flex: 1, justifyContent: "center", paddingHorizontal: spacing.container, paddingBottom: 80 },

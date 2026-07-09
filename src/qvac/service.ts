@@ -23,7 +23,7 @@ function serialize<T>(fn: () => Promise<T>): Promise<T> {
 
 // The last-REQUESTED desired state, recorded synchronously at call time (not when the
 // turn runs). A queued ensureModel whose key no longer matches was superseded — the
-// coach got disabled or switched away — before its turn came; it aborts instead of
+// assistant got disabled or switched away — before its turn came; it aborts instead of
 // loading a model nobody wants anymore.
 let wantKey: string | null = null;
 
@@ -76,7 +76,7 @@ export async function releaseModel(opts: { deleteFile: boolean }): Promise<void>
   wantKey = null;
   return serialize(async () => {
     // Kill any streaming answer first (a chat mid-generation when the user toggles the
-    // coach off) so the unload doesn't race a live completion.
+    // assistant off) so the unload doesn't race a live completion.
     for (const requestId of activeRequests) void cancel({ requestId }).catch(() => {});
     if (modelId) {
       await unloadModel({ modelId, clearStorage: opts.deleteFile }).catch(() => {});

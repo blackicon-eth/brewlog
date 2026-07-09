@@ -43,7 +43,7 @@ export function DropIcon({ size = 24, color }: TabIconProps) {
   );
 }
 
-// Coach — the app's AI mark. Reuses the ✦ glyph used on every other AI surface.
+// Assistant — the app's AI mark. Reuses the ✦ glyph used on every other AI surface.
 export function SparkGlyph({ size = 24, color }: TabIconProps) {
   return (
     <View style={[styles.box, { width: size, height: size }]}>

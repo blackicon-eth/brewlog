@@ -15,7 +15,7 @@ import { HankenGrotesk_700Bold } from "@expo-google-fonts/hanken-grotesk/700Bold
 import { RootNavigator } from "./src/navigation/RootNavigator";
 import { QvacProvider } from "./src/qvac/QvacProvider";
 import { AppModalProvider } from "./src/components/ui";
-import { AiOnboardingSheet } from "./src/components/AiOnboardingSheet";
+import { AiOnboardingModal } from "./src/components/AiOnboardingModal";
 import { colors } from "./src/design/tokens";
 
 export default function App() {
@@ -42,7 +42,7 @@ export default function App() {
             <RootNavigator />
             <StatusBar style="light" />
           </NavigationContainer>
-          <AiOnboardingSheet />
+          <AiOnboardingModal />
         </AppModalProvider>
       </QvacProvider>
     </SafeAreaProvider>

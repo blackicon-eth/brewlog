@@ -29,9 +29,9 @@ function StreamingCaret() {
   return <Animated.Text style={[styles.caret, { opacity }]}>▍</Animated.Text>;
 }
 
-// One chat balloon. Mine (user) is a right-aligned espresso fill with cream ink; the coach's
+// One chat balloon. Mine (user) is a right-aligned espresso fill with cream ink; the assistant's
 // (assistant) is a left-aligned cream card with a fine outline and espresso ink. Each carries
-// a single squared "tail" corner (bottom-right for me, bottom-left for the coach) so the
+// a single squared "tail" corner (bottom-right for me, bottom-left for the assistant) so the
 // balloons read as coming from opposite sides — the WhatsApp/Telegram convention.
 export function ChatBubble({ role, text, streaming, error }: ChatBubbleProps) {
   const isUser = role === "user";
@@ -41,12 +41,12 @@ export function ChatBubble({ role, text, streaming, error }: ChatBubbleProps) {
   // trailing space is emitted and then followed by the next token.)
   const display = streaming ? text.replace(/^\s+/, "") : text.trim();
   return (
-    <View style={[styles.row, isUser ? styles.rowUser : styles.rowCoach]}>
-      <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleCoach]}>
+    <View style={[styles.row, isUser ? styles.rowUser : styles.rowAssistant]}>
+      <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleAssistant]}>
         {display || streaming ? (
           <AppText
             variant="bodyLg"
-            style={[styles.text, isUser ? styles.textUser : error ? styles.textError : styles.textCoach]}
+            style={[styles.text, isUser ? styles.textUser : error ? styles.textError : styles.textAssistant]}
           >
             {display}
             {streaming ? <StreamingCaret /> : null}
@@ -61,7 +61,7 @@ const TAIL = 5; // the squared-off "spout" corner
 const styles = StyleSheet.create({
   row: { width: "100%", marginTop: spacing.gutter },
   rowUser: { alignItems: "flex-end" },
-  rowCoach: { alignItems: "flex-start" },
+  rowAssistant: { alignItems: "flex-start" },
   bubble: {
     maxWidth: "84%",
     paddingHorizontal: 15,
@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.onSurface,
     borderBottomRightRadius: TAIL,
   },
-  bubbleCoach: {
+  bubbleAssistant: {
     backgroundColor: colors.surfaceLowest,
     borderWidth: 1,
     borderColor: colors.outlineVariant,
@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
   },
   text: { fontSize: 16, lineHeight: 24 },
   textUser: { color: colors.background },
-  textCoach: { color: colors.onSurface },
+  textAssistant: { color: colors.onSurface },
   textError: { color: colors.tertiary },
   caret: { color: colors.primary, fontFamily: fonts.sans },
 });

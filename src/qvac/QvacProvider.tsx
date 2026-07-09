@@ -4,8 +4,9 @@ import {
   ensureModel, releaseModel, streamAdvice, onAppBackground, onAppForeground, shutdown,
   type LoadStatus, type StreamHandlers,
 } from "./service";
+import * as Device from "expo-device";
 import { usePersistedState } from "../hooks/usePersistedState";
-import { DEFAULT_MODEL_ID, resolveModel } from "../lib/aiModels";
+import { DEFAULT_MODEL_ID, clampModelToDevice } from "../lib/aiModels";
 import type { ChatMessage } from "./advisor";
 
 type QvacContextValue = {
@@ -39,12 +40,15 @@ export function QvacProvider({ children }: { children: React.ReactNode }) {
   const loadGen = useRef(0);
 
   // The AI settings live here — the single owner. Settings/Chat/gates all read and write
-  // through this context. Enabled defaults to FALSE: the coach is opt-in (onboarding
+  // through this context. Enabled defaults to FALSE: the assistant is opt-in (onboarding
   // sheet or the Settings switch).
   const [aiEnabled, setAiEnabledState] = usePersistedState("settings:ai:enabled", false);
   const [modelIdRaw, setModelIdState] = usePersistedState("settings:ai:model", DEFAULT_MODEL_ID);
   const [onboarded, setOnboarded] = usePersistedState("settings:ai:onboarded", false);
-  const modelId = resolveModel(modelIdRaw).id;
+  // Whatever is stored, the loader only ever sees a model this device can hold: a stale,
+  // unknown or too-big stored id clamps to the device's own default. This guards every
+  // enable path (Settings toggle, chat off-state, advisor gates), not just onboarding.
+  const modelId = clampModelToDevice(modelIdRaw, Device.totalMemory);
 
   // Mirrors written synchronously in the setters (NOT via useEffect): callers flip a
   // setting and call prepare() in the same tick, so prepare must see the new value
@@ -90,20 +94,24 @@ export function QvacProvider({ children }: { children: React.ReactNode }) {
     setAiEnabledState(v);
     if (!v) {
       resetToIdle();
-      // Free the RAM but keep the download — flipping the coach back on costs nothing.
+      // Free the RAM but keep the download — flipping the assistant back on costs nothing.
       void releaseModel({ deleteFile: false });
     }
   }, [setAiEnabledState, resetToIdle]);
 
   const setModel = useCallback((id: string) => {
-    if (id === modelIdRef.current) return;
-    modelIdRef.current = id;
-    setModelIdState(id);
+    const clamped = clampModelToDevice(id, Device.totalMemory);
+    if (clamped === modelIdRef.current) return;
+    modelIdRef.current = clamped;
+    setModelIdState(clamped);
     resetToIdle();
     // The switched-away model goes entirely — file included (best effort; see service).
-    // The new one downloads lazily when the coach next starts.
     void releaseModel({ deleteFile: true });
-  }, [setModelIdState, resetToIdle]);
+    // Start fetching the new model straight away (the service queues the load behind the
+    // release). Only reachable with AI on — the picker is disabled otherwise — but guard
+    // anyway; prepare() no-ops when the assistant is off.
+    prepare();
+  }, [setModelIdState, resetToIdle, prepare]);
 
   const completeOnboarding = useCallback(() => setOnboarded(true), [setOnboarded]);
 

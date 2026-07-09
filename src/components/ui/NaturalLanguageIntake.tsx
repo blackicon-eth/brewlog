@@ -90,7 +90,7 @@ export function NaturalLanguageIntake<T>({
 
   const busy = phase === "preparing" || phase === "running";
 
-  // Coach off: the box simply isn't there — the form works manually, and a prompt
+  // Assistant off: the box simply isn't there — the form works manually, and a prompt
   // mid-form-filling would be an interruption, not an invitation.
   if (!aiEnabled) return null;
 

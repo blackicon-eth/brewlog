@@ -242,7 +242,8 @@ const styles = StyleSheet.create({
   body: { flexGrow: 0 },
   bodyContent: { paddingBottom: spacing.stack },
   loading: { alignItems: "center", paddingVertical: spacing.section, gap: 10 },
-  loadingTitle: {},
+  // EB Garamond descenders clip on Android — give headlineMd explicit room.
+  loadingTitle: { lineHeight: 34, includeFontPadding: false },
   loadingSub: { textAlign: "center" },
   answer: { color: colors.onSurface, lineHeight: 27 },
   caret: { color: colors.primary, fontFamily: fonts.sans },

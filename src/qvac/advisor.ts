@@ -4,7 +4,7 @@ import { RECENT_BREWS_CAP, BEST_RECIPE_BREWS_CAP, SYSTEM_PROMPT, CHAT_SYSTEM_PRO
 
 export type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
-// A single visible turn in the free-form coach chat. The screen carries richer per-turn
+// A single visible turn in the free-form assistant chat. The screen carries richer per-turn
 // state (id, streamed thinking, pending flags); this is the slice the model needs.
 export type ChatTurn = { role: "user" | "assistant"; content: string };
 

@@ -2,9 +2,10 @@ import React, { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Device from "expo-device";
 import { AppText, Chevron, SparkGlyph, useAppModal } from "../components/ui";
 import { useQvac } from "../qvac/QvacProvider";
-import { AI_MODELS, resolveModel, type AiModel } from "../lib/aiModels";
+import { AI_MODELS, modelFits, resolveModel, type AiModel } from "../lib/aiModels";
 import { colors, fonts, motion, radii, spacing, screenTopGap } from "../design/tokens";
 
 // Settings — the colophon of the ledger: the quiet back page where the machinery is
@@ -150,13 +151,14 @@ function ModelPicker({ visible, selectedId, onSelect, onClose }: {
               key={m.id}
               model={m}
               active={selectedId === m.id}
+              fits={modelFits(m, Device.totalMemory)}
               last={i === AI_MODELS.length - 1}
               onSelect={() => onSelect(m.id)}
             />
           ))}
 
           <AppText variant="bodyMd" style={styles.groupFootnote}>
-            The chosen model is downloaded when the advisor next starts.
+            Switching models starts the download straight away.
           </AppText>
         </Animated.View>
       </View>
@@ -190,21 +192,32 @@ function LedgerSwitch({ value, onToggle }: { value: boolean; onToggle: () => voi
 }
 
 // One selectable model: hand-drawn radio, grotesk name (machinery, not soul), size chip
-// that flips to an "Active" pill on the chosen row.
-function ModelRow({ model, active, last, onSelect }: { model: AiModel; active: boolean; last: boolean; onSelect: () => void }) {
+// that flips to an "Active" pill on the chosen row. Models the device can't hold are
+// dimmed and untappable, with the note swapped for the reason.
+function ModelRow({ model, active, fits, last, onSelect }: {
+  model: AiModel; active: boolean; fits: boolean; last: boolean; onSelect: () => void;
+}) {
   return (
     <Pressable
       accessibilityRole="radio"
-      accessibilityState={{ selected: active }}
+      accessibilityState={{ selected: active, disabled: !fits }}
+      disabled={!fits}
       onPress={onSelect}
-      style={({ pressed }) => [styles.modelRow, !last && styles.modelRowDivider, pressed && styles.rowPressed]}
+      style={({ pressed }) => [
+        styles.modelRow,
+        !last && styles.modelRowDivider,
+        !fits && styles.modelRowDisabled,
+        pressed && styles.rowPressed,
+      ]}
     >
       <View style={[styles.radio, active && styles.radioActive]}>
         {active ? <View style={styles.radioDot} /> : null}
       </View>
       <View style={styles.modelText}>
         <AppText variant="bodyLg" style={[styles.modelName, active && styles.modelNameActive]}>{model.name}</AppText>
-        <AppText variant="bodyMd" style={styles.modelNote}>{model.note}</AppText>
+        <AppText variant="bodyMd" style={styles.modelNote}>
+          {fits ? model.note : "Needs more memory than this device has"}
+        </AppText>
       </View>
       <View style={[styles.sizeChip, active && styles.sizeChipActive]}>
         <AppText variant="labelSm" style={active ? styles.sizeTextActive : styles.sizeText}>
@@ -332,6 +345,7 @@ const styles = StyleSheet.create({
   modelRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 13 },
   modelRowDivider: { borderBottomWidth: 1, borderBottomColor: colors.surfaceLow },
   rowPressed: { opacity: 0.85 },
+  modelRowDisabled: { opacity: 0.4 },
   radio: {
     width: 20,
     height: 20,

@@ -39,6 +39,7 @@ const styles_ = StyleSheet.create({
     width: "100%",
     borderRadius: radii.full,
     paddingVertical: 17,
+    paddingHorizontal: 24,
     alignItems: "center",
     justifyContent: "center",
   },
