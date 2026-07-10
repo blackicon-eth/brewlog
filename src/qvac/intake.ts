@@ -1,4 +1,5 @@
 import type { ChatMessage } from "./advisor";
+import { isBrewMethodId, type BrewMethodId, type MokaHeat } from "../lib/brewMethods";
 
 // Pull the first balanced {...} object out of an LLM reply that may include code
 // fences, <think> remnants, or surrounding prose. Returns null if none parses to an object.
@@ -50,21 +51,25 @@ const intGe = (v: unknown, min: number): number | undefined => {
 };
 
 export type BrewIntake = {
+  method?: BrewMethodId;
   doseG?: number; waterG?: number; grind?: string; waterTempC?: number;
   dripper?: "V60"; pours?: number; pourIntervalS?: number; totalTimeS?: number;
-  filterType?: "white" | "unbleached"; notes?: string;
+  filterType?: "white" | "unbleached"; preheat?: boolean; heat?: MokaHeat; notes?: string;
 };
 
 const BREW_KEYS_DOC =
-  'doseG, waterG, grind, waterTempC, dripper (only "V60"), pours, pourIntervalS, totalTimeS, filterType ("white" or "unbleached"), notes';
+  'method ("v60", "french_press", "moka" or "espresso"), doseG, waterG, grind, waterTempC, ' +
+  'dripper (only "V60"), pours, pourIntervalS, totalTimeS, filterType ("white" or "unbleached"), ' +
+  'preheat (true/false, moka only), heat ("low", "medium" or "high", moka only), notes';
 
 export function buildBrewIntakePrompt(text: string): ChatMessage[] {
   const system = [
-    "You convert a coffee lover's freeform description of a pour-over brew into JSON.",
+    "You convert a coffee lover's freeform description of a coffee brew into JSON.",
     `Return ONLY a JSON object with these keys: ${BREW_KEYS_DOC}.`,
     "Use null for anything not stated. Do not invent values.",
     'dripper may only be "V60". filterType may only be "white" or "unbleached".',
     "doseG, waterG, waterTempC, pours, pourIntervalS, totalTimeS are numbers.",
+    "For espresso, waterG is the beverage yield out in grams.",
     "notes holds any leftover taste/descriptive prose. Do not rate the taste.",
   ].join("\n");
   return [{ role: "system", content: system }, { role: "user", content: `Description:\n${text}` }];
@@ -74,6 +79,9 @@ export function parseBrewIntake(raw: string): BrewIntake {
   const o = extractJson(raw);
   if (!o) return {};
   const out: BrewIntake = {};
+  const methodRaw = str(o.method)?.toLowerCase().replace(/[\s-]+/g, "_");
+  const method = methodRaw === "frenchpress" ? "french_press" : methodRaw;
+  if (isBrewMethodId(method)) out.method = method;
   const dose = numFinite(o.doseG); if (dose != null && dose > 0) out.doseG = dose;
   const water = numFinite(o.waterG); if (water != null && water > 0) out.waterG = water;
   const grind = str(o.grind); if (grind) out.grind = grind;
@@ -84,6 +92,9 @@ export function parseBrewIntake(raw: string): BrewIntake {
   const total = intGe(o.totalTimeS, 0); if (total != null) out.totalTimeS = total;
   const filter = str(o.filterType)?.toLowerCase();
   if (filter === "white" || filter === "unbleached") out.filterType = filter;
+  if (typeof o.preheat === "boolean") out.preheat = o.preheat;
+  const heat = str(o.heat)?.toLowerCase();
+  if (heat === "low" || heat === "medium" || heat === "high") out.heat = heat;
   const notes = str(o.notes); if (notes) out.notes = notes;
   return out;
 }

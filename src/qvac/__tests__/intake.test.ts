@@ -67,6 +67,28 @@ describe("parseBrewIntake", () => {
   it("returns empty on garbage", () => {
     expect(parseBrewIntake("not json")).toEqual({});
   });
+  it("parses the method, with common synonyms", () => {
+    expect(parseBrewIntake('{"method":"moka"}').method).toBe("moka");
+    expect(parseBrewIntake('{"method":"french press"}').method).toBe("french_press");
+    expect(parseBrewIntake('{"method":"frenchpress"}').method).toBe("french_press");
+    expect(parseBrewIntake('{"method":"V60"}').method).toBe("v60");
+    expect(parseBrewIntake('{"method":"aeropress"}').method).toBeUndefined();
+  });
+  it("parses preheat only when strictly boolean", () => {
+    expect(parseBrewIntake('{"preheat":true}').preheat).toBe(true);
+    expect(parseBrewIntake('{"preheat":false}').preheat).toBe(false);
+    expect(parseBrewIntake('{"preheat":"yes"}').preheat).toBeUndefined();
+  });
+  it("parses heat only from the three levels", () => {
+    expect(parseBrewIntake('{"heat":"Medium"}').heat).toBe("medium");
+    expect(parseBrewIntake('{"heat":"max"}').heat).toBeUndefined();
+  });
+  it("documents the new keys in the prompt", () => {
+    const sys = buildBrewIntakePrompt("x")[0].content;
+    expect(sys).toContain('"french_press"');
+    expect(sys).toContain("preheat");
+    expect(sys).toContain("yield");
+  });
 });
 
 describe("buildCoffeeIntakePrompt", () => {
