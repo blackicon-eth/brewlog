@@ -10,6 +10,7 @@ import { getCoffee, createCoffee, updateCoffee, deleteCoffee } from "../db/coffe
 import { makeId } from "../lib/ids";
 import { AppText, TextField, PillButton, NaturalLanguageIntake, Chevron, useAppModal } from "../components/ui";
 import { buildCoffeeIntakePrompt, parseCoffeeIntake, type CoffeeIntake } from "../qvac/intake";
+import { useQvac } from "../qvac/QvacProvider";
 import { colors, radii, shadows, spacing, screenTopGap } from "../design/tokens";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "CoffeeForm">;
@@ -20,8 +21,12 @@ export function CoffeeFormScreen() {
   const insets = useSafeAreaInsets();
   const { params } = useRoute<Rt>();
   const modal = useAppModal();
+  const { aiEnabled } = useQvac();
   const editingId = params?.coffeeId;
-  const [revealed, setRevealed] = useState(!!editingId);
+  // The freeform intake box only exists when the assistant is on — with it off, a new
+  // log must open straight on the manual form (the intake renders null and would leave
+  // the page empty forever).
+  const [revealed, setRevealed] = useState(!!editingId || !aiEnabled);
 
   const [roaster, setRoaster] = useState("");
   const [name, setName] = useState("");

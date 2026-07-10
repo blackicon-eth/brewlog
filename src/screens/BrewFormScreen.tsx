@@ -12,6 +12,7 @@ import { computeRatio, formatRatio } from "../lib/ratio";
 import { makeId } from "../lib/ids";
 import { AppText, TextField, ChipSelect, ScaleSelect, PillButton, NaturalLanguageIntake, Chevron, useAppModal, type ChipOption } from "../components/ui";
 import { buildBrewIntakePrompt, parseBrewIntake, type BrewIntake } from "../qvac/intake";
+import { useQvac } from "../qvac/QvacProvider";
 import { METHODS, methodSpec, isBrewMethodId, type BrewMethodId, type ProcessFieldId } from "../lib/brewMethods";
 import { colors, spacing, screenTopGap } from "../design/tokens";
 
@@ -52,8 +53,12 @@ export function BrewFormScreen() {
   const insets = useSafeAreaInsets();
   const { params } = useRoute<Rt>();
   const modal = useAppModal();
+  const { aiEnabled } = useQvac();
   const editingId = params.brewId;
-  const [revealed, setRevealed] = useState(!!editingId);
+  // The freeform intake box only exists when the assistant is on — with it off, a new
+  // log must open straight on the manual form (the intake renders null and would leave
+  // the page empty forever).
+  const [revealed, setRevealed] = useState(!!editingId || !aiEnabled);
 
   const [dose, setDose] = useState(""); const [water, setWater] = useState("");
   const [grind, setGrind] = useState(""); const [temp, setTemp] = useState("");
