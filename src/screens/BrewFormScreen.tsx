@@ -142,7 +142,8 @@ export function BrewFormScreen() {
   async function onSave() {
     const doseG = num(dose); const waterG = num(water);
     if (doseG == null || waterG == null || doseG <= 0 || waterG <= 0) {
-      modal.alert("Missing details", "Dose and water are required and must be greater than 0."); return;
+      const second = method === "espresso" ? "yield" : "water";
+      modal.alert("Missing details", `Dose and ${second} are required and must be greater than 0.`); return;
     }
     try {
       const db = await getDb();
