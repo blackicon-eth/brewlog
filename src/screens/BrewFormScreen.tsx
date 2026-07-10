@@ -5,12 +5,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/types";
+import type { Brew } from "../models/types";
 import { getDb } from "../db/database";
-import { getBrew, createBrew, updateBrew, deleteBrew } from "../db/brews";
+import { getBrew, createBrew, updateBrew, deleteBrew, getLatestBrew } from "../db/brews";
 import { computeRatio, formatRatio } from "../lib/ratio";
 import { makeId } from "../lib/ids";
 import { AppText, TextField, ChipSelect, ScaleSelect, PillButton, NaturalLanguageIntake, Chevron, useAppModal, type ChipOption } from "../components/ui";
 import { buildBrewIntakePrompt, parseBrewIntake, type BrewIntake } from "../qvac/intake";
+import { METHODS, methodSpec, isBrewMethodId, type BrewMethodId, type ProcessFieldId } from "../lib/brewMethods";
 import { colors, spacing, screenTopGap } from "../design/tokens";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "BrewForm">;
@@ -23,6 +25,11 @@ const DRIPPERS: ChipOption[] = [{ label: "V60", value: "V60" }];
 const FILTERS: ChipOption[] = [
   { label: "White", value: "white" },
   { label: "Unbleached", value: "unbleached" },
+];
+const METHOD_CHIPS: ChipOption[] = METHODS.map((m) => ({ label: m.label, value: m.id }));
+const PREHEATS: ChipOption[] = [{ label: "Yes", value: "yes" }, { label: "No", value: "no" }];
+const HEATS: ChipOption[] = [
+  { label: "Low", value: "low" }, { label: "Medium", value: "medium" }, { label: "High", value: "high" },
 ];
 const TASTES = [
   { label: "Acidity", key: "acidity" },
@@ -54,11 +61,15 @@ export function BrewFormScreen() {
   const [dripper, setDripper] = useState("V60");
   const [pours, setPours] = useState(""); const [pourInterval, setPourInterval] = useState("");
   const [totalTime, setTotalTime] = useState(""); const [filterType, setFilterType] = useState("");
+  const [method, setMethod] = useState<BrewMethodId>("v60");
+  const [preheat, setPreheat] = useState(""); // "" | "yes" | "no"
+  const [heat, setHeat] = useState("");       // "" | "low" | "medium" | "high"
   const [taste, setTaste] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState("");
   const [createdAt, setCreatedAt] = useState<number | null>(null);
   const [brewedAt, setBrewedAt] = useState<number | null>(null);
 
+  const spec = methodSpec(method);
   const setTasteKey = (key: string) => (v: string) => setTaste((t) => ({ ...t, [key]: v }));
 
   useEffect(() => {
@@ -78,6 +89,9 @@ export function BrewFormScreen() {
         setPourInterval(b.pourIntervalS != null ? String(b.pourIntervalS) : "");
         setTotalTime(b.totalTimeS != null ? String(b.totalTimeS) : "");
         setFilterType(b.filterType ?? "");
+        setMethod(b.method);
+        setPreheat(b.preheat == null ? "" : b.preheat ? "yes" : "no");
+        setHeat(b.heat ?? "");
         setTaste({
           acidity: b.acidity != null ? String(b.acidity) : "",
           sweetness: b.sweetness != null ? String(b.sweetness) : "",
@@ -94,7 +108,22 @@ export function BrewFormScreen() {
     })();
   }, [editingId]);
 
+  // New logs default to how this coffee was last brewed. Silent fallback to V60 —
+  // a failed lookup shouldn't block the form.
+  useEffect(() => {
+    if (editingId) return;
+    let active = true;
+    (async () => {
+      try {
+        const last = await getLatestBrew(await getDb(), params.coffeeId);
+        if (active && last) setMethod(last.method);
+      } catch { /* keep v60 */ }
+    })();
+    return () => { active = false; };
+  }, [editingId, params.coffeeId]);
+
   function applyParsed(p: BrewIntake) {
+    if (p.method) setMethod(p.method);
     if (p.doseG != null) setDose(String(p.doseG));
     if (p.waterG != null) setWater(String(p.waterG));
     if (p.grind) setGrind(p.grind);
@@ -105,6 +134,8 @@ export function BrewFormScreen() {
     if (p.totalTimeS != null) setTotalTime(String(p.totalTimeS));
     if (p.filterType) setFilterType(p.filterType);
     if (p.notes) setNotes(p.notes);
+    if (p.preheat != null) setPreheat(p.preheat ? "yes" : "no");
+    if (p.heat) setHeat(p.heat);
     setRevealed(true);
   }
 
@@ -115,12 +146,21 @@ export function BrewFormScreen() {
     }
     try {
       const db = await getDb();
-      const brew = {
+      const has = (f: ProcessFieldId) => spec.process.includes(f);
+      const brew: Brew = {
         id: editingId ?? makeId(), coffeeId: params.coffeeId,
-        brewedAt: brewedAt ?? Date.now(), method: "v60" as const, doseG, waterG, ratio: computeRatio(doseG, waterG),
-        grind: grind.trim() || null, waterTempC: num(temp), dripper: dripper.trim() || null,
-        pours: int(pours), pourIntervalS: int(pourInterval), totalTimeS: int(totalTime),
-        filterType: filterType.trim() || null, tds: null, ey: null,
+        brewedAt: brewedAt ?? Date.now(), method,
+        doseG, waterG, ratio: computeRatio(doseG, waterG),
+        grind: grind.trim() || null,
+        waterTempC: spec.showTemp ? num(temp) : null,
+        dripper: has("dripper") ? dripper.trim() || null : null,
+        pours: has("pours") ? int(pours) : null,
+        pourIntervalS: has("pours") ? int(pourInterval) : null,
+        totalTimeS: int(totalTime),
+        filterType: has("filterType") ? filterType.trim() || null : null,
+        preheat: has("preheat") ? (preheat === "yes" ? true : preheat === "no" ? false : null) : null,
+        heat: has("heat") && (heat === "low" || heat === "medium" || heat === "high") ? heat : null,
+        tds: null, ey: null,
         acidity: int(taste.acidity ?? ""), sweetness: int(taste.sweetness ?? ""),
         bitterness: int(taste.bitterness ?? ""), body: int(taste.body ?? ""),
         clarity: int(taste.clarity ?? ""), rating: int(taste.rating ?? ""),
@@ -170,7 +210,7 @@ export function BrewFormScreen() {
         {!revealed ? (
           <NaturalLanguageIntake
             kicker="Describe your brew"
-            placeholder="15g in, 250g out, V60, 94°C, 3 pours about 30s apart, ~2:45 total. Bright and juicy."
+            placeholder="15g in, 250g out, V60, 94°C, 3 pours about 30s apart, ~2:45 total — or: 18g espresso, 36g out in 28s."
             buildPrompt={buildBrewIntakePrompt}
             parse={parseBrewIntake}
             onParsed={applyParsed}
@@ -181,25 +221,35 @@ export function BrewFormScreen() {
             <View style={styles.hero}>
               <AppText variant="labelSm">{editingId ? "Edit brew" : "Log brew"}</AppText>
               <AppText variant="headlineLg" style={styles.ratio}>{ratioPreview}</AppText>
-              <AppText variant="labelMd" style={styles.ratioCaption}>Ratio · dose to water</AppText>
+              <AppText variant="labelMd" style={styles.ratioCaption}>{`Ratio · ${spec.ratioNoun}`}</AppText>
             </View>
 
             <SectionHeader>Recipe</SectionHeader>
+            <ChipSelect label="Method" options={METHOD_CHIPS} value={method}
+              onChange={(v) => { if (isBrewMethodId(v)) setMethod(v); }} clearable={false} />
             <View style={styles.row}>
-              <TextField label="Dose (g)" value={dose} onChangeText={setDose} keyboardType="decimal-pad" placeholder="15" required style={styles.col} />
-              <TextField label="Water (g)" value={water} onChangeText={setWater} keyboardType="decimal-pad" placeholder="250" required style={styles.col} />
+              <TextField label="Dose (g)" value={dose} onChangeText={setDose} keyboardType="decimal-pad" placeholder={spec.dosePlaceholder} required style={styles.col} />
+              <TextField label={spec.waterLabel} value={water} onChangeText={setWater} keyboardType="decimal-pad" placeholder={spec.waterPlaceholder} required style={styles.col} />
             </View>
             <TextField label="Grind" value={grind} onChangeText={setGrind} placeholder="medium-fine / 18 clicks" autoCapitalize="none" />
-            <TextField label="Water temp (°C)" value={temp} onChangeText={setTemp} keyboardType="decimal-pad" placeholder="94" />
-            <ChipSelect label="Dripper" options={DRIPPERS} value={dripper} onChange={setDripper} clearable={false} />
+            {spec.showTemp ? (
+              <TextField label="Water temp (°C)" value={temp} onChangeText={setTemp} keyboardType="decimal-pad" placeholder="94" />
+            ) : null}
 
             <SectionHeader>Process</SectionHeader>
-            <View style={styles.row}>
-              <TextField label="# Pours" value={pours} onChangeText={setPours} keyboardType="numeric" placeholder="3" style={styles.col} />
-              <TextField label="Interval (s)" value={pourInterval} onChangeText={setPourInterval} keyboardType="numeric" placeholder="30" style={styles.col} />
-              <TextField label="Total (s)" value={totalTime} onChangeText={setTotalTime} keyboardType="numeric" placeholder="165" style={styles.col} />
-            </View>
-            <ChipSelect label="Filter" options={FILTERS} value={filterType} onChange={setFilterType} />
+            {spec.process.map((f) => {
+              if (f === "dripper") return <ChipSelect key={f} label="Dripper" options={DRIPPERS} value={dripper} onChange={setDripper} clearable={false} />;
+              if (f === "filterType") return <ChipSelect key={f} label="Filter" options={FILTERS} value={filterType} onChange={setFilterType} />;
+              if (f === "pours") return (
+                <View key={f} style={styles.row}>
+                  <TextField label="# Pours" value={pours} onChangeText={setPours} keyboardType="numeric" placeholder="3" style={styles.col} />
+                  <TextField label="Interval (s)" value={pourInterval} onChangeText={setPourInterval} keyboardType="numeric" placeholder="30" style={styles.col} />
+                </View>
+              );
+              if (f === "preheat") return <ChipSelect key={f} label="Preheat" options={PREHEATS} value={preheat} onChange={setPreheat} />;
+              if (f === "heat") return <ChipSelect key={f} label="Heat" options={HEATS} value={heat} onChange={setHeat} />;
+              return <TextField key={f} label={spec.timeLabel} value={totalTime} onChangeText={setTotalTime} keyboardType="numeric" placeholder={spec.timePlaceholder} />;
+            })}
 
             <SectionHeader>Taste</SectionHeader>
             <View style={styles.taste}>
