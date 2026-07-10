@@ -10,6 +10,7 @@ import { listAllBrews, countAllBrews, type BrewWithCoffee } from "../db/brews";
 import { onLedgerReplaced } from "../lib/ledgerEvents";
 import { formatRatio } from "../lib/ratio";
 import { formatSeconds, formatBrewTime, groupBrewsByDay } from "../lib/brewFormat";
+import { methodSpec } from "../lib/brewMethods";
 import { AppText, BrewListRow, useAppModal } from "../components/ui";
 import { colors, spacing, screenTopGap } from "../design/tokens";
 
@@ -25,6 +26,7 @@ const truncate = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1).
 
 function brewMeta(b: BrewWithCoffee): string {
   return [
+    methodSpec(b.method).shortLabel,
     b.grind ? truncate(b.grind, GRIND_MAX) : null,
     b.waterTempC != null ? `${b.waterTempC}°C` : null,
     b.totalTimeS != null ? formatSeconds(b.totalTimeS) : null,

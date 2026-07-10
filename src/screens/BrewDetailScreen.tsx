@@ -10,6 +10,7 @@ import { getBrew } from "../db/brews";
 import type { Brew } from "../models/types";
 import { formatRatio } from "../lib/ratio";
 import { formatSeconds, formatBrewDate, formatBrewTime } from "../lib/brewFormat";
+import { methodSpec, type ProcessFieldId } from "../lib/brewMethods";
 import { AppText, PillButton, RatingChip, Chevron, useAppModal } from "../components/ui";
 import { useAdvisorGate } from "../hooks/useAdvisorGate";
 import { colors, fonts, spacing, screenTopGap } from "../design/tokens";
@@ -75,20 +76,26 @@ export function BrewDetailScreen() {
   }, [params.brewId, nav, modal]);
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
+  const spec = methodSpec(brew?.method);
+  const has = (f: ProcessFieldId) => spec.process.includes(f);
+
   const recipeRows: [string, string][] = brew
     ? ([
+        ["Method", spec.label],
         ["Grind", brew.grind ?? null],
-        ["Water temp", brew.waterTempC != null ? `${brew.waterTempC} °C` : null],
-        ["Dripper", brew.dripper ?? null],
-        ["Filter", brew.filterType ? cap(brew.filterType) : null],
+        ["Water temp", spec.showTemp && brew.waterTempC != null ? `${brew.waterTempC} °C` : null],
+        ["Dripper", has("dripper") ? brew.dripper ?? null : null],
+        ["Filter", has("filterType") && brew.filterType ? cap(brew.filterType) : null],
       ].filter(([, v]) => v) as [string, string][])
     : [];
 
   const processRows: [string, string][] = brew
     ? ([
-        ["Pours", brew.pours != null ? String(brew.pours) : null],
-        ["Pour interval", brew.pourIntervalS != null ? `${brew.pourIntervalS} s` : null],
-        ["Total time", brew.totalTimeS != null ? formatSeconds(brew.totalTimeS) : null],
+        ["Pours", has("pours") && brew.pours != null ? String(brew.pours) : null],
+        ["Pour interval", has("pours") && brew.pourIntervalS != null ? `${brew.pourIntervalS} s` : null],
+        ["Preheat", has("preheat") && brew.preheat != null ? (brew.preheat ? "Yes" : "No") : null],
+        ["Heat", has("heat") && brew.heat ? cap(brew.heat) : null],
+        [spec.timeDetailLabel, brew.totalTimeS != null ? formatSeconds(brew.totalTimeS) : null],
       ].filter(([, v]) => v) as [string, string][])
     : [];
 
@@ -130,7 +137,7 @@ export function BrewDetailScreen() {
             <View style={styles.heroInfo}>
               <AppText variant="labelSm">{`${formatBrewDate(brew.brewedAt)} · ${formatBrewTime(brew.brewedAt)}`}</AppText>
               <AppText variant="headlineLg" style={styles.recipe}>{`${brew.doseG}g : ${brew.waterG}g`}</AppText>
-              <AppText variant="labelMd" style={styles.ratioCaption}>{`${formatRatio(brew.ratio)} · dose to water`}</AppText>
+              <AppText variant="labelMd" style={styles.ratioCaption}>{`${formatRatio(brew.ratio)} · ${spec.ratioNoun}`}</AppText>
             </View>
             {brew.rating != null ? <RatingChip value={brew.rating} size="lg" /> : null}
           </View>
