@@ -1,5 +1,6 @@
 import type { Coffee, Brew } from "../models/types";
 import { formatBrewsTable, formatBrewDetail, daysOffRoast } from "../lib/brewFormat";
+import { methodSpec, type BrewMethodId } from "../lib/brewMethods";
 import { RECENT_BREWS_CAP, BEST_RECIPE_BREWS_CAP, SYSTEM_PROMPT, CHAT_SYSTEM_PROMPT, CHAT_BREVITY_HINT } from "./promptConfig";
 
 export type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
@@ -38,36 +39,44 @@ export function coffeeHeader(coffee: Coffee, now: number = Date.now()): string {
 export function buildDiagnosePrompt(
   coffee: Coffee, selected: Brew, recent: Brew[], now: number = Date.now()
 ): ChatMessage[] {
+  const spec = methodSpec(selected.method);
   const capped = recent.slice(0, RECENT_BREWS_CAP);
   const user = [
     `Coffee: ${coffeeHeader(coffee, now)}`,
     "",
-    "My recent pour-over brews of this coffee (most recent first):",
+    `My recent ${spec.noun} brews of this coffee (most recent first):`,
     formatBrewsTable(capped),
     "",
     "The brew I just made and want to improve:",
     formatBrewDetail(selected),
     "",
-    "How should I adjust my next brew of this coffee to make it taste better? " +
-      "Give a short ordered list of specific changes (grind, ratio, water temperature, number of " +
-      "pours, pour interval). One brief reason each.",
+    `How should I adjust my next ${spec.noun} brew of this coffee to make it taste better? ` +
+      `Give a short ordered list of specific changes (${spec.adjustables}). One brief reason each.`,
   ].join("\n");
   return [{ role: "system", content: SYSTEM_PROMPT }, { role: "user", content: user }];
 }
 
 export function buildBestRecipePrompt(
-  coffee: Coffee, brews: Brew[], now: number = Date.now()
+  coffee: Coffee, brews: Brew[], method: BrewMethodId = "v60", now: number = Date.now()
 ): ChatMessage[] {
+  const spec = methodSpec(method);
   const capped = brews.slice(0, BEST_RECIPE_BREWS_CAP);
-  const user = [
-    `Coffee: ${coffeeHeader(coffee, now)}`,
-    "",
-    "My brews of this coffee (most recent first), with parameters, tasting notes (1-5) and overall rating:",
-    formatBrewsTable(capped),
-    "",
-    "Based on these results, what is the best recipe for this coffee? Specify dose, ratio, grind, " +
-      "water temperature, number of pours, pour interval and total time. Briefly justify it and " +
-      "reference which brews above support your choice.",
-  ].join("\n");
+  const user = capped.length === 0
+    ? [
+        `Coffee: ${coffeeHeader(coffee, now)}`,
+        "",
+        `I haven't logged any ${spec.noun} brews of this coffee yet. Based on the coffee's ` +
+          `characteristics, suggest a good starting ${spec.noun} recipe. Specify dose, ratio and ` +
+          `${spec.adjustables}. Briefly justify it.`,
+      ].join("\n")
+    : [
+        `Coffee: ${coffeeHeader(coffee, now)}`,
+        "",
+        `My ${spec.noun} brews of this coffee (most recent first), with parameters, tasting notes (1-5) and overall rating:`,
+        formatBrewsTable(capped),
+        "",
+        `Based on these results, what is the best ${spec.noun} recipe for this coffee? Specify dose, ratio and ` +
+          `${spec.adjustables}. Briefly justify it and reference which brews above support your choice.`,
+      ].join("\n");
   return [{ role: "system", content: SYSTEM_PROMPT }, { role: "user", content: user }];
 }

@@ -1,5 +1,5 @@
 import { buildDiagnosePrompt, buildBestRecipePrompt, coffeeHeader, buildChatHistory } from "../advisor";
-import { RECENT_BREWS_CAP, BEST_RECIPE_BREWS_CAP, CHAT_SYSTEM_PROMPT, CHAT_BREVITY_HINT } from "../promptConfig";
+import { RECENT_BREWS_CAP, BEST_RECIPE_BREWS_CAP, SYSTEM_PROMPT, CHAT_SYSTEM_PROMPT, CHAT_BREVITY_HINT } from "../promptConfig";
 import type { Brew, Coffee } from "../../models/types";
 
 const coffee: Coffee = {
@@ -35,7 +35,7 @@ describe("buildDiagnosePrompt", () => {
   it("asks about the NEXT brew and includes the coffee header", () => {
     const msgs = buildDiagnosePrompt(coffee, brew(), [brew()], NOW);
     const user = msgs[1].content;
-    expect(user).toContain("next brew");
+    expect(user).toContain("adjust my next");
     expect(user).toContain("Sey");
   });
   it(`caps recent brews at ${RECENT_BREWS_CAP}`, () => {
@@ -44,14 +44,22 @@ describe("buildDiagnosePrompt", () => {
     const rows = user.split("\n").filter((l) => /^\d+\)/.test(l.trim()));
     expect(rows.length).toBe(RECENT_BREWS_CAP);
   });
+  it("diagnose speaks the selected brew's method", () => {
+    const msgs = buildDiagnosePrompt(coffee, { ...brew(), method: "moka" }, [], NOW);
+    const user = msgs[1].content;
+    expect(user).toContain("My recent moka pot brews of this coffee");
+    expect(user).toContain("adjust my next moka pot brew");
+    expect(user).toContain("(grind, dose, water preheating, heat level)");
+  });
 });
 
 describe("buildBestRecipePrompt", () => {
   it("asks for the best recipe and includes all brews' ratios", () => {
-    const msgs = buildBestRecipePrompt(coffee, [brew(), brew({ id: "b2", ratio: 15 })], NOW);
+    const msgs = buildBestRecipePrompt(coffee, [brew(), brew({ id: "b2", ratio: 15 })], "v60", NOW);
     expect(msgs).toHaveLength(2);
     const user = msgs[1].content;
-    expect(user.toLowerCase()).toContain("best recipe");
+    expect(user).toContain("best");
+    expect(user).toContain("recipe");
     expect(user).toContain("1:16.7");
     expect(user).toContain("1:15.0");
   });
@@ -59,9 +67,23 @@ describe("buildBestRecipePrompt", () => {
     const many = Array.from({ length: 30 }, (_, i) =>
       brew({ id: `b${i}`, ratio: 15 + i * 0.1 })
     );
-    const user = buildBestRecipePrompt(coffee, many, NOW)[1].content;
+    const user = buildBestRecipePrompt(coffee, many, "v60", NOW)[1].content;
     const rows = user.split("\n").filter((l) => /^\d+\)/.test(l.trim()));
     expect(rows.length).toBe(BEST_RECIPE_BREWS_CAP);
+  });
+  it("best recipe targets the chosen method", () => {
+    const msgs = buildBestRecipePrompt(coffee, [{ ...brew(), method: "espresso" }], "espresso", NOW);
+    const user = msgs[1].content;
+    expect(user).toContain("My espresso brews of this coffee");
+    expect(user).toContain("best espresso recipe");
+    expect(user).toContain("grind, dose, yield, shot time, water temperature");
+  });
+  it("best recipe estimates when no brews of the method exist", () => {
+    const msgs = buildBestRecipePrompt(coffee, [], "french_press", NOW);
+    const user = msgs[1].content;
+    expect(user).toContain("I haven't logged any French press brews of this coffee yet");
+    expect(user).toContain("suggest a good starting French press recipe");
+    expect(user).not.toContain("most recent first");
   });
 });
 
@@ -92,5 +114,16 @@ describe("buildChatHistory", () => {
   it("honours a custom system prompt", () => {
     const msgs = buildChatHistory([{ role: "user", content: "hi" }], "SYS");
     expect(msgs[0]).toEqual({ role: "system", content: "SYS" });
+  });
+});
+
+describe("system prompts", () => {
+  it("the system prompts cover all four methods", () => {
+    for (const s of [SYSTEM_PROMPT, CHAT_SYSTEM_PROMPT]) {
+      expect(s).toContain("pour-over");
+      expect(s).toContain("French press");
+      expect(s).toContain("moka");
+      expect(s).toContain("espresso");
+    }
   });
 });
