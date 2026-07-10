@@ -14,7 +14,7 @@ const coffee = (over: Partial<Coffee> = {}): Coffee => ({
 });
 
 const brew = (over: Partial<Brew> = {}): Brew => ({
-  id: "b1", coffeeId: "c1", brewedAt: 1720000001000, method: "v60" as const, doseG: 15, waterG: 250, ratio: 16.7,
+  id: "b1", coffeeId: "c1", brewedAt: 1720000001000, method: "filter" as const, doseG: 15, waterG: 250, ratio: 16.7,
   grind: "20 clicks", waterTempC: 94, dripper: "V60", pours: 3, pourIntervalS: 45,
   totalTimeS: 180, filterType: "paper", preheat: null, heat: null, tds: null, ey: null, acidity: 4, sweetness: 4,
   bitterness: 2, body: 3, clarity: 4, rating: 8, notes: null, createdAt: 1720000001000,
@@ -137,7 +137,7 @@ describe("parseLedgerFile rejections", () => {
   it("accepts optionals that are absent, null, or valid", () => {
     const sparse = { id: "c9", roaster: "R", name: "N", createdAt: 5 };
     const sparseBrew = {
-      id: "b9", coffeeId: "c9", brewedAt: 1, method: "v60", doseG: 15, waterG: 250, ratio: 16.7, createdAt: 1,
+      id: "b9", coffeeId: "c9", brewedAt: 1, method: "filter", doseG: 15, waterG: 250, ratio: 16.7, createdAt: 1,
     };
     const res = parseLedgerFile(validFile({ coffees: [sparse], brews: [sparseBrew] }));
     expect(res.ok).toBe(true);
@@ -165,7 +165,7 @@ describe("ledger v2 (methods)", () => {
     }
   });
 
-  it("accepts a version-1 file and defaults its brews to v60", () => {
+  it("accepts a version-1 file and defaults its brews to filter", () => {
     const parsed = JSON.parse(
       serializeLedger([coffee()], [brew({ method: "moka" as const, preheat: true, heat: "high" as const })], "2026-07-09T12:00:00.000Z")
     );
@@ -179,11 +179,21 @@ describe("ledger v2 (methods)", () => {
     expect(res.ok).toBe(true);
     if (res.ok) {
       for (const b of res.payload.brews) {
-        expect(b.method).toBe("v60");
+        expect(b.method).toBe("filter");
         expect(b.preheat).toBeNull();
         expect(b.heat).toBeNull();
       }
     }
+  });
+
+  it("accepts the pre-rename v60 id in a v2 file and normalizes it to filter", () => {
+    const parsed = JSON.parse(
+      serializeLedger([coffee()], [brew()], "2026-07-09T12:00:00.000Z")
+    );
+    for (const b of parsed.brews) b.method = "v60";
+    const res = parseLedgerFile(JSON.stringify(parsed));
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.payload.brews[0].method).toBe("filter");
   });
 
   it("rejects version 3 as newer", () => {

@@ -8,7 +8,7 @@ import { colors, fonts, spacing } from "../design/tokens";
 // Which method should "Best recipe" dial in? Defaults to the most-brewed method for
 // this coffee (ties → shelf order; nothing logged → V60).
 export function defaultPickerMethod(brews: Brew[]): BrewMethodId {
-  let best: BrewMethodId = "v60";
+  let best: BrewMethodId = "filter";
   let bestCount = -1;
   for (const m of METHODS) {
     const count = brews.filter((b) => b.method === m.id).length;
@@ -23,7 +23,7 @@ export function MethodPickerModal({ visible, brews, onCancel, onConfirm }: {
   onCancel: () => void;
   onConfirm: (method: BrewMethodId) => void;
 }) {
-  const [selected, setSelected] = useState<BrewMethodId>("v60");
+  const [selected, setSelected] = useState<BrewMethodId>("filter");
   useEffect(() => {
     if (visible) setSelected(defaultPickerMethod(brews));
   }, [visible, brews]);

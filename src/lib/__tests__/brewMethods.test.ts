@@ -2,19 +2,20 @@ import { METHODS, METHODS_BY_ID, isBrewMethodId, methodSpec } from "../brewMetho
 
 describe("brewMethods registry", () => {
   it("contains exactly the four methods in shelf order", () => {
-    expect(METHODS.map((m) => m.id)).toEqual(["v60", "french_press", "moka", "espresso"]);
+    expect(METHODS.map((m) => m.id)).toEqual(["filter", "french_press", "moka", "espresso"]);
   });
 
-  it("resolves each id and falls back to v60 for unknown/absent", () => {
+  it("resolves each id and falls back to filter for unknown/absent", () => {
     for (const m of METHODS) expect(methodSpec(m.id)).toBe(METHODS_BY_ID[m.id]);
-    expect(methodSpec("aeropress").id).toBe("v60");
-    expect(methodSpec(null).id).toBe("v60");
-    expect(methodSpec(undefined).id).toBe("v60");
+    expect(methodSpec("aeropress").id).toBe("filter");
+    expect(methodSpec(null).id).toBe("filter");
+    expect(methodSpec(undefined).id).toBe("filter");
+    expect(methodSpec("v60").id).toBe("filter"); // pre-rename rows read as filter
   });
 
   it("type-guards method ids", () => {
     expect(isBrewMethodId("moka")).toBe(true);
-    expect(isBrewMethodId("V60")).toBe(false);
+    expect(isBrewMethodId("v60")).toBe(false); // retired id
     expect(isBrewMethodId(3)).toBe(false);
   });
 
@@ -34,8 +35,8 @@ describe("brewMethods registry", () => {
     expect(METHODS_BY_ID.espresso.ratioNoun).toBe("dose to yield");
   });
 
-  it("v60's process matches today's form; moka carries preheat and heat", () => {
-    expect(METHODS_BY_ID.v60.process).toEqual(["filterType", "pours", "time"]);
+  it("filter's process matches today's form; moka carries preheat and heat", () => {
+    expect(METHODS_BY_ID.filter.process).toEqual(["filterType", "pours", "time"]);
     expect(METHODS_BY_ID.moka.process).toEqual(["preheat", "heat"]); // no time: tracks pot size, not technique
     expect(METHODS_BY_ID.french_press.process).toEqual(["time"]);
     expect(METHODS_BY_ID.espresso.process).toEqual(["time"]);

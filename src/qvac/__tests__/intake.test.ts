@@ -29,7 +29,7 @@ describe("buildBrewIntakePrompt", () => {
     expect(m[1].role).toBe("user");
     expect(m[1].content).toContain("15g 250g v60");
     expect(m[0].content.toLowerCase()).toContain("white");
-    expect(m[0].content).toContain("V60");
+    expect(m[0].content).toContain('"filter"');
   });
 });
 
@@ -71,7 +71,8 @@ describe("parseBrewIntake", () => {
     expect(parseBrewIntake('{"method":"moka"}').method).toBe("moka");
     expect(parseBrewIntake('{"method":"french press"}').method).toBe("french_press");
     expect(parseBrewIntake('{"method":"frenchpress"}').method).toBe("french_press");
-    expect(parseBrewIntake('{"method":"V60"}').method).toBe("v60");
+    expect(parseBrewIntake('{"method":"V60"}').method).toBe("filter"); // legacy alias
+    expect(parseBrewIntake('{"method":"filter"}').method).toBe("filter");
     expect(parseBrewIntake('{"method":"aeropress"}').method).toBeUndefined();
   });
   it("parses preheat only when strictly boolean", () => {

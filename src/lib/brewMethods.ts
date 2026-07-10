@@ -2,7 +2,7 @@
 // Single source of truth for the form, detail rows, list meta, AI prompts, and NL
 // intake — same registry pattern as the tools shelf. Pure module: no React, no Expo.
 
-export type BrewMethodId = "v60" | "french_press" | "moka" | "espresso";
+export type BrewMethodId = "filter" | "french_press" | "moka" | "espresso";
 export type MokaHeat = "low" | "medium" | "high";
 
 // Which blocks the form's Process section renders, in order. "pours" renders the
@@ -29,7 +29,7 @@ export type MethodSpec = {
 
 export const METHODS: MethodSpec[] = [
   {
-    id: "v60", label: "Filter", shortLabel: "Filter",
+    id: "filter", label: "Filter", shortLabel: "Filter",
     waterLabel: "Water (g)", waterPlaceholder: "250", dosePlaceholder: "15",
     showTemp: true, timeLabel: "Total (s)", timeDetailLabel: "Total time", timePlaceholder: "165",
     ratioNoun: "dose to water",
@@ -72,11 +72,12 @@ export const METHODS_BY_ID = Object.fromEntries(
 ) as Record<BrewMethodId, MethodSpec>;
 
 export function isBrewMethodId(v: unknown): v is BrewMethodId {
-  return v === "v60" || v === "french_press" || v === "moka" || v === "espresso";
+  return v === "filter" || v === "french_press" || v === "moka" || v === "espresso";
 }
 
-// Unknown or absent ids resolve to the v60 spec — every pre-method brew is a V60
+// Unknown or absent ids resolve to the filter spec — pre-rename rows/files stored
+// "v60", and any unrecognized method is safest read as a plain filter brew
 // (mirrors resolveModel's fallback in aiModels.ts).
 export function methodSpec(id: string | null | undefined): MethodSpec {
-  return isBrewMethodId(id) ? METHODS_BY_ID[id] : METHODS_BY_ID.v60;
+  return isBrewMethodId(id) ? METHODS_BY_ID[id] : METHODS_BY_ID.filter;
 }

@@ -58,7 +58,7 @@ export type BrewIntake = {
 };
 
 const BREW_KEYS_DOC =
-  'method ("v60", "french_press", "moka" or "espresso"), doseG, waterG, grind, waterTempC, ' +
+  'method ("filter", "french_press", "moka" or "espresso"), doseG, waterG, grind, waterTempC, ' +
   'pours, pourIntervalS, totalTimeS, filterType ("white" or "unbleached"), ' +
   'preheat (true/false, moka only), heat ("low", "medium" or "high", moka only), notes';
 
@@ -67,7 +67,7 @@ export function buildBrewIntakePrompt(text: string): ChatMessage[] {
     "You convert a coffee lover's freeform description of a coffee brew into JSON.",
     `Return ONLY a JSON object with these keys: ${BREW_KEYS_DOC}.`,
     "Use null for anything not stated. Do not invent values.",
-    'V60 and other paper-filter drippers count as method "v60". filterType may only be "white" or "unbleached".',
+    'V60 and other paper-filter drippers count as method "filter". filterType may only be "white" or "unbleached".',
     "doseG, waterG, waterTempC, pours, pourIntervalS, totalTimeS are numbers.",
     "For espresso, waterG is the beverage yield out in grams.",
     "notes holds any leftover taste/descriptive prose. Do not rate the taste.",
@@ -80,11 +80,11 @@ export function parseBrewIntake(raw: string): BrewIntake {
   if (!o) return {};
   const out: BrewIntake = {};
   const methodRaw = str(o.method)?.toLowerCase().replace(/[\s-]+/g, "_");
-  // Common labels the model may echo back map onto the stored ids ("v60" stays the id
-  // for all paper-filter brews even though the UI now says "Filter").
+  // Common labels the model may echo back map onto the stored ids ("v60" is the
+  // pre-rename id for filter brews and still shows up in old exports and habits).
   const method =
     methodRaw === "frenchpress" ? "french_press" :
-      methodRaw === "filter" || methodRaw === "pour_over" || methodRaw === "pourover" ? "v60" :
+      methodRaw === "v60" || methodRaw === "pour_over" || methodRaw === "pourover" ? "filter" :
         methodRaw;
   if (isBrewMethodId(method)) out.method = method;
   const dose = numFinite(o.doseG); if (dose != null && dose > 0) out.doseG = dose;

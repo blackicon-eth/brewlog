@@ -59,7 +59,7 @@ export function BrewFormScreen() {
   const [grind, setGrind] = useState(""); const [temp, setTemp] = useState("");
   const [pours, setPours] = useState(""); const [pourInterval, setPourInterval] = useState("");
   const [totalTime, setTotalTime] = useState(""); const [filterType, setFilterType] = useState("");
-  const [method, setMethod] = useState<BrewMethodId>("v60");
+  const [method, setMethod] = useState<BrewMethodId>("filter");
   const [preheat, setPreheat] = useState(""); // "" | "yes" | "no"
   const [heat, setHeat] = useState("");       // "" | "low" | "medium" | "high"
   const [taste, setTaste] = useState<Record<string, string>>({});
@@ -105,7 +105,7 @@ export function BrewFormScreen() {
     })();
   }, [editingId]);
 
-  // New logs default to how this coffee was last brewed. Silent fallback to V60 —
+  // New logs default to how this coffee was last brewed. Silent fallback to Filter —
   // a failed lookup shouldn't block the form.
   useEffect(() => {
     if (editingId) return;
@@ -114,7 +114,7 @@ export function BrewFormScreen() {
       try {
         const last = await getLatestBrew(await getDb(), params.coffeeId);
         if (active && last) setMethod(last.method);
-      } catch { /* keep v60 */ }
+      } catch { /* keep filter */ }
     })();
     return () => { active = false; };
   }, [editingId, params.coffeeId]);

@@ -133,7 +133,9 @@ export function parseLedgerFile(text: string): LedgerParseResult {
       if (!optionalOk(b[field], "string")) return { ok: false, reason: `${label} has an invalid ${field}.` };
     }
     if (fileVersion >= 2) {
-      if (!isBrewMethodId(b.method)) {
+      // "v60" is the pre-rename id for filter brews — old v2 exports carry it, and
+      // brewOut normalizes it to "filter" on ingest.
+      if (!isBrewMethodId(b.method) && b.method !== "v60") {
         return { ok: false, reason: `${label} has an invalid method.` };
       }
       if (!(b.preheat === undefined || b.preheat === null || typeof b.preheat === "boolean")) {

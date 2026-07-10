@@ -57,7 +57,7 @@ export function buildDiagnosePrompt(
 }
 
 export function buildBestRecipePrompt(
-  coffee: Coffee, brews: Brew[], method: BrewMethodId = "v60", now: number = Date.now()
+  coffee: Coffee, brews: Brew[], method: BrewMethodId = "filter", now: number = Date.now()
 ): ChatMessage[] {
   const spec = methodSpec(method);
   const capped = brews.slice(0, BEST_RECIPE_BREWS_CAP);

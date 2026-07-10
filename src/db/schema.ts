@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS brews (
   id TEXT PRIMARY KEY NOT NULL,
   coffee_id TEXT NOT NULL REFERENCES coffees(id) ON DELETE CASCADE,
   brewed_at INTEGER NOT NULL,
-  method TEXT NOT NULL DEFAULT 'v60',
+  method TEXT NOT NULL DEFAULT 'filter',
   dose_g REAL NOT NULL,
   water_g REAL NOT NULL,
   ratio REAL NOT NULL,

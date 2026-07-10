@@ -14,7 +14,7 @@ async function open(): Promise<Db> {
   // are left in place on existing DBs — harmless, just no longer read or written.
   for (const col of [
     "pours INTEGER", "pour_interval_s INTEGER",
-    "method TEXT NOT NULL DEFAULT 'v60'", "preheat INTEGER", "heat TEXT",
+    "method TEXT NOT NULL DEFAULT 'filter'", "preheat INTEGER", "heat TEXT",
   ]) {
     try {
       await db.execAsync(`ALTER TABLE brews ADD COLUMN ${col};`);

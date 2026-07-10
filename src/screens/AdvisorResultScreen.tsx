@@ -109,7 +109,7 @@ export function AdvisorResultScreen() {
         const recent = brews.filter((b) => b.method === selected.method);
         history = buildDiagnosePrompt(coffee, selected, recent);
       } else {
-        const method = params.method ?? "v60";
+        const method = params.method ?? "filter";
         history = buildBestRecipePrompt(coffee, brews.filter((b) => b.method === method), method);
       }
 

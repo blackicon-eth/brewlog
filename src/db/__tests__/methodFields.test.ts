@@ -44,7 +44,7 @@ describe("method fields in the data layer", () => {
     const db = await makeTestDb();
     await createCoffee(db, coffee);
     expect(await getLatestBrew(db, "c1")).toBeNull();
-    await createBrew(db, { ...base, id: "old", brewedAt: 500, method: "v60" });
+    await createBrew(db, { ...base, id: "old", brewedAt: 500, method: "filter" });
     await createBrew(db, { ...base, id: "new", brewedAt: 2000, method: "espresso" });
     expect((await getLatestBrew(db, "c1"))?.method).toBe("espresso");
   });

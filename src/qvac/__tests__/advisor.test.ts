@@ -7,7 +7,7 @@ const coffee: Coffee = {
   roastLevel: "light", roastDate: "2026-06-10", notes: null, createdAt: 1,
 };
 const brew = (over: Partial<Brew> = {}): Brew => ({
-  id: "b1", coffeeId: "c1", brewedAt: 10, method: "v60" as const, doseG: 15, waterG: 250, ratio: 16.6667,
+  id: "b1", coffeeId: "c1", brewedAt: 10, method: "filter" as const, doseG: 15, waterG: 250, ratio: 16.6667,
   grind: "medium-fine", waterTempC: 94, dripper: "V60", pours: 3, pourIntervalS: 30,
   totalTimeS: 165, filterType: null, tds: null, ey: null,
   acidity: 4, sweetness: 3, bitterness: 2, body: 3, clarity: 4, rating: 4, notes: "sharp",
@@ -55,7 +55,7 @@ describe("buildDiagnosePrompt", () => {
 
 describe("buildBestRecipePrompt", () => {
   it("asks for the best recipe and includes all brews' ratios", () => {
-    const msgs = buildBestRecipePrompt(coffee, [brew(), brew({ id: "b2", ratio: 15 })], "v60", NOW);
+    const msgs = buildBestRecipePrompt(coffee, [brew(), brew({ id: "b2", ratio: 15 })], "filter", NOW);
     expect(msgs).toHaveLength(2);
     const user = msgs[1].content;
     expect(user).toContain("best");
@@ -67,7 +67,7 @@ describe("buildBestRecipePrompt", () => {
     const many = Array.from({ length: 30 }, (_, i) =>
       brew({ id: `b${i}`, ratio: 15 + i * 0.1 })
     );
-    const user = buildBestRecipePrompt(coffee, many, "v60", NOW)[1].content;
+    const user = buildBestRecipePrompt(coffee, many, "filter", NOW)[1].content;
     const rows = user.split("\n").filter((l) => /^\d+\)/.test(l.trim()));
     expect(rows.length).toBe(BEST_RECIPE_BREWS_CAP);
   });
