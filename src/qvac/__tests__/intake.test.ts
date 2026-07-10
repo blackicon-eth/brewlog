@@ -36,10 +36,10 @@ describe("buildBrewIntakePrompt", () => {
 describe("parseBrewIntake", () => {
   it("maps numbers and strings from a clean object", () => {
     const r = parseBrewIntake(
-      '{"doseG":15,"waterG":250,"grind":"medium-fine","waterTempC":94,"dripper":"V60","pours":3,"pourIntervalS":30,"totalTimeS":165,"filterType":"white","notes":"juicy"}'
+      '{"doseG":15,"waterG":250,"grind":"medium-fine","waterTempC":94,"pours":3,"pourIntervalS":30,"totalTimeS":165,"filterType":"white","notes":"juicy"}'
     );
     expect(r).toEqual({
-      doseG: 15, waterG: 250, grind: "medium-fine", waterTempC: 94, dripper: "V60",
+      doseG: 15, waterG: 250, grind: "medium-fine", waterTempC: 94,
       pours: 3, pourIntervalS: 30, totalTimeS: 165, filterType: "white", notes: "juicy",
     });
   });
@@ -60,9 +60,9 @@ describe("parseBrewIntake", () => {
     expect(parseBrewIntake('{"pours":2.6}').pours).toBe(3);
     expect(parseBrewIntake('{"pours":0}').pours).toBeUndefined();
   });
-  it("normalizes filterType/dripper case and drops invalid", () => {
-    expect(parseBrewIntake('{"filterType":"White","dripper":"v60"}')).toEqual({ filterType: "white", dripper: "V60" });
-    expect(parseBrewIntake('{"filterType":"brown","dripper":"Kalita"}')).toEqual({});
+  it("normalizes filterType case and drops invalid", () => {
+    expect(parseBrewIntake('{"filterType":"White"}')).toEqual({ filterType: "white" });
+    expect(parseBrewIntake('{"filterType":"brown","dripper":"Kalita"}')).toEqual({}); // dripper key retired: ignored
   });
   it("returns empty on garbage", () => {
     expect(parseBrewIntake("not json")).toEqual({});

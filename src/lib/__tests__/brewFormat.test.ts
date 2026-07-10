@@ -40,7 +40,7 @@ describe("formatBrewLine", () => {
   it("includes index, ratio, grind, temp, time, rating", () => {
     const line = formatBrewLine(base, 1);
     expect(line).toContain("1)");
-    expect(line).toContain("V60");
+    expect(line).toContain("Filter");
     expect(line).toContain("15g:250g");
     expect(line).toContain("1:16.7");
     expect(line).toContain("medium-fine");
@@ -58,7 +58,7 @@ describe("formatBrewLine", () => {
 
   it("labels a v60 line with its method", () => {
     expect(formatBrewLine(mk({ grind: "medium", waterTempC: 94, pours: 3, totalTimeS: 165 }), 1))
-      .toBe("1) V60 | 15g:250g (1:16.7) | grind medium | 94C | 3 pours | 2:45");
+      .toBe("1) Filter | 15g:250g (1:16.7) | grind medium | 94C | 3 pours | 2:45");
   });
 
   it("formats espresso as yield out with a shot time", () => {
@@ -95,7 +95,7 @@ describe("formatBrewDetail", () => {
   it("returns brew content without leading index prefix", () => {
     const detail = formatBrewDetail(base);
     expect(detail.startsWith("1) ")).toBe(false);
-    expect(detail.startsWith("V60 | ")).toBe(true);
+    expect(detail.startsWith("Filter | ")).toBe(true);
     expect(detail).toContain("1:16.7");
     expect(detail).toContain("15g:250g");
   });

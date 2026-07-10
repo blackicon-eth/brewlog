@@ -53,13 +53,13 @@ const intGe = (v: unknown, min: number): number | undefined => {
 export type BrewIntake = {
   method?: BrewMethodId;
   doseG?: number; waterG?: number; grind?: string; waterTempC?: number;
-  dripper?: "V60"; pours?: number; pourIntervalS?: number; totalTimeS?: number;
+  pours?: number; pourIntervalS?: number; totalTimeS?: number;
   filterType?: "white" | "unbleached"; preheat?: boolean; heat?: MokaHeat; notes?: string;
 };
 
 const BREW_KEYS_DOC =
   'method ("v60", "french_press", "moka" or "espresso"), doseG, waterG, grind, waterTempC, ' +
-  'dripper (only "V60"), pours, pourIntervalS, totalTimeS, filterType ("white" or "unbleached"), ' +
+  'pours, pourIntervalS, totalTimeS, filterType ("white" or "unbleached"), ' +
   'preheat (true/false, moka only), heat ("low", "medium" or "high", moka only), notes';
 
 export function buildBrewIntakePrompt(text: string): ChatMessage[] {
@@ -67,7 +67,7 @@ export function buildBrewIntakePrompt(text: string): ChatMessage[] {
     "You convert a coffee lover's freeform description of a coffee brew into JSON.",
     `Return ONLY a JSON object with these keys: ${BREW_KEYS_DOC}.`,
     "Use null for anything not stated. Do not invent values.",
-    'dripper may only be "V60". filterType may only be "white" or "unbleached".',
+    'V60 and other paper-filter drippers count as method "v60". filterType may only be "white" or "unbleached".',
     "doseG, waterG, waterTempC, pours, pourIntervalS, totalTimeS are numbers.",
     "For espresso, waterG is the beverage yield out in grams.",
     "notes holds any leftover taste/descriptive prose. Do not rate the taste.",
@@ -80,13 +80,17 @@ export function parseBrewIntake(raw: string): BrewIntake {
   if (!o) return {};
   const out: BrewIntake = {};
   const methodRaw = str(o.method)?.toLowerCase().replace(/[\s-]+/g, "_");
-  const method = methodRaw === "frenchpress" ? "french_press" : methodRaw;
+  // Common labels the model may echo back map onto the stored ids ("v60" stays the id
+  // for all paper-filter brews even though the UI now says "Filter").
+  const method =
+    methodRaw === "frenchpress" ? "french_press" :
+      methodRaw === "filter" || methodRaw === "pour_over" || methodRaw === "pourover" ? "v60" :
+        methodRaw;
   if (isBrewMethodId(method)) out.method = method;
   const dose = numFinite(o.doseG); if (dose != null && dose > 0) out.doseG = dose;
   const water = numFinite(o.waterG); if (water != null && water > 0) out.waterG = water;
   const grind = str(o.grind); if (grind) out.grind = grind;
   const temp = numFinite(o.waterTempC); if (temp != null) out.waterTempC = Math.min(100, Math.max(0, temp));
-  if (str(o.dripper)?.toLowerCase() === "v60") out.dripper = "V60";
   const pours = intGe(o.pours, 1); if (pours != null) out.pours = pours;
   const interval = intGe(o.pourIntervalS, 0); if (interval != null) out.pourIntervalS = interval;
   const total = intGe(o.totalTimeS, 0); if (total != null) out.totalTimeS = total;

@@ -24,7 +24,7 @@ describe("brewMethods registry", () => {
       expect(m.shortLabel.length).toBeGreaterThan(0);
       expect(m.noun.length).toBeGreaterThan(0);
       expect(m.adjustables.length).toBeGreaterThan(0);
-      expect(m.process).toContain("time");
+      expect(m.process.length).toBeGreaterThan(0);
     }
   });
 
@@ -35,8 +35,8 @@ describe("brewMethods registry", () => {
   });
 
   it("v60's process matches today's form; moka carries preheat and heat", () => {
-    expect(METHODS_BY_ID.v60.process).toEqual(["dripper", "filterType", "pours", "time"]);
-    expect(METHODS_BY_ID.moka.process).toEqual(["preheat", "heat", "time"]);
+    expect(METHODS_BY_ID.v60.process).toEqual(["filterType", "pours", "time"]);
+    expect(METHODS_BY_ID.moka.process).toEqual(["preheat", "heat"]); // no time: tracks pot size, not technique
     expect(METHODS_BY_ID.french_press.process).toEqual(["time"]);
     expect(METHODS_BY_ID.espresso.process).toEqual(["time"]);
   });

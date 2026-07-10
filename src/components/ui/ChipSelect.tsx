@@ -11,34 +11,42 @@ export type ChipSelectProps = {
   value: string;
   onChange: (value: string) => void;
   clearable?: boolean;
+  // Chips per row. Unset = all on one track; e.g. 2 folds four options into a 2×2 grid.
+  columns?: number;
   style?: ViewStyle;
 };
 
 // Segmented single-choice control in the Artisanal Brew Ledger style: equal-width pills
 // on a cream track, the active one filled action-blue. Empty string ("") means "no
 // selection"; when `clearable`, tapping the active pill clears it.
-export function ChipSelect({ label, options, value, onChange, clearable = true, style }: ChipSelectProps) {
+export function ChipSelect({ label, options, value, onChange, clearable = true, columns, style }: ChipSelectProps) {
+  const perRow = columns && columns > 0 ? columns : options.length;
+  const rows: ChipOption[][] = [];
+  for (let i = 0; i < options.length; i += perRow) rows.push(options.slice(i, i + perRow));
+
   return (
     <View style={[styles.wrap, style]}>
       <AppText variant="labelMd" style={styles.label}>{label}</AppText>
-      <View style={styles.track}>
-        {options.map((o) => {
-          const active = value === o.value;
-          return (
-            <Pressable
-              key={o.value}
-              accessibilityRole="button"
-              accessibilityState={{ selected: active }}
-              onPress={() => onChange(active && clearable ? "" : o.value)}
-              style={[styles.chip, active && styles.chipActive]}
-            >
-              <AppText variant="labelMd" style={active ? styles.chipTextActive : styles.chipText}>
-                {o.label}
-              </AppText>
-            </Pressable>
-          );
-        })}
-      </View>
+      {rows.map((row, r) => (
+        <View key={r} style={styles.track}>
+          {row.map((o) => {
+            const active = value === o.value;
+            return (
+              <Pressable
+                key={o.value}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                onPress={() => onChange(active && clearable ? "" : o.value)}
+                style={[styles.chip, active && styles.chipActive]}
+              >
+                <AppText variant="labelMd" style={active ? styles.chipTextActive : styles.chipText}>
+                  {o.label}
+                </AppText>
+              </Pressable>
+            );
+          })}
+        </View>
+      ))}
     </View>
   );
 }
@@ -61,6 +69,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
-  chipText: { color: colors.onSurfaceVariant, fontFamily: fonts.sansSemiBold },
-  chipTextActive: { color: colors.onPrimary, fontFamily: fonts.sansSemiBold },
+  chipText: { color: colors.onSurfaceVariant, fontFamily: fonts.sansSemiBold, textAlign: "center" },
+  chipTextActive: { color: colors.onPrimary, fontFamily: fonts.sansSemiBold, textAlign: "center" },
 });

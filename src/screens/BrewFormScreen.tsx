@@ -21,7 +21,6 @@ type Rt = RouteProp<RootStackParamList, "BrewForm">;
 const num = (s: string): number | null => { const n = parseFloat(s); return Number.isFinite(n) ? n : null; };
 const int = (s: string): number | null => { const n = parseInt(s, 10); return Number.isFinite(n) ? n : null; };
 
-const DRIPPERS: ChipOption[] = [{ label: "V60", value: "V60" }];
 const FILTERS: ChipOption[] = [
   { label: "White", value: "white" },
   { label: "Unbleached", value: "unbleached" },
@@ -58,7 +57,6 @@ export function BrewFormScreen() {
 
   const [dose, setDose] = useState(""); const [water, setWater] = useState("");
   const [grind, setGrind] = useState(""); const [temp, setTemp] = useState("");
-  const [dripper, setDripper] = useState("V60");
   const [pours, setPours] = useState(""); const [pourInterval, setPourInterval] = useState("");
   const [totalTime, setTotalTime] = useState(""); const [filterType, setFilterType] = useState("");
   const [method, setMethod] = useState<BrewMethodId>("v60");
@@ -84,7 +82,6 @@ export function BrewFormScreen() {
         }
         setDose(String(b.doseG)); setWater(String(b.waterG));
         setGrind(b.grind ?? ""); setTemp(b.waterTempC != null ? String(b.waterTempC) : "");
-        setDripper(b.dripper ?? "V60");
         setPours(b.pours != null ? String(b.pours) : "");
         setPourInterval(b.pourIntervalS != null ? String(b.pourIntervalS) : "");
         setTotalTime(b.totalTimeS != null ? String(b.totalTimeS) : "");
@@ -128,7 +125,6 @@ export function BrewFormScreen() {
     if (p.waterG != null) setWater(String(p.waterG));
     if (p.grind) setGrind(p.grind);
     if (p.waterTempC != null) setTemp(String(p.waterTempC));
-    if (p.dripper) setDripper(p.dripper);
     if (p.pours != null) setPours(String(p.pours));
     if (p.pourIntervalS != null) setPourInterval(String(p.pourIntervalS));
     if (p.totalTimeS != null) setTotalTime(String(p.totalTimeS));
@@ -154,10 +150,10 @@ export function BrewFormScreen() {
         doseG, waterG, ratio: computeRatio(doseG, waterG),
         grind: grind.trim() || null,
         waterTempC: spec.showTemp ? num(temp) : null,
-        dripper: has("dripper") ? dripper.trim() || null : null,
+        dripper: null, // retired input — legacy rows lose it on their next edit-save
         pours: has("pours") ? int(pours) : null,
         pourIntervalS: has("pours") ? int(pourInterval) : null,
-        totalTimeS: int(totalTime),
+        totalTimeS: has("time") ? int(totalTime) : null,
         filterType: has("filterType") ? filterType.trim() || null : null,
         preheat: has("preheat") ? (preheat === "yes" ? true : preheat === "no" ? false : null) : null,
         heat: has("heat") && (heat === "low" || heat === "medium" || heat === "high") ? heat : null,
@@ -226,7 +222,7 @@ export function BrewFormScreen() {
             </View>
 
             <SectionHeader>Recipe</SectionHeader>
-            <ChipSelect label="Method" options={METHOD_CHIPS} value={method}
+            <ChipSelect label="Method" options={METHOD_CHIPS} value={method} columns={2}
               onChange={(v) => { if (isBrewMethodId(v)) setMethod(v); }} clearable={false} />
             <View style={styles.row}>
               <TextField label="Dose (g)" value={dose} onChangeText={setDose} keyboardType="decimal-pad" placeholder={spec.dosePlaceholder} required style={styles.col} />
@@ -239,7 +235,6 @@ export function BrewFormScreen() {
 
             <SectionHeader>Process</SectionHeader>
             {spec.process.map((f) => {
-              if (f === "dripper") return <ChipSelect key={f} label="Dripper" options={DRIPPERS} value={dripper} onChange={setDripper} clearable={false} />;
               if (f === "filterType") return <ChipSelect key={f} label="Filter" options={FILTERS} value={filterType} onChange={setFilterType} />;
               if (f === "pours") return (
                 <View key={f} style={styles.row}>

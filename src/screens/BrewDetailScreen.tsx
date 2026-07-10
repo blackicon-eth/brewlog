@@ -84,7 +84,6 @@ export function BrewDetailScreen() {
         ["Method", spec.label],
         ["Grind", brew.grind ?? null],
         ["Water temp", spec.showTemp && brew.waterTempC != null ? `${brew.waterTempC} °C` : null],
-        ["Dripper", has("dripper") ? brew.dripper ?? null : null],
         ["Filter", has("filterType") && brew.filterType ? cap(brew.filterType) : null],
       ].filter(([, v]) => v) as [string, string][])
     : [];
@@ -95,7 +94,7 @@ export function BrewDetailScreen() {
         ["Pour interval", has("pours") && brew.pourIntervalS != null ? `${brew.pourIntervalS} s` : null],
         ["Preheat", has("preheat") && brew.preheat != null ? (brew.preheat ? "Yes" : "No") : null],
         ["Heat", has("heat") && brew.heat ? cap(brew.heat) : null],
-        [spec.timeDetailLabel, brew.totalTimeS != null ? formatSeconds(brew.totalTimeS) : null],
+        [spec.timeDetailLabel, has("time") && brew.totalTimeS != null ? formatSeconds(brew.totalTimeS) : null],
       ].filter(([, v]) => v) as [string, string][])
     : [];
 

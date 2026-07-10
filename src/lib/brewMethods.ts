@@ -7,7 +7,8 @@ export type MokaHeat = "low" | "medium" | "high";
 
 // Which blocks the form's Process section renders, in order. "pours" renders the
 // #Pours + Interval pair; "time" renders the method's one duration field.
-export type ProcessFieldId = "dripper" | "filterType" | "pours" | "preheat" | "heat" | "time";
+// (Brew.dripper survives as a legacy data field, but no method offers it as input.)
+export type ProcessFieldId = "filterType" | "pours" | "preheat" | "heat" | "time";
 
 export type MethodSpec = {
   id: BrewMethodId;
@@ -28,11 +29,11 @@ export type MethodSpec = {
 
 export const METHODS: MethodSpec[] = [
   {
-    id: "v60", label: "V60", shortLabel: "V60",
+    id: "v60", label: "Filter", shortLabel: "Filter",
     waterLabel: "Water (g)", waterPlaceholder: "250", dosePlaceholder: "15",
     showTemp: true, timeLabel: "Total (s)", timeDetailLabel: "Total time", timePlaceholder: "165",
     ratioNoun: "dose to water",
-    process: ["dripper", "filterType", "pours", "time"],
+    process: ["filterType", "pours", "time"],
     noun: "pour-over",
     adjustables: "grind, ratio, water temperature, number of pours, pour interval",
   },
@@ -50,7 +51,8 @@ export const METHODS: MethodSpec[] = [
     waterLabel: "Water (g)", waterPlaceholder: "200", dosePlaceholder: "16",
     showTemp: false, timeLabel: "Total (s)", timeDetailLabel: "Total time", timePlaceholder: "270",
     ratioNoun: "dose to water",
-    process: ["preheat", "heat", "time"],
+    // No "time" block: moka duration tracks pot size more than technique, so it isn't logged.
+    process: ["preheat", "heat"],
     noun: "moka pot",
     adjustables: "grind, dose, water preheating, heat level",
   },
