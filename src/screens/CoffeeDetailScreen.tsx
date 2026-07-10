@@ -12,7 +12,9 @@ import type { Brew, Coffee } from "../models/types";
 import { formatRatio } from "../lib/ratio";
 import { formatSeconds, formatBrewDate, formatBrewTime } from "../lib/brewFormat";
 import { methodSpec } from "../lib/brewMethods";
+import type { BrewMethodId } from "../lib/brewMethods";
 import { AppText, AiActionCard, BrewLogRow, Fab, Chevron, ClockIcon, useAppModal } from "../components/ui";
+import { MethodPickerModal } from "../components/MethodPickerModal";
 import { useAdvisorGate } from "../hooks/useAdvisorGate";
 import { colors, motion, spacing, screenTopGap } from "../design/tokens";
 
@@ -41,6 +43,7 @@ export function CoffeeDetailScreen() {
   const [coffee, setCoffee] = useState<Coffee | null>(null);
   const [brews, setBrews] = useState<Brew[]>([]);
   const [sort, setSort] = useState<"recent" | "rating">("recent");
+  const [pickerVisible, setPickerVisible] = useState(false);
 
   const load = useCallback(() => {
     (async () => {
@@ -111,7 +114,7 @@ export function CoffeeDetailScreen() {
             title="Best recipe"
             subtitle={hasBrews ? "AI-dialed from your brews" : "Log a brew to unlock AI insights"}
             enabled={hasBrews}
-            onPress={() => void gate(() => nav.navigate("AdvisorResult", { kind: "bestRecipe", coffeeId: params.coffeeId, title: "Best recipe" }))}
+            onPress={() => setPickerVisible(true)}
           />
         </View>
 
@@ -179,6 +182,16 @@ export function CoffeeDetailScreen() {
         />
       </Animated.View>
       <Fab label="Log brew" onPress={() => nav.navigate("BrewForm", { coffeeId: params.coffeeId })} />
+
+      <MethodPickerModal
+        visible={pickerVisible}
+        brews={brews}
+        onCancel={() => setPickerVisible(false)}
+        onConfirm={(method: BrewMethodId) => {
+          setPickerVisible(false);
+          void gate(() => nav.navigate("AdvisorResult", { kind: "bestRecipe", coffeeId: params.coffeeId, title: "Best recipe", method }));
+        }}
+      />
     </View>
   );
 }

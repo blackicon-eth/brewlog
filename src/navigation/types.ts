@@ -1,4 +1,5 @@
 import type { ToolId } from "../screens/tools/types";
+import type { BrewMethodId } from "../lib/brewMethods";
 
 export type RootStackParamList = {
   Main: undefined;
@@ -12,5 +13,6 @@ export type RootStackParamList = {
     kind: "diagnose" | "bestRecipe";
     coffeeId: string;
     brewId?: string;
+    method?: BrewMethodId;
   };
 };

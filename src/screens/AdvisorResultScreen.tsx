@@ -106,9 +106,11 @@ export function AdvisorResultScreen() {
       if (params.kind === "diagnose") {
         const selected = params.brewId ? await getBrew(db, params.brewId) : brews[0];
         if (!selected) { setErrorMsg("Brew not found"); setPhase("error"); return; }
-        history = buildDiagnosePrompt(coffee, selected, brews);
+        const recent = brews.filter((b) => b.method === selected.method);
+        history = buildDiagnosePrompt(coffee, selected, recent);
       } else {
-        history = buildBestRecipePrompt(coffee, brews);
+        const method = params.method ?? "v60";
+        history = buildBestRecipePrompt(coffee, brews.filter((b) => b.method === method), method);
       }
 
       // Wait for the model to be ready. 'status' is in this effect's deps, so each status change re-runs the effect; this loop just keeps the run alive (and cancellable) until a re-run arrives with status==="ready".
