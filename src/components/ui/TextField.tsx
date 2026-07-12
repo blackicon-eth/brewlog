@@ -12,6 +12,7 @@ export type TextFieldProps = {
   multiline?: boolean;
   keyboardType?: KeyboardTypeOptions;
   autoCapitalize?: "none" | "sentences" | "words" | "characters";
+  onBlur?: () => void;
   style?: ViewStyle;
 };
 
@@ -19,7 +20,7 @@ export type TextFieldProps = {
 // taupe border that lifts to action-blue on focus. The label is a small uppercase grotesk
 // caption; required fields carry a coffee-cherry dot.
 export function TextField({
-  label, value, onChangeText, placeholder, required, multiline, keyboardType, autoCapitalize, style,
+  label, value, onChangeText, placeholder, required, multiline, keyboardType, autoCapitalize, onBlur, style,
 }: TextFieldProps) {
   const [focused, setFocused] = useState(false);
   return (
@@ -38,7 +39,7 @@ export function TextField({
         autoCapitalize={autoCapitalize}
         multiline={multiline}
         onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
+        onBlur={() => { setFocused(false); onBlur?.(); }}
       />
     </View>
   );
