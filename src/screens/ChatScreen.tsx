@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView,
-  StyleSheet, TextInput, View, type NativeScrollEvent, type NativeSyntheticEvent,
+  StyleSheet, TextInput, View,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { buildChatHistory } from "../qvac/advisor";
 import { useQvac } from "../qvac/QvacProvider";
+import { useStickyScroll } from "../hooks/useStickyScroll";
 import { AppText, ChatBubble, PillButton } from "../components/ui";
 import { colors, fonts, radii, spacing, screenTopGap } from "../design/tokens";
 
@@ -57,8 +58,7 @@ export function ChatScreen() {
 
   // Auto-scroll only when the user is already near the bottom, so scrolling up to re-read an
   // earlier answer isn't yanked back down by the next streamed token.
-  const scrollRef = useRef<ScrollView>(null);
-  const stick = useRef(true);
+  const sticky = useStickyScroll();
 
   // Warm the model on first view so the first reply streams sooner (Home warms it too; this
   // is idempotent). Cancel any in-flight run if the screen unmounts.
@@ -92,8 +92,7 @@ export function ChatScreen() {
       { id: botId, role: "assistant", content: "", pending: true },
     ]);
     setInput("");
-    stick.current = true;
-    requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
+    sticky.jumpToEnd();
 
     const gen = { cancel: () => { }, cancelled: false };
     genRef.current = gen;
@@ -148,11 +147,6 @@ export function ChatScreen() {
     if (!gen) return;
     gen.cancelled = true;
     gen.cancel();
-  }, []);
-
-  const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
-    stick.current = contentSize.height - (contentOffset.y + layoutMeasurement.height) < 80;
   }, []);
 
   const canSend = input.trim().length > 0 && !generating;
@@ -222,13 +216,13 @@ export function ChatScreen() {
           </View>
         ) : (
           <ScrollView
-            ref={scrollRef}
+            ref={sticky.ref}
             style={styles.flex}
             contentContainerStyle={styles.thread}
             showsVerticalScrollIndicator={false}
-            onScroll={onScroll}
-            scrollEventThrottle={64}
-            onContentSizeChange={() => { if (stick.current) scrollRef.current?.scrollToEnd({ animated: true }); }}
+            onScroll={sticky.onScroll}
+            scrollEventThrottle={16}
+            onContentSizeChange={sticky.onContentSizeChange}
             keyboardDismissMode="interactive"
           >
             {turns.map((t) => {

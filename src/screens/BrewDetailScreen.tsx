@@ -11,7 +11,7 @@ import type { Brew } from "../models/types";
 import { formatRatio } from "../lib/ratio";
 import { formatSeconds, formatBrewDate, formatBrewTime } from "../lib/brewFormat";
 import { methodSpec, type ProcessFieldId } from "../lib/brewMethods";
-import { AppText, PillButton, RatingChip, Chevron, useAppModal } from "../components/ui";
+import { AppText, PillButton, RatingChip, TasteRadar, Chevron, useAppModal } from "../components/ui";
 import { useAdvisorGate } from "../hooks/useAdvisorGate";
 import { colors, fonts, spacing, screenTopGap } from "../design/tokens";
 
@@ -107,6 +107,12 @@ export function BrewDetailScreen() {
         ["Clarity", brew.clarity],
       ].filter(([, v]) => v != null) as [string, number][])
     : [];
+  // The tasting pentagon needs enough vertices to read as a shape; below three rated
+  // attributes the plain rows say it better.
+  const tasteValues: Array<number | null> = brew
+    ? [brew.acidity ?? null, brew.sweetness ?? null, brew.bitterness ?? null, brew.body ?? null, brew.clarity ?? null]
+    : [];
+  const showRadar = taste.length >= 3;
 
   return (
     <View style={styles.screen}>
@@ -147,9 +153,11 @@ export function BrewDetailScreen() {
           {taste.length > 0 ? (
             <View style={styles.section}>
               <AppText variant="labelMd" style={styles.sectionTitle}>Taste</AppText>
-              {taste.map(([label, value]) => (
-                <TasteRow key={label} label={label} value={value} />
-              ))}
+              {showRadar ? (
+                <TasteRadar values={tasteValues} />
+              ) : (
+                taste.map(([label, value]) => <TasteRow key={label} label={label} value={value} />)
+              )}
             </View>
           ) : null}
 

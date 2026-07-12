@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { Animated, StyleSheet, View } from "react-native";
 import { AppText } from "./AppText";
+import { MarkdownText } from "./MarkdownText";
 import { colors, fonts, motion, radii, spacing } from "../../design/tokens";
 
 export type ChatBubbleProps = {
@@ -44,13 +45,16 @@ export function ChatBubble({ role, text, streaming, error }: ChatBubbleProps) {
     <View style={[styles.row, isUser ? styles.rowUser : styles.rowAssistant]}>
       <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleAssistant]}>
         {display || streaming ? (
-          <AppText
-            variant="bodyLg"
-            style={[styles.text, isUser ? styles.textUser : error ? styles.textError : styles.textAssistant]}
-          >
-            {display}
-            {streaming ? <StreamingCaret /> : null}
-          </AppText>
+          isUser || error ? (
+            <AppText variant="bodyLg" style={[styles.text, isUser ? styles.textUser : styles.textError]}>
+              {display}
+              {streaming ? <StreamingCaret /> : null}
+            </AppText>
+          ) : (
+            // The assistant writes markdown-lite — set it as real typography, with the
+            // caret trailing the last block while it streams.
+            <MarkdownText text={display} trailing={streaming ? <StreamingCaret /> : null} />
+          )
         ) : null}
       </View>
     </View>

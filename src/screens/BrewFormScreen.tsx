@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
@@ -14,7 +14,7 @@ import { AppText, TextField, ChipSelect, ScaleSelect, PillButton, NaturalLanguag
 import { buildBrewIntakePrompt, parseBrewIntake, type BrewIntake } from "../qvac/intake";
 import { useQvac } from "../qvac/QvacProvider";
 import { METHODS, methodSpec, isBrewMethodId, type BrewMethodId, type ProcessFieldId } from "../lib/brewMethods";
-import { colors, spacing, screenTopGap } from "../design/tokens";
+import { colors, radii, shadows, spacing, screenTopGap } from "../design/tokens";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "BrewForm">;
 type Rt = RouteProp<RootStackParamList, "BrewForm">;
@@ -220,6 +220,12 @@ export function BrewFormScreen() {
           />
         ) : (
           <>
+            {/* Same editorial hero card as the coffee form — the bowl-of-beans still is
+                the "brew time" image (the other two stills belong to new/edit coffee). */}
+            <View style={styles.heroImageWrap}>
+              <Image source={require("../../assets/coffee-hero.png")} style={styles.heroImage} resizeMode="cover" />
+            </View>
+
             <View style={styles.hero}>
               <AppText variant="labelSm">{editingId ? "Edit brew" : "Log brew"}</AppText>
               <AppText variant="headlineLg" style={styles.ratio}>{ratioPreview}</AppText>
@@ -278,6 +284,8 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: spacing.container },
   topBar: { flexDirection: "row", marginBottom: 8 },
   backBtn: { height: 34, justifyContent: "center" },
+  heroImageWrap: { marginBottom: spacing.stack, borderRadius: radii.lg, backgroundColor: colors.surfaceLowest, ...shadows.card },
+  heroImage: { width: "100%", height: 140, borderRadius: radii.lg },
   hero: { alignItems: "center" },
   ratio: { fontSize: 44, lineHeight: 50, marginTop: 4 },
   ratioCaption: { color: colors.secondary, marginTop: 2 },

@@ -22,7 +22,7 @@ export function useAdvisorGate() {
       const yes = await modal.confirm({
         title: "Turn on the assistant?",
         message: `This needs the on-device AI. ${model.name} (${model.size}) downloads once and runs privately on your phone.`,
-        confirmLabel: "Turn it on",
+        confirmLabel: "Turn on",
       });
       if (!yes) return;
       setAiEnabled(true);

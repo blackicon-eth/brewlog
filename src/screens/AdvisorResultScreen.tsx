@@ -12,7 +12,8 @@ import { getCoffee } from "../db/coffees";
 import { getBrew, listBrewsForCoffee } from "../db/brews";
 import { buildDiagnosePrompt, buildBestRecipePrompt, type ChatMessage } from "../qvac/advisor";
 import { useQvac } from "../qvac/QvacProvider";
-import { AppText, PillButton, ReasoningDisclosure } from "../components/ui";
+import { useStickyScroll } from "../hooks/useStickyScroll";
+import { AppText, MarkdownText, PillButton, ReasoningDisclosure } from "../components/ui";
 import { colors, fonts, motion, radii, spacing } from "../design/tokens";
 
 type Rt = RouteProp<RootStackParamList, "AdvisorResult">;
@@ -46,6 +47,8 @@ export function AdvisorResultScreen() {
   const [thinking, setThinking] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const cancelRef = useRef<null | (() => void)>(null);
+  // Follow the streamed answer down the sheet, yielding while the reader scrolls back up.
+  const sticky = useStickyScroll();
 
   // Sheet entrance / drag / exit, all on the built-in Animated driver (no extra deps).
   const translateY = useRef(new Animated.Value(OFFSCREEN)).current;
@@ -162,9 +165,13 @@ export function AdvisorResultScreen() {
         </View>
 
         <ScrollView
+          ref={sticky.ref}
           style={styles.body}
           contentContainerStyle={styles.bodyContent}
           showsVerticalScrollIndicator={false}
+          onScroll={sticky.onScroll}
+          scrollEventThrottle={16}
+          onContentSizeChange={sticky.onContentSizeChange}
         >
           {loading ? (
             <View style={styles.loading}>
@@ -181,10 +188,7 @@ export function AdvisorResultScreen() {
           {thinking ? <ReasoningDisclosure text={thinking} /> : null}
 
           {answer ? (
-            <AppText variant="bodyLg" style={styles.answer}>
-              {answer}
-              {generating ? <StreamingCaret /> : null}
-            </AppText>
+            <MarkdownText text={answer} trailing={generating ? <StreamingCaret /> : null} />
           ) : null}
 
           {errorMsg ? (
@@ -247,7 +251,6 @@ const styles = StyleSheet.create({
   // EB Garamond descenders clip on Android — give headlineMd explicit room.
   loadingTitle: { lineHeight: 34, includeFontPadding: false },
   loadingSub: { textAlign: "center" },
-  answer: { color: colors.onSurface, lineHeight: 27 },
   caret: { color: colors.primary, fontFamily: fonts.sans },
   errorBox: { paddingVertical: spacing.stack, gap: 6 },
   errorText: { color: colors.tertiary },
