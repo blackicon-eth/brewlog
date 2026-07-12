@@ -49,10 +49,6 @@ export function AdvisorResultScreen() {
   // The user pressed Stop: the sheet is closing, so the run's cancellation error must
   // not surface as a red box mid-dismissal.
   const stopping = useRef(false);
-  // Finger on the sheet body (touch or fling in progress). While it's raised, streamed
-  // text keeps buffering but nothing repaints — a layout mutation under an active
-  // gesture is what stutters, no matter how cheap the render is.
-  const touching = useRef(false);
 
   // Sheet entrance / drag / exit, all on the built-in Animated driver (no extra deps).
   const translateY = useRef(new Animated.Value(OFFSCREEN)).current;
@@ -136,9 +132,6 @@ export function AdvisorResultScreen() {
       const flush = () => {
         flushTimer = null;
         if (!active) return;
-        // Reader's finger is down — hold everything and try again shortly. The buffer
-        // simply catches up in one paint after the gesture ends.
-        if (touching.current) { queueFlush(); return; }
         if (buf.answer) { const t = buf.answer; buf.answer = ""; setAnswer((a) => a + t); }
         if (buf.thinking) { const t = buf.thinking; buf.thinking = ""; setThinking((x) => x + t); }
       };
@@ -191,10 +184,6 @@ export function AdvisorResultScreen() {
           style={styles.body}
           contentContainerStyle={styles.bodyContent}
           showsVerticalScrollIndicator={false}
-          onScrollBeginDrag={() => { touching.current = true; }}
-          onScrollEndDrag={() => { touching.current = false; }}
-          onMomentumScrollBegin={() => { touching.current = true; }}
-          onMomentumScrollEnd={() => { touching.current = false; }}
         >
           {loading ? (
             <View style={styles.loading}>
