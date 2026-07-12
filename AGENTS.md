@@ -80,10 +80,11 @@ SQL) in the core; screens should only wire hooks to components.
 - **Streaming text**: never grow one big `Text` — Android re-runs line-breaking over the
   whole node per change. Freeze settled content in memoized chunks/lines (see
   `MarkdownText`, `ReasoningDisclosure`, `chunkPlainText`), batch token flushes, use
-  `textBreakStrategy="simple"`. Do NOT add follow-scroll (`scrollToEnd` on content
-  growth) to streaming views: it fights the reader's finger and stutters on device even
-  when gesture-guarded — tried and reverted 2026-07-12. Chat's own stick-to-bottom
-  (`ChatScreen`) is the one sanctioned instance; leave it as is.
+  `textBreakStrategy="simple"`, and follow the stream only via `useStickyScroll`
+  (gesture-guarded, non-animated). Know the ceiling: scrolling WILL still stutter while
+  the model generates — that's the 1.7B saturating the S23's CPU/GPU, verified 2026-07-12
+  by A/B (same content scrolls smoothly after generation ends). Don't burn time trying
+  to fix it in view code; the only lever is a smaller model.
 
 ## Copy voice
 
