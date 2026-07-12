@@ -1,6 +1,6 @@
 import React from "react";
-import { StyleSheet, Text, View, type StyleProp, type TextStyle } from "react-native";
-import { parseMarkdownLite, type Span } from "../../lib/markdownLite";
+import { StyleSheet, Text, View } from "react-native";
+import { parseBlock, type Span } from "../../lib/markdownLite";
 import { colors, fonts } from "../../design/tokens";
 
 export type MarkdownTextProps = {
@@ -14,46 +14,24 @@ export type MarkdownTextProps = {
 
 // The assistant's answers in the ledger's own hand: headings become quiet grotesk
 // labels, bullets hang from an en-dash gutter, numbered steps keep their figures, and
-// **bold**/*italic*/`code` land as real typography instead of asterisk noise. Built on
-// markdownLite — anything it doesn't recognize renders as a plain paragraph, so a
-// half-streamed reply is always readable.
-// Memoized on text/color and the caret's *presence* (its element identity churns every
-// render): parsing + re-layout of a long answer on unrelated renders is what jank is
-// made of.
+// **bold**/*italic*/`code` land as real typography instead of asterisk noise.
+//
+// Rendering is LINE-boxed for streaming performance: each source line is its own
+// memoized component, so while the model writes, only the final (growing) line
+// re-parses and — critically — only its native Text node re-measures. Android re-runs
+// line-breaking over an entire Text on every change; frozen lines skip that entirely.
+// `textBreakStrategy="simple"` keeps even the growing line's re-break cheap.
 function MarkdownTextInner({ text, color = colors.onSurface, trailing }: MarkdownTextProps) {
-  const blocks = parseMarkdownLite(text);
-  if (blocks.length === 0) return trailing ? <Text style={[styles.body, { color }]}>{trailing}</Text> : null;
-  const last = blocks.length - 1;
-
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  if (lines.length === 0) {
+    return trailing ? <Text style={[styles.body, styles.first, { color }]}>{trailing}</Text> : null;
+  }
+  const last = lines.length - 1;
   return (
     <View>
-      {blocks.map((b, i) => {
-        const tail = i === last ? trailing : null;
-        if (b.type === "heading") {
-          return (
-            <Text key={i} style={[styles.heading, i === 0 && styles.first, { color }]}>
-              {renderSpans(b.spans, color)}{tail}
-            </Text>
-          );
-        }
-        if (b.type === "bullet" || b.type === "ordered") {
-          return (
-            <View key={i} style={[styles.itemRow, i === 0 && styles.first]}>
-              <Text style={[styles.marker, b.type === "bullet" && styles.markerDash]}>
-                {b.type === "bullet" ? "–" : `${b.marker}.`}
-              </Text>
-              <Text style={[styles.body, styles.itemBody, { color }]}>
-                {renderSpans(b.spans, color)}{tail}
-              </Text>
-            </View>
-          );
-        }
-        return (
-          <Text key={i} style={[styles.body, i === 0 && styles.first, { color }]}>
-            {renderSpans(b.spans, color)}{tail}
-          </Text>
-        );
-      })}
+      {lines.map((line, i) => (
+        <MarkdownLine key={i} line={line} color={color} first={i === 0} trailing={i === last ? trailing : null} />
+      ))}
     </View>
   );
 }
@@ -61,6 +39,46 @@ function MarkdownTextInner({ text, color = colors.onSurface, trailing }: Markdow
 export const MarkdownText = React.memo(
   MarkdownTextInner,
   (prev, next) => prev.text === next.text && prev.color === next.color && !!prev.trailing === !!next.trailing,
+);
+
+function MarkdownLineInner({ line, color, first, trailing }: {
+  line: string; color: string; first: boolean; trailing?: React.ReactNode;
+}) {
+  const b = parseBlock(line);
+  if (!b) return null;
+  if (b.type === "heading") {
+    return (
+      <Text textBreakStrategy="simple" style={[styles.heading, first && styles.first, { color }]}>
+        {renderSpans(b.spans, color)}{trailing}
+      </Text>
+    );
+  }
+  if (b.type === "bullet" || b.type === "ordered") {
+    return (
+      <View style={[styles.itemRow, first && styles.first]}>
+        <Text style={[styles.marker, b.type === "bullet" && styles.markerDash]}>
+          {b.type === "bullet" ? "–" : `${b.marker}.`}
+        </Text>
+        <Text textBreakStrategy="simple" style={[styles.body, styles.itemBody, { color }]}>
+          {renderSpans(b.spans, color)}{trailing}
+        </Text>
+      </View>
+    );
+  }
+  return (
+    <Text textBreakStrategy="simple" style={[styles.body, first && styles.first, { color }]}>
+      {renderSpans(b.spans, color)}{trailing}
+    </Text>
+  );
+}
+
+// Settled lines are byte-identical between stream flushes — memo compares the line
+// string (plus caret presence, whose element identity churns) and skips them wholesale.
+const MarkdownLine = React.memo(
+  MarkdownLineInner,
+  (prev, next) =>
+    prev.line === next.line && prev.color === next.color &&
+    prev.first === next.first && !!prev.trailing === !!next.trailing,
 );
 
 function renderSpans(spans: Span[], color: string) {

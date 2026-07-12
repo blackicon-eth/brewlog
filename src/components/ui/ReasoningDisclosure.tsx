@@ -1,16 +1,23 @@
 import React, { useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { AppText } from "./AppText";
+import { chunkPlainText } from "../../lib/markdownLite";
 import { colors, fonts, radii, spacing } from "../../design/tokens";
 
 export type ReasoningDisclosureProps = {
   text: string;
 };
 
+// One frozen slice of the trace. Settled chunks are byte-identical between stream
+// flushes, so memo skips both their re-render and their native text re-measure —
+// only the tail chunk ever grows. `simple` line-breaking keeps that tail cheap too
+// (Android's default highQuality strategy re-breaks the whole node per change).
+const TraceChunk = React.memo(function TraceChunk({ text }: { text: string }) {
+  return <Text textBreakStrategy="simple" style={styles.text}>{text}</Text>;
+});
+
 // Collapsible "show the model's reasoning" trace. Closed by default — the answer is the
 // star; the thinking is a quiet inset note with a left rule, in muted italic.
-// Memoized: while the answer streams below, this (often long) block must not re-render
-// on every flush — that's what made scrolling the open trace stutter.
 export const ReasoningDisclosure = React.memo(function ReasoningDisclosure({ text }: ReasoningDisclosureProps) {
   const [open, setOpen] = useState(false);
   return (
@@ -23,7 +30,9 @@ export const ReasoningDisclosure = React.memo(function ReasoningDisclosure({ tex
       </Pressable>
       {open ? (
         <View style={styles.box}>
-          <AppText style={styles.text}>{text}</AppText>
+          {chunkPlainText(text).map((chunk, i) => (
+            <TraceChunk key={i} text={chunk} />
+          ))}
         </View>
       ) : null}
     </View>
@@ -43,6 +52,7 @@ const styles = StyleSheet.create({
     borderLeftWidth: 2,
     borderLeftColor: colors.outlineVariant,
     borderRadius: radii.base,
+    gap: 6,
   },
   text: {
     fontFamily: fonts.sans,

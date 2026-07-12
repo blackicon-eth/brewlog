@@ -53,26 +53,65 @@ export function parseSpans(line: string): Span[] {
   return spans;
 }
 
+// One line → one block (or null for blank lines). Exposed so the renderer can work
+// line-by-line: while streaming, settled lines are byte-identical between renders, and
+// a memoized per-line component skips their re-parse AND their native re-measure.
+export function parseBlock(raw: string): Block | null {
+  const line = raw.trim();
+  if (!line) return null;
+
+  const heading = line.match(/^#{1,4}\s+(.*)$/);
+  if (heading) return { type: "heading", spans: parseSpans(heading[1]) };
+
+  const bullet = line.match(/^[-*•]\s+(.*)$/);
+  if (bullet) return { type: "bullet", spans: parseSpans(bullet[1]) };
+
+  const ordered = line.match(/^(\d{1,2})[.)]\s+(.*)$/);
+  if (ordered) return { type: "ordered", marker: ordered[1], spans: parseSpans(ordered[2]) };
+
+  // Models often shout a section title as a lone bold line — read it as a heading.
+  const boldLine = line.match(/^\*\*(.+?):?\*\*:?$/);
+  if (boldLine) return { type: "heading", spans: [{ text: boldLine[1] }] };
+
+  return { type: "para", spans: parseSpans(line) };
+}
+
 export function parseMarkdownLite(text: string): Block[] {
   const blocks: Block[] = [];
   for (const raw of text.split("\n")) {
-    const line = raw.trim();
-    if (!line) continue;
-
-    const heading = line.match(/^#{1,4}\s+(.*)$/);
-    if (heading) { blocks.push({ type: "heading", spans: parseSpans(heading[1]) }); continue; }
-
-    const bullet = line.match(/^[-*•]\s+(.*)$/);
-    if (bullet) { blocks.push({ type: "bullet", spans: parseSpans(bullet[1]) }); continue; }
-
-    const ordered = line.match(/^(\d{1,2})[.)]\s+(.*)$/);
-    if (ordered) { blocks.push({ type: "ordered", marker: ordered[1], spans: parseSpans(ordered[2]) }); continue; }
-
-    // Models often shout a section title as a lone bold line — read it as a heading.
-    const boldLine = line.match(/^\*\*(.+?):?\*\*:?$/);
-    if (boldLine) { blocks.push({ type: "heading", spans: [{ text: boldLine[1] }] }); continue; }
-
-    blocks.push({ type: "para", spans: parseSpans(line) });
+    const b = parseBlock(raw);
+    if (b) blocks.push(b);
   }
   return blocks;
+}
+
+// Splits a growing plain-text stream into display chunks whose boundaries never move:
+// greedy, left-to-right, decided only by content BEFORE each boundary — so re-chunking
+// a longer text reproduces every earlier chunk byte-for-byte, and memoized chunk
+// components stay frozen while only the tail grows. Android re-runs line-breaking over
+// a whole Text node on every change; keeping settled prose in its own nodes is what
+// makes a long streamed trace scrollable.
+export function chunkPlainText(text: string, target = 500): string[] {
+  const chunks: string[] = [];
+  let current = "";
+  const push = (piece: string) => {
+    current = current ? `${current}\n${piece}` : piece;
+    if (current.length >= target) { chunks.push(current); current = ""; }
+  };
+  for (const rawLine of text.split("\n")) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    // A single run-on line longer than two targets gets hard-split at spaces; the cut
+    // positions depend only on the line's own prefix, so they too are stable.
+    let rest = line;
+    while (rest.length > target * 2) {
+      const cut = rest.lastIndexOf(" ", target);
+      const at = cut > target / 2 ? cut : target;
+      push(rest.slice(0, at).trimEnd());
+      rest = rest.slice(at).trimStart();
+    }
+    push(rest);
+  }
+  if (current) chunks.push(current);
+  return chunks;
 }

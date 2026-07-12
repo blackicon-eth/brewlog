@@ -1,4 +1,4 @@
-import { parseMarkdownLite, parseSpans } from "../markdownLite";
+import { chunkPlainText, parseBlock, parseMarkdownLite, parseSpans } from "../markdownLite";
 
 describe("parseSpans", () => {
   it("passes plain text through as one span", () => {
@@ -50,5 +50,35 @@ describe("parseMarkdownLite", () => {
   it("accepts every bullet glyph the models use", () => {
     const blocks = parseMarkdownLite("- one\n* two\n• three");
     expect(blocks.every((b) => b.type === "bullet")).toBe(true);
+  });
+
+  it("parseBlock returns null only for blank lines", () => {
+    expect(parseBlock("   ")).toBeNull();
+    expect(parseBlock("words")).toMatchObject({ type: "para" });
+  });
+});
+
+describe("chunkPlainText", () => {
+  it("keeps a short text as one chunk and drops blank lines", () => {
+    expect(chunkPlainText("hello\n\nworld")).toEqual(["hello\nworld"]);
+  });
+
+  it("emits earlier chunks byte-identically as the stream grows (prefix stability)", () => {
+    const lines = Array.from({ length: 40 }, (_, i) => `line ${i} of the reasoning trace, padded out a bit.`);
+    const full = lines.join("\n");
+    const early = chunkPlainText(full.slice(0, 900));
+    const late = chunkPlainText(full);
+    // every settled early chunk must reappear unchanged
+    for (let i = 0; i < early.length - 1; i++) expect(late[i]).toBe(early[i]);
+  });
+
+  it("hard-splits a run-on line at spaces with stable cut points", () => {
+    const word = "espresso ";
+    const runOn = word.repeat(200); // ~1800 chars, no newlines
+    const chunks = chunkPlainText(runOn.trim());
+    expect(chunks.length).toBeGreaterThan(1);
+    // stability: chunking a longer version of the same line keeps the first cut
+    const longer = chunkPlainText((runOn + word.repeat(50)).trim());
+    expect(longer[0]).toBe(chunks[0]);
   });
 });
