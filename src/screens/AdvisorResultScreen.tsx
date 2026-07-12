@@ -12,6 +12,7 @@ import { getCoffee } from "../db/coffees";
 import { getBrew, listBrewsForCoffee } from "../db/brews";
 import { buildDiagnosePrompt, buildBestRecipePrompt, type ChatMessage } from "../qvac/advisor";
 import { useQvac } from "../qvac/QvacProvider";
+import { useStickyScroll } from "../hooks/useStickyScroll";
 import { AppText, MarkdownText, PillButton, ReasoningDisclosure } from "../components/ui";
 import { colors, fonts, motion, radii, spacing } from "../design/tokens";
 
@@ -49,6 +50,8 @@ export function AdvisorResultScreen() {
   // The user pressed Stop: the sheet is closing, so the run's cancellation error must
   // not surface as a red box mid-dismissal.
   const stopping = useRef(false);
+  // Follow the streamed answer down the sheet, yielding while the reader scrolls back up.
+  const sticky = useStickyScroll();
 
   // Sheet entrance / drag / exit, all on the built-in Animated driver (no extra deps).
   const translateY = useRef(new Animated.Value(OFFSCREEN)).current;
@@ -181,9 +184,17 @@ export function AdvisorResultScreen() {
         </View>
 
         <ScrollView
+          ref={sticky.ref}
           style={styles.body}
           contentContainerStyle={styles.bodyContent}
           showsVerticalScrollIndicator={false}
+          onScroll={sticky.onScroll}
+          onScrollBeginDrag={sticky.onScrollBeginDrag}
+          onScrollEndDrag={sticky.onScrollEndDrag}
+          onMomentumScrollBegin={sticky.onMomentumScrollBegin}
+          onMomentumScrollEnd={sticky.onMomentumScrollEnd}
+          scrollEventThrottle={48}
+          onContentSizeChange={sticky.onContentSizeChange}
         >
           {loading ? (
             <View style={styles.loading}>
