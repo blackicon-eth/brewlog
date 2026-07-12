@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from "react";
-import { Animated, Easing, StyleSheet, Text, View } from "react-native";
-import { polygonEdges, radarPoints, ringPoints } from "../../lib/radar";
+import React, { useEffect, useRef, useState } from "react";
+import { Animated, Easing, StyleSheet, Text, View, type LayoutChangeEvent } from "react-native";
+import { polygonEdges, radarPoints, ringPoints, scanlineFill } from "../../lib/radar";
 import { colors, fonts, motion } from "../../design/tokens";
 
 export type TasteRadarProps = {
@@ -10,6 +10,8 @@ export type TasteRadarProps = {
 };
 
 const AXES = ["Acidity", "Sweetness", "Bitterness", "Body", "Clarity"] as const;
+// The shape's wash: coffee-cherry ink at watercolor strength (tertiary #ab0b18).
+const FILL_INK = "rgba(171,11,24,0.10)";
 const MAX = 5;
 const RINGS = [0.2, 0.4, 0.6, 0.8, 1]; // one ruled pentagon per point of the 1–5 scale
 const LABEL_W = 76;
@@ -43,7 +45,11 @@ function Line({ cx, cy, length, angleDeg, thickness, color }: {
 // ledger reserves for flavor. Unrated axes collapse to the center and dim their label.
 // One gentle settle-in on mount; nothing loops.
 export function TasteRadar({ values, size = 280 }: TasteRadarProps) {
-  const cx = size / 2;
+  // The plot is a `size` square, but the component claims the full row width so the
+  // side labels have air beyond the square instead of being clamped onto the rings.
+  const [w, setW] = useState(size);
+  const onLayout = (e: LayoutChangeEvent) => setW(e.nativeEvent.layout.width || size);
+  const cx = w / 2;
   const cy = size / 2;
   // Leave air for the labels that ring the plot.
   const radius = size / 2 - 42;
@@ -57,10 +63,11 @@ export function TasteRadar({ values, size = 280 }: TasteRadarProps) {
 
   const points = radarPoints(values, MAX, radius, cx, cy);
   const shape = polygonEdges(points);
-  const labelAnchors = ringPoints(AXES.length, 1, radius + 26, cx, cy);
+  const fill = scanlineFill(points, 3);
+  const labelAnchors = ringPoints(AXES.length, 1, radius + 32, cx, cy);
 
   return (
-    <View style={{ width: size, height: size, alignSelf: "center" }}>
+    <View style={{ width: "100%", height: size }} onLayout={onLayout}>
       {/* Graph paper: five ruled pentagons + a spoke to each vertex. */}
       {RINGS.map((f, r) =>
         polygonEdges(ringPoints(AXES.length, f, radius, cx, cy)).map((e, i) => (
@@ -92,6 +99,16 @@ export function TasteRadar({ values, size = 280 }: TasteRadarProps) {
           transform: [{ scale: settle.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] }) }],
         }]}
       >
+        {fill.map((f, i) => (
+          <View
+            key={`fill${i}`}
+            pointerEvents="none"
+            style={{
+              position: "absolute", left: f.x, top: f.y, width: f.width, height: f.height,
+              backgroundColor: FILL_INK,
+            }}
+          />
+        ))}
         {shape.map((e, i) => (
           <Line key={`edge${i}`} {...e} thickness={2} color={colors.tertiary} />
         ))}
@@ -115,7 +132,7 @@ export function TasteRadar({ values, size = 280 }: TasteRadarProps) {
           key={`label${i}`}
           pointerEvents="none"
           style={[styles.label, {
-            left: Math.min(Math.max(p.x - LABEL_W / 2, 0), size - LABEL_W),
+            left: Math.min(Math.max(p.x - LABEL_W / 2, 0), w - LABEL_W),
             top: Math.min(Math.max(p.y - LABEL_H / 2, 0), size - LABEL_H),
           }]}
         >

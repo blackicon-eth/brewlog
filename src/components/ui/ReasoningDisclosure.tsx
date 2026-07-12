@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { AppText } from "./AppText";
-import { colors, fonts, radii } from "../../design/tokens";
+import { colors, fonts, radii, spacing } from "../../design/tokens";
 
 export type ReasoningDisclosureProps = {
   text: string;
@@ -29,7 +29,8 @@ export function ReasoningDisclosure({ text }: ReasoningDisclosureProps) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginBottom: 4 },
+  // A full stack-gap below: the answer that follows is a separate thought and needs air.
+  wrap: { marginBottom: spacing.stack },
   toggle: { flexDirection: "row", alignItems: "center", gap: 6 },
   caret: { color: colors.secondary },
   toggleText: { color: colors.secondary },

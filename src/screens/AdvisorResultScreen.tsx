@@ -244,7 +244,8 @@ const styles = StyleSheet.create({
   kickerRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   sparkle: { color: colors.primary, fontSize: 13, fontFamily: fonts.sansBold },
   kicker: { color: colors.primary },
-  title: { marginTop: 6, marginBottom: spacing.stack },
+  // Roomy line box so EB Garamond descenders ("Diagnose brew") don't clip on Android.
+  title: { marginTop: 6, marginBottom: spacing.stack, lineHeight: 48, includeFontPadding: false },
   body: { flexGrow: 0 },
   bodyContent: { paddingBottom: spacing.stack },
   loading: { alignItems: "center", paddingVertical: spacing.section, gap: 10 },

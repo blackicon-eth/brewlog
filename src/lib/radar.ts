@@ -26,6 +26,36 @@ export function ringPoints(axes: number, fraction: number, radius: number, cx: n
   return radarPoints(Array(axes).fill(fraction), 1, radius, cx, cy);
 }
 
+// One horizontal slice of a polygon's interior — Views can't fill an arbitrary
+// pentagon, so TasteRadar rasterizes the shape into these thin rows (a classic
+// scanline fill; handles concave star shapes from uneven taste values too).
+export type ScanSegment = { x: number; y: number; width: number; height: number };
+
+export function scanlineFill(points: RadarPoint[], step: number): ScanSegment[] {
+  if (points.length < 3) return [];
+  const ys = points.map((p) => p.y);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  const segments: ScanSegment[] = [];
+  for (let y = minY + step / 2; y < maxY; y += step) {
+    const xs: number[] = [];
+    for (let i = 0; i < points.length; i++) {
+      const a = points[i];
+      const b = points[(i + 1) % points.length];
+      // Half-open [min, max) test so a scanline through a vertex counts once, not twice.
+      if ((a.y <= y && b.y > y) || (b.y <= y && a.y > y)) {
+        xs.push(a.x + ((y - a.y) / (b.y - a.y)) * (b.x - a.x));
+      }
+    }
+    xs.sort((p, q) => p - q);
+    for (let k = 0; k + 1 < xs.length; k += 2) {
+      const width = xs[k + 1] - xs[k];
+      if (width > 0.5) segments.push({ x: xs[k], y: y - step / 2, width, height: step });
+    }
+  }
+  return segments;
+}
+
 // Closes the polygon: one edge per consecutive vertex pair, last back to first.
 export function polygonEdges(points: RadarPoint[]): RadarEdge[] {
   return points.map((p, i) => {

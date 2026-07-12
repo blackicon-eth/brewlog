@@ -1,4 +1,4 @@
-import { polygonEdges, radarPoints, ringPoints } from "../radar";
+import { polygonEdges, radarPoints, ringPoints, scanlineFill } from "../radar";
 
 const close = (a: number, b: number) => Math.abs(a - b) < 1e-9;
 
@@ -45,5 +45,33 @@ describe("ringPoints + polygonEdges", () => {
     const outer = polygonEdges(ringPoints(5, 1, 100, 0, 0))[0].length;
     const inner = polygonEdges(ringPoints(5, 0.4, 100, 0, 0))[0].length;
     expect(Math.abs(inner - outer * 0.4) < 1e-9).toBe(true);
+  });
+});
+
+describe("scanlineFill", () => {
+  const square = [
+    { x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 },
+  ];
+
+  it("covers a square with full-width slices", () => {
+    const segs = scanlineFill(square, 2);
+    expect(segs).toHaveLength(5);
+    for (const s of segs) {
+      expect(close(s.x, 0)).toBe(true);
+      expect(close(s.width, 10)).toBe(true);
+      expect(s.height).toBe(2);
+    }
+  });
+
+  it("stays inside a pentagon's hull", () => {
+    const pts = ringPoints(5, 1, 100, 0, 0);
+    for (const s of scanlineFill(pts, 4)) {
+      expect(Math.abs(s.x) <= 100).toBe(true);
+      expect(Math.abs(s.x + s.width) <= 100).toBe(true);
+    }
+  });
+
+  it("returns nothing for a degenerate (all-center) shape", () => {
+    expect(scanlineFill([{ x: 5, y: 5 }, { x: 5, y: 5 }, { x: 5, y: 5 }], 2)).toEqual([]);
   });
 });

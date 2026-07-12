@@ -220,10 +220,10 @@ export function BrewFormScreen() {
           />
         ) : (
           <>
-            {/* Same editorial hero card as the coffee form — the bowl-of-beans still is
-                the "brew time" image (the other two stills belong to new/edit coffee). */}
+            {/* Same editorial hero card as the coffee form, with the brew form's own
+                still: a Chemex mid-pour (Unsplash, license-free). */}
             <View style={styles.heroImageWrap}>
-              <Image source={require("../../assets/coffee-hero.png")} style={styles.heroImage} resizeMode="cover" />
+              <Image source={require("../../assets/brew-hero.png")} style={styles.heroImage} resizeMode="cover" />
             </View>
 
             <View style={styles.hero}>
