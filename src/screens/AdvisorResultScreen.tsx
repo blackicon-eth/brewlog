@@ -189,7 +189,11 @@ export function AdvisorResultScreen() {
           contentContainerStyle={styles.bodyContent}
           showsVerticalScrollIndicator={false}
           onScroll={sticky.onScroll}
-          scrollEventThrottle={16}
+          onScrollBeginDrag={sticky.onScrollBeginDrag}
+          onScrollEndDrag={sticky.onScrollEndDrag}
+          onMomentumScrollBegin={sticky.onMomentumScrollBegin}
+          onMomentumScrollEnd={sticky.onMomentumScrollEnd}
+          scrollEventThrottle={48}
           onContentSizeChange={sticky.onContentSizeChange}
         >
           {loading ? (
