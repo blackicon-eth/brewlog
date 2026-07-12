@@ -47,6 +47,9 @@ export function AdvisorResultScreen() {
   const [thinking, setThinking] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const cancelRef = useRef<null | (() => void)>(null);
+  // The user pressed Stop: the sheet is closing, so the run's cancellation error must
+  // not surface as a red box mid-dismissal.
+  const stopping = useRef(false);
   // Follow the streamed answer down the sheet, yielding while the reader scrolls back up.
   const sticky = useStickyScroll();
 
@@ -124,16 +127,32 @@ export function AdvisorResultScreen() {
       if (!active) return;
 
       setPhase("thinking");
+      // Tokens arrive far faster than the UI needs to repaint. Buffer them and flush on
+      // a ~100ms beat: one re-render per beat instead of one per token, which keeps the
+      // sheet scrollable while the model writes.
+      const buf = { answer: "", thinking: "" };
+      let flushTimer: ReturnType<typeof setTimeout> | null = null;
+      const flush = () => {
+        flushTimer = null;
+        if (!active) return;
+        if (buf.answer) { const t = buf.answer; buf.answer = ""; setAnswer((a) => a + t); }
+        if (buf.thinking) { const t = buf.thinking; buf.thinking = ""; setThinking((x) => x + t); }
+      };
+      const queueFlush = () => { if (!flushTimer) flushTimer = setTimeout(flush, 100); };
       try {
         const run = runAdvice(history, {
-          onContent: (t) => { if (!active) return; setPhase("streaming"); setAnswer((a) => a + t); },
-          onThinking: (t) => { if (active) setThinking((x) => x + t); },
+          onContent: (t) => { if (!active) return; setPhase("streaming"); buf.answer += t; queueFlush(); },
+          onThinking: (t) => { if (active) { buf.thinking += t; queueFlush(); } },
         });
         cancelRef.current = run.cancel;
         await run.done;
+        flush();
         if (active) setPhase("done");
       } catch (e: any) {
-        if (active) { setErrorMsg(e?.message ?? String(e)); setPhase("error"); }
+        flush(); // keep whatever streamed before the failure
+        if (active && !stopping.current) { setErrorMsg(e?.message ?? String(e)); setPhase("error"); }
+      } finally {
+        if (flushTimer) clearTimeout(flushTimer);
       }
     })();
 
@@ -203,7 +222,8 @@ export function AdvisorResultScreen() {
 
         <View style={styles.actions}>
           {generating ? (
-            <PillButton label="Stop" variant="danger" onPress={() => cancelRef.current?.()} />
+            // Stop means "I'm done here" — cancel the run and dismiss, never an error box.
+            <PillButton label="Stop" variant="danger" onPress={() => { stopping.current = true; cancelRef.current?.(); close(); }} />
           ) : phase === "error" ? (
             <View style={styles.errorActions}>
               <PillButton

@@ -9,7 +9,9 @@ export type ReasoningDisclosureProps = {
 
 // Collapsible "show the model's reasoning" trace. Closed by default — the answer is the
 // star; the thinking is a quiet inset note with a left rule, in muted italic.
-export function ReasoningDisclosure({ text }: ReasoningDisclosureProps) {
+// Memoized: while the answer streams below, this (often long) block must not re-render
+// on every flush — that's what made scrolling the open trace stutter.
+export const ReasoningDisclosure = React.memo(function ReasoningDisclosure({ text }: ReasoningDisclosureProps) {
   const [open, setOpen] = useState(false);
   return (
     <View style={styles.wrap}>
@@ -26,7 +28,7 @@ export function ReasoningDisclosure({ text }: ReasoningDisclosureProps) {
       ) : null}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   // A full stack-gap below: the answer that follows is a separate thought and needs air.

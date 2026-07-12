@@ -17,7 +17,10 @@ export type MarkdownTextProps = {
 // **bold**/*italic*/`code` land as real typography instead of asterisk noise. Built on
 // markdownLite — anything it doesn't recognize renders as a plain paragraph, so a
 // half-streamed reply is always readable.
-export function MarkdownText({ text, color = colors.onSurface, trailing }: MarkdownTextProps) {
+// Memoized on text/color and the caret's *presence* (its element identity churns every
+// render): parsing + re-layout of a long answer on unrelated renders is what jank is
+// made of.
+function MarkdownTextInner({ text, color = colors.onSurface, trailing }: MarkdownTextProps) {
   const blocks = parseMarkdownLite(text);
   if (blocks.length === 0) return trailing ? <Text style={[styles.body, { color }]}>{trailing}</Text> : null;
   const last = blocks.length - 1;
@@ -54,6 +57,11 @@ export function MarkdownText({ text, color = colors.onSurface, trailing }: Markd
     </View>
   );
 }
+
+export const MarkdownText = React.memo(
+  MarkdownTextInner,
+  (prev, next) => prev.text === next.text && prev.color === next.color && !!prev.trailing === !!next.trailing,
+);
 
 function renderSpans(spans: Span[], color: string) {
   return spans.map((s, i) => {
