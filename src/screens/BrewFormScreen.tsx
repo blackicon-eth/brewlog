@@ -11,6 +11,8 @@ import { getBrew, createBrew, updateBrew, deleteBrew, getLatestBrew } from "../d
 import { computeRatio, formatRatio } from "../lib/ratio";
 import { makeId } from "../lib/ids";
 import { AppText, TextField, ChipSelect, ScaleSelect, PillButton, NaturalLanguageIntake, Chevron, useAppModal, type ChipOption } from "../components/ui";
+import { BrewedAtModal } from "../components/BrewedAtModal";
+import { formatBrewedAtValue } from "../lib/brewedAt";
 import { buildBrewIntakePrompt, parseBrewIntake, type BrewIntake } from "../qvac/intake";
 import { useQvac } from "../qvac/QvacProvider";
 import { METHODS, methodSpec, isBrewMethodId, type BrewMethodId, type ProcessFieldId } from "../lib/brewMethods";
@@ -71,6 +73,7 @@ export function BrewFormScreen() {
   const [notes, setNotes] = useState("");
   const [createdAt, setCreatedAt] = useState<number | null>(null);
   const [brewedAt, setBrewedAt] = useState<number | null>(null);
+  const [brewedAtOpen, setBrewedAtOpen] = useState(false);
 
   const spec = methodSpec(method);
   const setTasteKey = (key: string) => (v: string) => setTaste((t) => ({ ...t, [key]: v }));
@@ -233,6 +236,21 @@ export function BrewFormScreen() {
             </View>
 
             <SectionHeader>Recipe</SectionHeader>
+            {/* One quiet row; the details live in the Brewed sheet. "Now" = untouched
+                new brew, which keeps the stamp-at-save behavior below. */}
+            <View style={styles.brewedWrap}>
+              <AppText variant="labelMd">Brewed</AppText>
+              <Pressable
+                onPress={() => setBrewedAtOpen(true)}
+                accessibilityRole="button"
+                style={styles.brewedBox}
+              >
+                <AppText variant="bodyMd" style={styles.brewedValue}>
+                  {brewedAt == null ? "Now" : formatBrewedAtValue(brewedAt)}
+                </AppText>
+                <Chevron direction="right" size={11} thickness={2.5} color={colors.outline} />
+              </Pressable>
+            </View>
             <ChipSelect label="Method" options={METHOD_CHIPS} value={method} columns={2}
               onChange={(v) => { if (isBrewMethodId(v)) setMethod(v); }} clearable={false} />
             <View style={styles.row}>
@@ -275,6 +293,12 @@ export function BrewFormScreen() {
           </>
         )}
       </ScrollView>
+      <BrewedAtModal
+        visible={brewedAtOpen}
+        value={brewedAt}
+        onCancel={() => setBrewedAtOpen(false)}
+        onSet={(ts) => { setBrewedAt(ts); setBrewedAtOpen(false); }}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -299,6 +323,19 @@ const styles = StyleSheet.create({
   sectionText: { color: colors.secondary },
   row: { flexDirection: "row", gap: spacing.gutter },
   col: { flex: 1 },
+  brewedWrap: { gap: 8, marginBottom: spacing.stack },
+  brewedBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: colors.surfaceLowest,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+    borderRadius: radii.base,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  brewedValue: { color: colors.onSurface },
   taste: { gap: spacing.stack },
   actions: { marginTop: spacing.section },
   delete: { marginTop: spacing.gutter },
