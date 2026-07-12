@@ -77,6 +77,13 @@ SQL) in the core; screens should only wire hooks to components.
   re-render-heavy trees use the JS animation driver.
 - Long lists: Android's subview clipping blanks lists mid-fling — see the SectionList props
   in `src/screens/BrewsScreen.tsx` for the working recipe.
+- **Streaming text**: never grow one big `Text` — Android re-runs line-breaking over the
+  whole node per change. Freeze settled content in memoized chunks/lines (see
+  `MarkdownText`, `ReasoningDisclosure`, `chunkPlainText`), batch token flushes, use
+  `textBreakStrategy="simple"`. Do NOT add follow-scroll (`scrollToEnd` on content
+  growth) to streaming views: it fights the reader's finger and stutters on device even
+  when gesture-guarded — tried and reverted 2026-07-12. Chat's own stick-to-bottom
+  (`ChatScreen`) is the one sanctioned instance; leave it as is.
 
 ## Copy voice
 
