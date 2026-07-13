@@ -176,7 +176,6 @@ export function CoffeeDetailScreen() {
               meta={brewMeta(item)}
               rating={item.rating ?? null}
               onPress={() => nav.navigate("BrewDetail", { coffeeId: params.coffeeId, brewId: item.id })}
-              onDiagnose={() => void gate(() => nav.navigate("AdvisorResult", { kind: "diagnose", coffeeId: params.coffeeId, brewId: item.id, title: "Diagnose brew" }))}
             />
           )}
         />

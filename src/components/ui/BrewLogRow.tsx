@@ -2,7 +2,6 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { AppText } from "./AppText";
 import { RatingChip } from "./RatingChip";
-import { Chevron } from "./Chevron";
 import { colors, fonts } from "../../design/tokens";
 
 export type BrewLogRowProps = {
@@ -12,13 +11,12 @@ export type BrewLogRowProps = {
   meta: string; // "medium-fine · 94°C · 2:45"
   rating: number | null;
   onPress: () => void; // open/edit the brew
-  onDiagnose: () => void;
 };
 
 // A "visual log" entry — hairline-separated (divider supplied by the list). Left column
 // reads like a dated ledger line (date stamp → recipe + ratio → process meta); the right
-// column pairs the rating chip with a Diagnose link, top-aligned with the date.
-export function BrewLogRow({ date, recipe, ratio, meta, rating, onPress, onDiagnose }: BrewLogRowProps) {
+// column holds the rating chip. Diagnose lives inside the brew itself, not here.
+export function BrewLogRow({ date, recipe, ratio, meta, rating, onPress }: BrewLogRowProps) {
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
       <View style={styles.left}>
@@ -29,15 +27,11 @@ export function BrewLogRow({ date, recipe, ratio, meta, rating, onPress, onDiagn
         </View>
         {meta ? <AppText variant="bodyMd" style={styles.meta}>{meta}</AppText> : null}
       </View>
-      <View style={styles.right}>
-        <View style={styles.ratingWrap}>
-          {rating != null ? <RatingChip value={rating} /> : null}
+      {rating != null ? (
+        <View style={styles.right}>
+          <RatingChip value={rating} />
         </View>
-        <Pressable onPress={onDiagnose} hitSlop={8} style={styles.diagnoseBtn}>
-          <Text style={styles.diagnose}>Diagnose</Text>
-          <Chevron direction="right" size={7} thickness={2} color={colors.primary} />
-        </Pressable>
-      </View>
+      ) : null}
     </Pressable>
   );
 }
@@ -51,9 +45,6 @@ const styles = StyleSheet.create({
   recipe: { fontFamily: fonts.sansSemiBold, fontSize: 15, color: colors.onSurface },
   ratio: { fontFamily: fonts.sansMedium, fontSize: 13, color: colors.onSurfaceVariant },
   meta: { marginTop: 3 },
-  // Stretch to the row's full height so the rating can center and Diagnose sits at the bottom.
-  right: { alignSelf: "stretch", alignItems: "flex-end" },
-  ratingWrap: { flex: 1, justifyContent: "center" },
-  diagnoseBtn: { flexDirection: "row", alignItems: "center", gap: 5 },
-  diagnose: { fontFamily: fonts.sansBold, fontSize: 12, color: colors.primary },
+  // Center the rating chip against the left column's dated line.
+  right: { alignSelf: "stretch", alignItems: "flex-end", justifyContent: "center" },
 });
