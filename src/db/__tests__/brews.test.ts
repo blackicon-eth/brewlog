@@ -1,6 +1,6 @@
 import { makeTestDb } from "../testdb";
 import { createCoffee } from "../coffees";
-import { createBrew, listBrewsForCoffee, listAllBrews, getBrew, updateBrew, deleteBrew, avgRating } from "../brews";
+import { createBrew, listBrewsForCoffee, listAllBrews, countAllBrews, getBrew, updateBrew, deleteBrew, avgRating } from "../brews";
 import type { Brew, Coffee } from "../../models/types";
 
 const coffee: Coffee = {
@@ -88,5 +88,50 @@ describe("avgRating", () => {
   });
   it("returns null with no ratings", () => {
     expect(avgRating([brew({ rating: null })])).toBeNull();
+  });
+});
+
+describe("listAllBrews / countAllBrews method filter", () => {
+  // One coffee, five brews spanning every method plus a legacy "v60" filter row.
+  const seed = async () => {
+    const db = await makeTestDb();
+    await createCoffee(db, coffee);
+    await createBrew(db, brew({ id: "f1", method: "filter", brewedAt: 50 }));
+    await createBrew(db, brew({ id: "v1", method: "v60" as any, brewedAt: 40 })); // legacy → filter
+    await createBrew(db, brew({ id: "p1", method: "french_press", brewedAt: 30 }));
+    await createBrew(db, brew({ id: "m1", method: "moka", brewedAt: 20 }));
+    await createBrew(db, brew({ id: "e1", method: "espresso", brewedAt: 10 }));
+    return db;
+  };
+
+  it("returns every brew when unfiltered", async () => {
+    const db = await seed();
+    expect((await listAllBrews(db)).map((b) => b.id)).toEqual(["f1", "v1", "p1", "m1", "e1"]);
+    expect(await countAllBrews(db)).toBe(5);
+  });
+
+  it("filters to a concrete method", async () => {
+    const db = await seed();
+    expect((await listAllBrews(db, { method: "espresso" })).map((b) => b.id)).toEqual(["e1"]);
+    expect(await countAllBrews(db, "espresso")).toBe(1);
+    expect((await listAllBrews(db, { method: "moka" })).map((b) => b.id)).toEqual(["m1"]);
+    expect(await countAllBrews(db, "moka")).toBe(1);
+  });
+
+  // The stored `method` is NOT NULL in the schema, so a NULL row can't occur for conformant
+  // data — the clause's `method IS NULL` arm is defensive only. What matters here is that the
+  // legacy "v60" (and any other unknown value) folds into the filter view, mirroring methodSpec.
+  it("counts legacy 'v60' / unknown rows as filter brews", async () => {
+    const db = await seed();
+    expect((await listAllBrews(db, { method: "filter" })).map((b) => b.id)).toEqual(["f1", "v1"]);
+    expect(await countAllBrews(db, "filter")).toBe(2);
+  });
+
+  it("pages correctly within a filter (limit/offset, newest-first)", async () => {
+    const db = await seed();
+    const first = await listAllBrews(db, { method: "filter", limit: 1, offset: 0 });
+    const second = await listAllBrews(db, { method: "filter", limit: 1, offset: 1 });
+    expect(first.map((b) => b.id)).toEqual(["f1"]);
+    expect(second.map((b) => b.id)).toEqual(["v1"]);
   });
 });

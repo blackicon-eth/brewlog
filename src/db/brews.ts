@@ -1,6 +1,6 @@
 import type { Db } from "./types";
 import type { Brew, BrewRow } from "../models/types";
-import { methodSpec } from "../lib/brewMethods";
+import { methodSpec, methodFilterSql, type MethodFilter } from "../lib/brewMethods";
 
 export function rowToBrew(r: BrewRow): Brew {
   return {
@@ -47,22 +47,26 @@ export type BrewWithCoffee = Brew & { roaster: string; coffeeName: string };
 // paging never skips or repeats a row. Omit `limit` to fetch everything.
 export async function listAllBrews(
   db: Db,
-  opts: { limit?: number; offset?: number } = {}
+  opts: { limit?: number; offset?: number; method?: MethodFilter } = {}
 ): Promise<BrewWithCoffee[]> {
+  const { clause, params } = methodFilterSql(opts.method ?? "all");
   let sql = `SELECT b.*, c.roaster AS c_roaster, c.name AS c_name
-       FROM brews b JOIN coffees c ON c.id = b.coffee_id
-       ORDER BY b.brewed_at DESC, b.id DESC`;
-  const params: number[] = [];
+       FROM brews b JOIN coffees c ON c.id = b.coffee_id`;
+  if (clause) sql += ` WHERE ${clause}`;
+  sql += ` ORDER BY b.brewed_at DESC, b.id DESC`;
+  const qp: (string | number)[] = [...params];
   if (opts.limit != null) {
     sql += " LIMIT ? OFFSET ?";
-    params.push(opts.limit, opts.offset ?? 0);
+    qp.push(opts.limit, opts.offset ?? 0);
   }
-  const rows = await db.getAllAsync<BrewRow & { c_roaster: string; c_name: string }>(sql, params);
+  const rows = await db.getAllAsync<BrewRow & { c_roaster: string; c_name: string }>(sql, qp);
   return rows.map((r) => ({ ...rowToBrew(r), roaster: r.c_roaster, coffeeName: r.c_name }));
 }
 
-export async function countAllBrews(db: Db): Promise<number> {
-  const row = await db.getFirstAsync<{ n: number }>("SELECT COUNT(*) AS n FROM brews");
+export async function countAllBrews(db: Db, method: MethodFilter = "all"): Promise<number> {
+  const { clause, params } = methodFilterSql(method);
+  const sql = `SELECT COUNT(*) AS n FROM brews${clause ? ` WHERE ${clause}` : ""}`;
+  const row = await db.getFirstAsync<{ n: number }>(sql, params);
   return row?.n ?? 0;
 }
 

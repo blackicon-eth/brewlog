@@ -1,4 +1,4 @@
-import { METHODS, METHODS_BY_ID, isBrewMethodId, methodSpec } from "../brewMethods";
+import { METHODS, METHODS_BY_ID, isBrewMethodId, methodSpec, methodFilterSql, type MethodFilter } from "../brewMethods";
 
 describe("brewMethods registry", () => {
   it("contains exactly the four methods in shelf order", () => {
@@ -40,5 +40,29 @@ describe("brewMethods registry", () => {
     expect(METHODS_BY_ID.moka.process).toEqual(["preheat", "heat"]); // no time: tracks pot size, not technique
     expect(METHODS_BY_ID.french_press.process).toEqual(["time"]);
     expect(METHODS_BY_ID.espresso.process).toEqual(["time"]);
+  });
+});
+
+describe("methodFilterSql", () => {
+  it("returns an empty clause for 'all' (no constraint)", () => {
+    expect(methodFilterSql("all")).toEqual({ clause: "", params: [] });
+  });
+
+  it("exact-matches a concrete non-filter method", () => {
+    expect(methodFilterSql("espresso")).toEqual({ clause: "method = ?", params: ["espresso"] });
+    expect(methodFilterSql("moka")).toEqual({ clause: "method = ?", params: ["moka"] });
+    expect(methodFilterSql("french_press")).toEqual({ clause: "method = ?", params: ["french_press"] });
+  });
+
+  it("matches 'filter' plus legacy/NULL/unknown rows for the filter view", () => {
+    expect(methodFilterSql("filter")).toEqual({
+      clause: "(method IS NULL OR method NOT IN ('french_press','moka','espresso'))",
+      params: [],
+    });
+  });
+
+  it("emits unqualified column names (safe in both the join and count queries)", () => {
+    expect(methodFilterSql("espresso").clause).not.toContain("b.method");
+    expect(methodFilterSql("filter").clause).not.toContain("b.method");
   });
 });

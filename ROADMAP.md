@@ -41,11 +41,17 @@ unit. Check items off as they ship.
 
 ## Finding things as the ledger grows
 
-- [ ] **5. Search & filters**
-  No search anywhere; the Brews ledger can't be filtered by method or
-  coffee (`BrewsScreen.tsx`, fixed `brewed_at DESC`). With four methods
-  supported, "only my espresso shots" is an obvious ask. Scope: search box
-  on Coffees, method (and maybe coffee) filter chips on Brews.
+- [x] **5. Search & filters — shipped 2026-07-14 (rescoped to the brew filter).**
+  A method-filter chip strip on the Brews tab: a horizontal, scrollable
+  `MethodFilterBar` (All / Filter / Press / Moka / Espresso) in the masthead
+  that narrows the paginated ledger via SQL. A pure `methodFilterSql` builds
+  the `WHERE` fragment (the "filter" view also matches legacy `v60`/unknown
+  rows, mirroring `methodSpec`); `listAllBrews`/`countAllBrews` splice it in
+  so count and infinite-scroll paging stay correct; changing the filter
+  refetches page 1 with a request-generation guard so a mid-fling page load
+  can't append the old filter's rows. Filtered-empty state per method. The
+  originally-listed **Coffees search box was dropped**; the N+1 stats query
+  (#6) is untouched and stays its own item.
 
 - [ ] **6. Fix the Coffees N+1 stats query**
   Each coffee card fetches *all* its brews just to compute count and

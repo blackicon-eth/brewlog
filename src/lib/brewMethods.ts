@@ -81,3 +81,21 @@ export function isBrewMethodId(v: unknown): v is BrewMethodId {
 export function methodSpec(id: string | null | undefined): MethodSpec {
   return isBrewMethodId(id) ? METHODS_BY_ID[id] : METHODS_BY_ID.filter;
 }
+
+// A brew-ledger filter choice: one concrete method, or "all" (no filter).
+export type MethodFilter = BrewMethodId | "all";
+
+// Turn a filter choice into a SQL WHERE fragment (without the "WHERE" keyword). Columns are
+// UNQUALIFIED (`method`, not `b.method`) so the same fragment drops into both the joined list
+// query and the bare COUNT query — `coffees` has no `method` column, so it's unambiguous.
+//
+// The "filter" case mirrors methodSpec's fallback: a stored method that is NULL, the legacy
+// "v60", or any unknown value resolves to `filter`, so the filter view must match all of them.
+// "filter" itself isn't in the excluded three, so it matches too.
+export function methodFilterSql(filter: MethodFilter): { clause: string; params: string[] } {
+  if (filter === "all") return { clause: "", params: [] };
+  if (filter === "filter") {
+    return { clause: "(method IS NULL OR method NOT IN ('french_press','moka','espresso'))", params: [] };
+  }
+  return { clause: "method = ?", params: [filter] };
+}

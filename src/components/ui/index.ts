@@ -13,6 +13,7 @@ export { TextField, type TextFieldProps } from "./TextField";
 export { PillButton, type PillButtonProps } from "./PillButton";
 export { ChipSelect, type ChipSelectProps, type ChipOption } from "./ChipSelect";
 export { SegmentedTabs, type SegmentedTab, type SegmentedTabsProps } from "./SegmentedTabs";
+export { MethodFilterBar, type MethodFilterBarProps } from "./MethodFilterBar";
 export { ScaleSelect, type ScaleSelectProps } from "./ScaleSelect";
 export { ReasoningDisclosure, type ReasoningDisclosureProps } from "./ReasoningDisclosure";
 export { TasteRadar, type TasteRadarProps } from "./TasteRadar";

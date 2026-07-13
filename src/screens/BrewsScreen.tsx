@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, SectionList, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Animated, Easing, SectionList, StyleSheet, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -13,9 +13,10 @@ import { onLedgerReplaced } from "../lib/ledgerEvents";
 import { formatRatio } from "../lib/ratio";
 import { formatSeconds, formatBrewTime, groupBrewsByDay } from "../lib/brewFormat";
 import { methodSpec } from "../lib/brewMethods";
-import { AppText, BrewListRow, Fab, useAppModal } from "../components/ui";
+import type { MethodFilter } from "../lib/brewMethods";
+import { AppText, BrewListRow, Fab, MethodFilterBar, useAppModal } from "../components/ui";
 import { CoffeePickerModal } from "../components/CoffeePickerModal";
-import { colors, spacing, screenTopGap } from "../design/tokens";
+import { colors, motion, spacing, screenTopGap } from "../design/tokens";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "Main">;
 
@@ -44,9 +45,14 @@ export function BrewsScreen() {
   const [coffees, setCoffees] = useState<Coffee[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [total, setTotal] = useState(0);
+  const [method, setMethod] = useState<MethodFilter>("all");
   // Gate the empty state on the first load completing, so "No brews logged yet" can't
   // flash while the initial DB read is still in flight.
   const [loaded, setLoaded] = useState(false);
+  // True while a full refresh is in flight. A filter change clears the list before its
+  // refetch lands, so without this the empty state would flash between the two — gate the
+  // empty state on it so the message shows only once a fetch has actually finished empty.
+  const [refreshing, setRefreshing] = useState(false);
   const [end, setEnd] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   // Mirrors of state read inside async callbacks (which capture stale state): how many rows
@@ -54,21 +60,44 @@ export function BrewsScreen() {
   const loadedCountRef = useRef(0);
   const endRef = useRef(false);
   const fetchingRef = useRef(false);
+  // Bumped on every full refresh (focus, import, filter change). An in-flight page fetch
+  // captures the generation it started under and discards its result if a newer refresh has
+  // superseded it — so switching the method filter mid-fling can't append the old filter's
+  // rows onto the new list, and two racing refreshes resolve latest-wins.
+  const reqGenRef = useRef(0);
   useEffect(() => { loadedCountRef.current = brews.length; }, [brews.length]);
   useEffect(() => { endRef.current = end; }, [end]);
+  // A ref copy of the active filter so `refresh`/`loadMore` can read it without being rebound
+  // on every filter change — a method-keyed `refresh` would also change identity, retriggering
+  // the focus effect and firing a second, redundant page fetch on each tap.
+  const methodRef = useRef<MethodFilter>(method);
+  useEffect(() => { methodRef.current = method; }, [method]);
+  // Whether the ledger is currently hidden mid filter-transition, waiting for its rows.
+  const hiddenRef = useRef(false);
+
+  // Filter-change transition. `listAnim` fades + rises the ledger in when a filter's rows
+  // land (the same gesture the coffee shelf uses); `spinnerAnim` fades a centred loader in
+  // only if the fetch outlasts a short delay, so an instant fetch never blips a spinner.
+  // Both drive on the JS thread — the app's fix for opacity fades that would otherwise flicker
+  // on Android Fabric. (Brew rows carry no elevation, so the fade itself is already safe.)
+  const listAnim = useRef(new Animated.Value(1)).current;
+  const spinnerAnim = useRef(new Animated.Value(0)).current;
 
   // Refresh the top `count` brews in one query (used on focus and initial mount). Re-reading
   // the whole loaded window keeps your place after returning from a brew while still picking
   // up new/edited/deleted rows at the top.
   const refresh = useCallback((count: number) => {
-    (async () => {
+    const gen = ++reqGenRef.current;
+    setRefreshing(true);
+    return (async () => {
       try {
         const db = await getDb();
         const [page, totalCount, coffeeList] = await Promise.all([
-          listAllBrews(db, { limit: count }),
-          countAllBrews(db),
+          listAllBrews(db, { limit: count, method: methodRef.current }),
+          countAllBrews(db, methodRef.current),
           listCoffees(db),
         ]);
+        if (gen !== reqGenRef.current) return; // a newer refresh started — drop this stale result
         setBrews(page);
         setCoffees(coffeeList);
         setTotal(totalCount);
@@ -76,7 +105,9 @@ export function BrewsScreen() {
       } catch (e: any) {
         modal.alert("Couldn't load brews", String(e?.message ?? e));
       } finally {
-        setLoaded(true);
+        // Only the latest refresh clears the flags; a superseded one leaves them for the
+        // newer fetch still in flight.
+        if (gen === reqGenRef.current) { setLoaded(true); setRefreshing(false); }
       }
     })();
   }, [modal]);
@@ -89,15 +120,56 @@ export function BrewsScreen() {
   // spot, back to the first page (the old scroll depth belongs to data that's gone).
   useEffect(() => onLedgerReplaced(() => refresh(PAGE_SIZE)), [refresh]);
 
+  // Changing the method filter resets the ledger to its first page under the new filter.
+  // Skipped on first mount — the focus effect already loads then — so this fires only on
+  // a real filter change.
+  const firstFilter = useRef(true);
+  useEffect(() => {
+    if (firstFilter.current) { firstFilter.current = false; return; }
+    // Hide the ledger and refetch page 1 under the new filter. The reveal is owned by the
+    // effect below (keyed on `refreshing`), so whichever refresh settles last — this one, or an
+    // import that lands mid-transition — un-hides the list with the correct rows, never a blank
+    // flash. A spinner is armed with a short delay so it only surfaces if the fetch is genuinely
+    // slow (e.g. the on-device model is saturating the CPU).
+    hiddenRef.current = true;
+    listAnim.setValue(0);
+    spinnerAnim.setValue(0);
+    const spinner = Animated.timing(spinnerAnim, {
+      toValue: 1, delay: 180, duration: motion.quick, easing: Easing.out(Easing.quad), useNativeDriver: false,
+    });
+    spinner.start();
+    loadedCountRef.current = 0;
+    setEnd(false);
+    setBrews([]);
+    refresh(PAGE_SIZE);
+    return () => spinner.stop();
+  }, [method, refresh, listAnim, spinnerAnim]);
+
+  // Reveal the ledger once a refresh settles while it's hidden mid-transition: fade the spinner
+  // out and fade + rise the rows in. Driven by `refreshing` (not a specific promise) so the last
+  // fetch to finish owns the reveal; a no-op when nothing is hidden, so focus/import refreshes
+  // leave the already-visible list alone.
+  useEffect(() => {
+    if (refreshing || !hiddenRef.current) return;
+    hiddenRef.current = false;
+    spinnerAnim.stopAnimation();
+    Animated.timing(spinnerAnim, { toValue: 0, duration: motion.fast, useNativeDriver: false }).start();
+    Animated.timing(listAnim, {
+      toValue: 1, duration: motion.standard, easing: Easing.out(Easing.cubic), useNativeDriver: false,
+    }).start();
+  }, [refreshing, listAnim, spinnerAnim]);
+
   // Append the next page when the list nears its end. Guarded so the many onEndReached
   // events a scroll fires collapse into one fetch, and skipped before the first load lands.
   const loadMore = useCallback(() => {
     if (fetchingRef.current || endRef.current || loadedCountRef.current === 0) return;
+    const gen = reqGenRef.current;
     fetchingRef.current = true;
     setLoadingMore(true);
     (async () => {
       try {
-        const next = await listAllBrews(await getDb(), { limit: PAGE_SIZE, offset: loadedCountRef.current });
+        const next = await listAllBrews(await getDb(), { limit: PAGE_SIZE, offset: loadedCountRef.current, method: methodRef.current });
+        if (gen !== reqGenRef.current) return; // filter/refresh changed mid-fetch — don't append stale rows
         if (next.length) setBrews((prev) => [...prev, ...next]);
         if (next.length < PAGE_SIZE) setEnd(true);
       } catch (e: any) {
@@ -134,14 +206,24 @@ export function BrewsScreen() {
             {total} brew{total === 1 ? "" : "s"}
           </AppText>
         ) : null}
+        {loaded && (total > 0 || method !== "all") ? (
+          <MethodFilterBar value={method} onChange={setMethod} style={styles.filterBar} />
+        ) : null}
       </View>
 
+      <View style={styles.listArea}>
+      <Animated.View
+        style={[
+          styles.fill,
+          { opacity: listAnim, transform: [{ translateY: listAnim.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }] },
+        ]}
+      >
       <SectionList
         sections={sections}
         keyExtractor={(b) => b.id}
         stickySectionHeadersEnabled
         showsVerticalScrollIndicator={false}
-        style={styles.listArea}
+        style={styles.fill}
         contentContainerStyle={styles.list}
         onEndReached={loadMore}
         onEndReachedThreshold={0.5}
@@ -171,13 +253,24 @@ export function BrewsScreen() {
           );
         }}
         ListEmptyComponent={
-          loaded ? (
-            <View style={styles.empty}>
-              <AppText variant="headlineMd" style={styles.emptyTitle}>No brews logged yet</AppText>
-              <AppText variant="bodyMd" style={styles.emptyBody}>
-                Open a coffee and log a pour — every brew you record lands here, newest first.
-              </AppText>
-            </View>
+          loaded && !refreshing ? (
+            method !== "all" ? (
+              <View style={styles.empty}>
+                <AppText variant="headlineMd" style={styles.emptyTitle}>
+                  No {methodSpec(method).label.toLowerCase()} brews yet
+                </AppText>
+                <AppText variant="bodyMd" style={styles.emptyBody}>
+                  Switch the filter above, or log one from a coffee's page.
+                </AppText>
+              </View>
+            ) : (
+              <View style={styles.empty}>
+                <AppText variant="headlineMd" style={styles.emptyTitle}>No brews logged yet</AppText>
+                <AppText variant="bodyMd" style={styles.emptyBody}>
+                  Open a coffee and log a pour — every brew you record lands here, newest first.
+                </AppText>
+              </View>
+            )
           ) : null
         }
         renderItem={({ item, index, section }) => (
@@ -195,6 +288,13 @@ export function BrewsScreen() {
           />
         )}
       />
+      </Animated.View>
+      {/* Sits above the (hidden) list during a filter refetch, so a slow fetch shows motion
+          instead of blank paper. pointerEvents none so it never intercepts a scroll/tap. */}
+      <Animated.View pointerEvents="none" style={[styles.loadingOverlay, { opacity: spinnerAnim }]}>
+        <ActivityIndicator color={colors.primary} />
+      </Animated.View>
+      </View>
 
       {/* Only offer the "+" once there's a coffee to log against — a brand-new, empty
           ledger leans on its own empty-state guidance instead. */}
@@ -215,7 +315,16 @@ const styles = StyleSheet.create({
   masthead: { paddingHorizontal: spacing.container, paddingBottom: 8 },
   title: { marginTop: 6, lineHeight: 48 },
   subtitle: { marginTop: 8, color: colors.secondary },
+  // Sits under the count; a touch of top space, and it bleeds past the masthead inset to the
+  // screen edges so chips scroll edge-to-edge. The strip owns its own left/right content
+  // padding, so both the first and last chip clear the screen edge.
+  filterBar: { marginTop: 14, marginHorizontal: -spacing.container },
   listArea: { flex: 1 },
+  fill: { flex: 1 },
+  // Centred loader, held a little below the masthead so it reads as "the ledger is arriving"
+  // rather than floating mid-screen. Absolute so it overlays the hidden list without taking
+  // layout space; pointerEvents none is set on the element.
+  loadingOverlay: { position: "absolute", top: 40, left: 0, right: 0, alignItems: "center" },
   // Bottom pad clears the circular "+" (58 tall, 28 from the bottom) so the last brew
   // never hides behind it.
   list: { paddingHorizontal: spacing.container, paddingBottom: 100 },
