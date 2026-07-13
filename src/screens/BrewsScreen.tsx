@@ -7,11 +7,14 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/types";
 import { getDb } from "../db/database";
 import { listAllBrews, countAllBrews, type BrewWithCoffee } from "../db/brews";
+import { listCoffees } from "../db/coffees";
+import type { Coffee } from "../models/types";
 import { onLedgerReplaced } from "../lib/ledgerEvents";
 import { formatRatio } from "../lib/ratio";
 import { formatSeconds, formatBrewTime, groupBrewsByDay } from "../lib/brewFormat";
 import { methodSpec } from "../lib/brewMethods";
-import { AppText, BrewListRow, useAppModal } from "../components/ui";
+import { AppText, BrewListRow, Fab, useAppModal } from "../components/ui";
+import { CoffeePickerModal } from "../components/CoffeePickerModal";
 import { colors, spacing, screenTopGap } from "../design/tokens";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "Main">;
@@ -38,6 +41,8 @@ export function BrewsScreen() {
   const insets = useSafeAreaInsets();
   const modal = useAppModal();
   const [brews, setBrews] = useState<BrewWithCoffee[]>([]);
+  const [coffees, setCoffees] = useState<Coffee[]>([]);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [total, setTotal] = useState(0);
   // Gate the empty state on the first load completing, so "No brews logged yet" can't
   // flash while the initial DB read is still in flight.
@@ -59,8 +64,13 @@ export function BrewsScreen() {
     (async () => {
       try {
         const db = await getDb();
-        const [page, totalCount] = await Promise.all([listAllBrews(db, { limit: count }), countAllBrews(db)]);
+        const [page, totalCount, coffeeList] = await Promise.all([
+          listAllBrews(db, { limit: count }),
+          countAllBrews(db),
+          listCoffees(db),
+        ]);
         setBrews(page);
+        setCoffees(coffeeList);
         setTotal(totalCount);
         setEnd(page.length >= totalCount);
       } catch (e: any) {
@@ -98,6 +108,13 @@ export function BrewsScreen() {
       }
     })();
   }, [modal]);
+
+  // The "+" logs a brew for a coffee. One coffee on the shelf → skip the question and
+  // open its form straight away; otherwise ask which coffee first.
+  const onLogBrew = useCallback(() => {
+    if (coffees.length === 1) { nav.navigate("BrewForm", { coffeeId: coffees[0].id }); return; }
+    setPickerOpen(true);
+  }, [coffees, nav]);
 
   const sections = useMemo(() => groupBrewsByDay(brews), [brews]);
 
@@ -174,6 +191,17 @@ export function BrewsScreen() {
           />
         )}
       />
+
+      {/* Only offer the "+" once there's a coffee to log against — a brand-new, empty
+          ledger leans on its own empty-state guidance instead. */}
+      {coffees.length > 0 ? <Fab round label="Log brew" onPress={onLogBrew} /> : null}
+
+      <CoffeePickerModal
+        visible={pickerOpen}
+        coffees={coffees}
+        onCancel={() => setPickerOpen(false)}
+        onSelect={(coffeeId) => { setPickerOpen(false); nav.navigate("BrewForm", { coffeeId }); }}
+      />
     </View>
   );
 }
@@ -184,7 +212,9 @@ const styles = StyleSheet.create({
   title: { marginTop: 6, lineHeight: 48 },
   subtitle: { marginTop: 8, color: colors.secondary },
   listArea: { flex: 1 },
-  list: { paddingHorizontal: spacing.container },
+  // Bottom pad clears the circular "+" (58 tall, 28 from the bottom) so the last brew
+  // never hides behind it.
+  list: { paddingHorizontal: spacing.container, paddingBottom: 100 },
   // Sticky per-day break. Solid cream so the day's thread scrolls cleanly underneath. A
   // full-bleed top rule + extra top gap cut each new day apart — the only horizontal rule
   // in the list, so it never reads like the (rule-less, spine-linked) gap between same-day

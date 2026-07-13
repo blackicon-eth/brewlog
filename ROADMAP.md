@@ -22,10 +22,11 @@ unit. Check items off as they ship.
   keep two orphan NULL columns — harmless, never read or written; new
   installs don't have them.
 
-- [ ] **3. "Log brew" from the Brews tab**
-  The global ledger has no FAB — logging requires Home → coffee →
-  Log brew. Add a FAB on BrewsScreen that first asks which coffee
-  (small picker), then opens BrewForm.
+- [x] **3. "Log brew" from the Brews tab** — shipped 2026-07-13. A blue
+  circular "+" FAB on BrewsScreen opens a coffee picker
+  (`CoffeePickerModal`, mirrors the Best-recipe picker), then the brew form
+  for the chosen coffee. One coffee → skips the picker; hidden on an empty
+  ledger. Added a `round` variant to the `Fab` component.
 
 - [ ] **4. Delete on detail pages + archive for finished bags**
   Deleting a coffee/brew is only possible through the Edit form. Add a
