@@ -29,8 +29,6 @@ CREATE TABLE IF NOT EXISTS brews (
   filter_type TEXT,
   preheat INTEGER,
   heat TEXT,
-  tds REAL,
-  ey REAL,
   acidity INTEGER,
   sweetness INTEGER,
   bitterness INTEGER,

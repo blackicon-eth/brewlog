@@ -30,8 +30,6 @@ export type Brew = {
   filterType?: string | null;
   preheat?: boolean | null;
   heat?: MokaHeat | null;
-  tds?: number | null;
-  ey?: number | null;
   acidity?: number | null;
   sweetness?: number | null;
   bitterness?: number | null;
@@ -57,7 +55,6 @@ export type BrewRow = {
   grind: string | null; water_temp_c: number | null; dripper: string | null;
   pours: number | null; pour_interval_s: number | null; total_time_s: number | null;
   filter_type: string | null; preheat: number | null; heat: string | null;
-  tds: number | null; ey: number | null;
   acidity: number | null; sweetness: number | null; bitterness: number | null;
   body: number | null; clarity: number | null; rating: number | null;
   notes: string | null; created_at: number;

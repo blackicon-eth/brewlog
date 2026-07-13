@@ -12,7 +12,7 @@ const coffee = (id: string): Coffee => ({
 const brew = (id: string, coffeeId: string): Brew => ({
   id, coffeeId, brewedAt: 2, method: "filter" as const, doseG: 15, waterG: 250, ratio: 16.7,
   grind: null, waterTempC: null, dripper: null, pours: null, pourIntervalS: null,
-  totalTimeS: null, filterType: null, tds: null, ey: null, acidity: null,
+  totalTimeS: null, filterType: null, acidity: null,
   sweetness: null, bitterness: null, body: null, clarity: null, rating: null,
   notes: null, createdAt: 2,
 });

@@ -16,7 +16,7 @@ const coffee = (over: Partial<Coffee> = {}): Coffee => ({
 const brew = (over: Partial<Brew> = {}): Brew => ({
   id: "b1", coffeeId: "c1", brewedAt: 1720000001000, method: "filter" as const, doseG: 15, waterG: 250, ratio: 16.7,
   grind: "20 clicks", waterTempC: 94, dripper: "V60", pours: 3, pourIntervalS: 45,
-  totalTimeS: 180, filterType: "paper", preheat: null, heat: null, tds: null, ey: null, acidity: 4, sweetness: 4,
+  totalTimeS: 180, filterType: "paper", preheat: null, heat: null, acidity: 4, sweetness: 4,
   bitterness: 2, body: 3, clarity: 4, rating: 8, notes: null, createdAt: 1720000001000,
   ...over,
 });

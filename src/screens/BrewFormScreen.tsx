@@ -151,7 +151,6 @@ export function BrewFormScreen() {
         filterType: has("filterType") ? filterType.trim() || null : null,
         preheat: has("preheat") ? (preheat === "yes" ? true : preheat === "no" ? false : null) : null,
         heat: has("heat") && (heat === "low" || heat === "medium" || heat === "high") ? heat : null,
-        tds: null, ey: null,
         acidity: int(taste.acidity ?? ""), sweetness: int(taste.sweetness ?? ""),
         bitterness: int(taste.bitterness ?? ""), body: int(taste.body ?? ""),
         clarity: int(taste.clarity ?? ""), rating: int(taste.rating ?? ""),

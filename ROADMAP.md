@@ -13,12 +13,14 @@ unit. Check items off as they ship.
   future guard. Untouched new logs keep the stamp-at-save behavior. Pure
   helpers in `src/lib/brewedAt.ts`; sheet in `src/components/BrewedAtModal.tsx`.
 
-- [ ] **2. Wire up TDS & extraction yield (or drop them)**
-  `brews.tds` and `brews.ey` exist in the schema but the form saves both as
-  `null` (`BrewFormScreen.tsx`) and BrewDetail never shows them. Natural
-  pairing: un-gate the Extraction Yield tool and let a brew record TDS with
-  EY computed from dose/water. Decide: implement the pair, or remove the
-  dead columns.
+- [x] **2. TDS & extraction yield — dropped 2026-07-13.** These need a
+  refractometer most brewers don't own, so the dead `brews.tds`/`brews.ey`
+  columns and all their plumbing (schema, db queries, `Brew`/`BrewRow`
+  types, ledger file, form) were removed rather than built out. The
+  standalone Extraction Yield and Coffee Compass *tools* are untouched
+  (separate calculators, still coming-soon). Note: existing on-device DBs
+  keep two orphan NULL columns — harmless, never read or written; new
+  installs don't have them.
 
 - [ ] **3. "Log brew" from the Brews tab**
   The global ledger has no FAB — logging requires Home → coffee →

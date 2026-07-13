@@ -16,7 +16,7 @@ export type LedgerParseResult =
 const COFFEE_OPTIONAL_STRINGS = ["origin", "process", "roastLevel", "roastDate", "notes"] as const;
 const BREW_REQUIRED_NUMBERS = ["brewedAt", "doseG", "waterG", "ratio", "createdAt"] as const;
 const BREW_OPTIONAL_NUMBERS = [
-  "waterTempC", "pours", "pourIntervalS", "totalTimeS", "tds", "ey",
+  "waterTempC", "pours", "pourIntervalS", "totalTimeS",
   "acidity", "sweetness", "bitterness", "body", "clarity", "rating",
 ] as const;
 const BREW_OPTIONAL_STRINGS = ["grind", "dripper", "filterType", "notes"] as const;
@@ -39,7 +39,6 @@ function brewOut(b: Brew): Required<Brew> {
     totalTimeS: b.totalTimeS ?? null, filterType: b.filterType ?? null,
     preheat: typeof b.preheat === "boolean" ? b.preheat : null,
     heat: b.heat === "low" || b.heat === "medium" || b.heat === "high" ? b.heat : null,
-    tds: b.tds ?? null, ey: b.ey ?? null,
     acidity: b.acidity ?? null, sweetness: b.sweetness ?? null, bitterness: b.bitterness ?? null,
     body: b.body ?? null, clarity: b.clarity ?? null, rating: b.rating ?? null,
     notes: b.notes ?? null, createdAt: b.createdAt,
