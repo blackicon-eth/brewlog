@@ -25,7 +25,8 @@ function coffeeOut(c: Coffee): Required<Coffee> {
   return {
     id: c.id, roaster: c.roaster, name: c.name,
     origin: c.origin ?? null, process: c.process ?? null, roastLevel: c.roastLevel ?? null,
-    roastDate: c.roastDate ?? null, notes: c.notes ?? null, createdAt: c.createdAt,
+    roastDate: c.roastDate ?? null, notes: c.notes ?? null,
+    archived: c.archived === true, createdAt: c.createdAt,
   };
 }
 
@@ -105,6 +106,9 @@ export function parseLedgerFile(text: string): LedgerParseResult {
     if (!finiteNumber(c.createdAt)) return { ok: false, reason: `${label} is missing a valid createdAt.` };
     for (const field of COFFEE_OPTIONAL_STRINGS) {
       if (!optionalOk(c[field], "string")) return { ok: false, reason: `${label} has an invalid ${field}.` };
+    }
+    if (!(c.archived === undefined || c.archived === null || typeof c.archived === "boolean")) {
+      return { ok: false, reason: `${label} has an invalid archived flag.` };
     }
     if (coffeeIds.has(c.id as string)) {
       return { ok: false, reason: `${label} repeats the id of an earlier coffee.` };

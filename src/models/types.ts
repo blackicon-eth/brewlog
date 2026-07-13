@@ -10,6 +10,7 @@ export type Coffee = {
   roastLevel?: string | null;
   roastDate?: string | null; // ISO date "YYYY-MM-DD"
   notes?: string | null;
+  archived?: boolean | null; // a finished bag, hidden from the active shelf
   createdAt: number;
 };
 
@@ -47,7 +48,7 @@ export type NewBrew = Omit<Brew, "id" | "ratio" | "createdAt">;
 export type CoffeeRow = {
   id: string; roaster: string; name: string;
   origin: string | null; process: string | null; roast_level: string | null;
-  roast_date: string | null; notes: string | null; created_at: number;
+  roast_date: string | null; notes: string | null; archived: number; created_at: number;
 };
 export type BrewRow = {
   id: string; coffee_id: string; brewed_at: number; method: string;

@@ -109,12 +109,16 @@ export function BrewsScreen() {
     })();
   }, [modal]);
 
+  // You log new brews only against coffees still on the active shelf — a finished
+  // (archived) bag drops out of the picker even though its past brews stay in the ledger.
+  const activeCoffees = useMemo(() => coffees.filter((c) => !c.archived), [coffees]);
+
   // The "+" logs a brew for a coffee. One coffee on the shelf → skip the question and
   // open its form straight away; otherwise ask which coffee first.
   const onLogBrew = useCallback(() => {
-    if (coffees.length === 1) { nav.navigate("BrewForm", { coffeeId: coffees[0].id }); return; }
+    if (activeCoffees.length === 1) { nav.navigate("BrewForm", { coffeeId: activeCoffees[0].id }); return; }
     setPickerOpen(true);
-  }, [coffees, nav]);
+  }, [activeCoffees, nav]);
 
   const sections = useMemo(() => groupBrewsByDay(brews), [brews]);
 
@@ -194,11 +198,11 @@ export function BrewsScreen() {
 
       {/* Only offer the "+" once there's a coffee to log against — a brand-new, empty
           ledger leans on its own empty-state guidance instead. */}
-      {coffees.length > 0 ? <Fab round label="Log brew" onPress={onLogBrew} /> : null}
+      {activeCoffees.length > 0 ? <Fab round label="Log brew" onPress={onLogBrew} /> : null}
 
       <CoffeePickerModal
         visible={pickerOpen}
-        coffees={coffees}
+        coffees={activeCoffees}
         onCancel={() => setPickerOpen(false)}
         onSelect={(coffeeId) => { setPickerOpen(false); nav.navigate("BrewForm", { coffeeId }); }}
       />

@@ -56,7 +56,7 @@ export const motion = {
   gentle: 450, // soft state fades: phase hand-offs, cue decays
   slow: 550, // decorative swells & ripples
   drift: 1100, // ambient loops: water surfaces & waves (one full travel period)
-  springGlide: { friction: 10, tension: 210 }, // selector pills gliding between options
+  springGlide: { friction: 16, tension: 220 }, // selector pills gliding between options (barely any overshoot)
   springPop: { bounciness: 3, speed: 18 }, // modals & sheets arriving
   springSnap: { bounciness: 0, speed: 22 }, // drag-release snap-back
 } as const;

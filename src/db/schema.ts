@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS coffees (
   roast_level TEXT,
   roast_date TEXT,
   notes TEXT,
+  archived INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS brews (

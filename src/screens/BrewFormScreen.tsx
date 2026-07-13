@@ -10,7 +10,7 @@ import { getDb } from "../db/database";
 import { getBrew, createBrew, updateBrew, deleteBrew } from "../db/brews";
 import { computeRatio, formatRatio } from "../lib/ratio";
 import { makeId } from "../lib/ids";
-import { AppText, TextField, ChipSelect, ScaleSelect, PillButton, NaturalLanguageIntake, Chevron, useAppModal, type ChipOption } from "../components/ui";
+import { AppText, TextField, ChipSelect, ScaleSelect, PillButton, NaturalLanguageIntake, Chevron, TrashIcon, useAppModal, type ChipOption } from "../components/ui";
 import { BrewedAtModal } from "../components/BrewedAtModal";
 import { formatBrewedAtValue } from "../lib/brewedAt";
 import { buildBrewIntakePrompt, parseBrewIntake, type BrewIntake } from "../qvac/intake";
@@ -166,8 +166,8 @@ export function BrewFormScreen() {
   async function onDelete() {
     if (!editingId) return;
     const ok = await modal.confirm({
-      title: "Delete brew?",
-      message: "This removes this brew log.",
+      title: "Delete this brew?",
+      message: "This removes the brew log for good. This can't be undone.",
       confirmLabel: "Delete",
       destructive: true,
     });
@@ -195,6 +195,18 @@ export function BrewFormScreen() {
           <Pressable onPress={() => nav.goBack()} hitSlop={10} style={styles.backBtn}>
             <Chevron direction="left" size={12} thickness={2.5} color={colors.onSurface} />
           </Pressable>
+          {editingId ? (
+            <Pressable
+              onPress={onDelete}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Delete brew"
+              style={({ pressed }) => [styles.deleteBtn, pressed && styles.deletePressed]}
+            >
+              <TrashIcon size={16} color={colors.tertiary} thickness={1.6} />
+              <AppText variant="labelMd" style={styles.deleteText}>Delete</AppText>
+            </Pressable>
+          ) : null}
         </View>
 
         {!revealed ? (
@@ -272,7 +284,6 @@ export function BrewFormScreen() {
 
             <View style={styles.actions}>
               <PillButton label={editingId ? "Save changes" : "Save brew"} onPress={onSave} />
-              {editingId ? <PillButton label="Delete brew" variant="danger" onPress={onDelete} style={styles.delete} /> : null}
             </View>
           </>
         )}
@@ -290,8 +301,16 @@ export function BrewFormScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: spacing.container },
-  topBar: { flexDirection: "row", marginBottom: 8 },
+  topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
   backBtn: { height: 34, justifyContent: "center" },
+  // Ghost trash + "Delete" pill, top-right of the form (edit mode only).
+  deleteBtn: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    borderRadius: 999, borderWidth: 1, borderColor: colors.outlineVariant,
+    paddingLeft: 12, paddingRight: 14, paddingVertical: 7,
+  },
+  deletePressed: { opacity: 0.55, backgroundColor: "rgba(171,11,24,0.08)" },
+  deleteText: { color: colors.tertiary },
   heroImageWrap: { marginBottom: spacing.stack, borderRadius: radii.lg, backgroundColor: colors.surfaceLowest, ...shadows.card },
   heroImage: { width: "100%", height: 140, borderRadius: radii.lg },
   hero: { alignItems: "center" },
@@ -321,5 +340,4 @@ const styles = StyleSheet.create({
   brewedValue: { color: colors.onSurface },
   taste: { gap: spacing.stack },
   actions: { marginTop: spacing.section },
-  delete: { marginTop: spacing.gutter },
 });

@@ -22,6 +22,12 @@ async function open(): Promise<Db> {
       // column already exists
     }
   }
+  // Same forward-migration for the coffees table (the archived/finished-bag flag).
+  try {
+    await db.execAsync("ALTER TABLE coffees ADD COLUMN archived INTEGER NOT NULL DEFAULT 0;");
+  } catch {
+    // column already exists
+  }
   return db as unknown as Db; // SQLiteDatabase implements the Db subset we use.
 }
 

@@ -4,16 +4,17 @@ import type { Coffee, CoffeeRow } from "../models/types";
 export function rowToCoffee(r: CoffeeRow): Coffee {
   return {
     id: r.id, roaster: r.roaster, name: r.name, origin: r.origin, process: r.process,
-    roastLevel: r.roast_level, roastDate: r.roast_date, notes: r.notes, createdAt: r.created_at,
+    roastLevel: r.roast_level, roastDate: r.roast_date, notes: r.notes,
+    archived: r.archived === 1, createdAt: r.created_at,
   };
 }
 
 export async function createCoffee(db: Db, c: Coffee): Promise<void> {
   await db.runAsync(
-    `INSERT INTO coffees (id, roaster, name, origin, process, roast_level, roast_date, notes, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO coffees (id, roaster, name, origin, process, roast_level, roast_date, notes, archived, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [c.id, c.roaster, c.name, c.origin ?? null, c.process ?? null, c.roastLevel ?? null,
-     c.roastDate ?? null, c.notes ?? null, c.createdAt]
+     c.roastDate ?? null, c.notes ?? null, c.archived ? 1 : 0, c.createdAt]
   );
 }
 
@@ -29,11 +30,17 @@ export async function getCoffee(db: Db, id: string): Promise<Coffee | null> {
 
 export async function updateCoffee(db: Db, c: Coffee): Promise<void> {
   await db.runAsync(
-    `UPDATE coffees SET roaster=?, name=?, origin=?, process=?, roast_level=?, roast_date=?, notes=?
+    `UPDATE coffees SET roaster=?, name=?, origin=?, process=?, roast_level=?, roast_date=?, notes=?, archived=?
      WHERE id = ?`,
     [c.roaster, c.name, c.origin ?? null, c.process ?? null, c.roastLevel ?? null,
-     c.roastDate ?? null, c.notes ?? null, c.id]
+     c.roastDate ?? null, c.notes ?? null, c.archived ? 1 : 0, c.id]
   );
+}
+
+// Flip just the archived flag — used by the edit page's archive/restore toggle, which
+// takes effect immediately without rewriting the rest of the coffee.
+export async function setCoffeeArchived(db: Db, id: string, archived: boolean): Promise<void> {
+  await db.runAsync("UPDATE coffees SET archived=? WHERE id = ?", [archived ? 1 : 0, id]);
 }
 
 export async function deleteCoffee(db: Db, id: string): Promise<void> {

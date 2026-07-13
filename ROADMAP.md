@@ -28,11 +28,16 @@ unit. Check items off as they ship.
   for the chosen coffee. One coffee → skips the picker; hidden on an empty
   ledger. Added a `round` variant to the `Fab` component.
 
-- [ ] **4. Delete on detail pages + archive for finished bags**
-  Deleting a coffee/brew is only possible through the Edit form. Add a
-  quiet delete action to CoffeeDetail and BrewDetail (confirm dialogs, same
-  copy voice). Consider an **archive** flag for coffees so finished bags
-  leave the Home list without losing their brew history.
+- [x] **4. Delete + archive for finished bags** — shipped 2026-07-13.
+  Delete moved onto the coffee/brew **edit** pages as a labeled trash pill
+  (top-right, themed confirm modal), replacing the old bottom pill — the
+  user preferred it there over the detail pages. Archive is a full `archived`
+  flag on coffees (schema migration, ledger export/import): an Archive /
+  Unarchive button (grey) beside Delete on the coffee edit page (archive
+  confirms, unarchive is instant); a Home **Active / Archived** filter via
+  the new reusable animated `SegmentedTabs`; an "Archived" header badge;
+  archived coffees leave the active shelf, the Brews-tab picker, and lose
+  their "Log brew" FAB — while their past brews stay in the ledger.
 
 ## Finding things as the ledger grows
 

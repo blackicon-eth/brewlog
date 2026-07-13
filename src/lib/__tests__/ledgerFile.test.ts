@@ -9,7 +9,7 @@ import type { Brew, Coffee } from "../../models/types";
 
 const coffee = (over: Partial<Coffee> = {}): Coffee => ({
   id: "c1", roaster: "La Cabra", name: "Aricha", origin: "Ethiopia", process: "Washed",
-  roastLevel: "Light", roastDate: "2026-06-01", notes: null, createdAt: 1720000000000,
+  roastLevel: "Light", roastDate: "2026-06-01", notes: null, archived: false, createdAt: 1720000000000,
   ...over,
 });
 

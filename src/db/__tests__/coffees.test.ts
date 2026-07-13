@@ -4,7 +4,7 @@ import type { Coffee } from "../../models/types";
 
 const coffee = (over: Partial<Coffee> = {}): Coffee => ({
   id: "c1", roaster: "Sey", name: "Kenya AA", origin: "Kenya", process: "washed",
-  roastLevel: "light", roastDate: "2026-06-10", notes: "blackcurrant", createdAt: 100, ...over,
+  roastLevel: "light", roastDate: "2026-06-10", notes: "blackcurrant", archived: false, createdAt: 100, ...over,
 });
 
 it("creates and reads a coffee", async () => {

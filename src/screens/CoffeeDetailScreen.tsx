@@ -13,7 +13,7 @@ import { formatRatio } from "../lib/ratio";
 import { formatSeconds, formatBrewDate, formatBrewTime } from "../lib/brewFormat";
 import { methodSpec } from "../lib/brewMethods";
 import type { BrewMethodId } from "../lib/brewMethods";
-import { AppText, AiActionCard, BrewLogRow, Fab, Chevron, ClockIcon, useAppModal } from "../components/ui";
+import { AppText, AiActionCard, BrewLogRow, Fab, Chevron, ClockIcon, ArchiveIcon, useAppModal } from "../components/ui";
 import { MethodPickerModal } from "../components/MethodPickerModal";
 import { useAdvisorGate } from "../hooks/useAdvisorGate";
 import { colors, motion, spacing, screenTopGap } from "../design/tokens";
@@ -104,7 +104,15 @@ export function CoffeeDetailScreen() {
           </Pressable>
         </View>
 
-        {coffee ? <AppText variant="labelSm">{coffee.roaster}</AppText> : null}
+        <View style={styles.roasterRow}>
+          {coffee ? <AppText variant="labelSm">{coffee.roaster}</AppText> : null}
+          {coffee?.archived ? (
+            <View style={styles.archivedBadge}>
+              <ArchiveIcon size={12} color={colors.onSurfaceVariant} thickness={1.4} />
+              <AppText variant="labelSm" style={styles.archivedText}>Archived</AppText>
+            </View>
+          ) : null}
+        </View>
         <AppText variant="headlineLg" style={styles.title}>{coffee ? coffee.name : "…"}</AppText>
         {tags ? <AppText variant="labelMd" style={styles.tags}>{tags}</AppText> : null}
 
@@ -180,7 +188,10 @@ export function CoffeeDetailScreen() {
           )}
         />
       </Animated.View>
-      <Fab label="Log brew" onPress={() => nav.navigate("BrewForm", { coffeeId: params.coffeeId })} />
+      {/* No new brews for a finished bag — its past brews still live in the ledger. */}
+      {coffee && !coffee.archived ? (
+        <Fab label="Log brew" onPress={() => nav.navigate("BrewForm", { coffeeId: params.coffeeId })} />
+      ) : null}
 
       <MethodPickerModal
         visible={pickerVisible}
@@ -204,6 +215,14 @@ const styles = StyleSheet.create({
   backBtn: { height: 34, justifyContent: "center" },
   editBtn: { borderWidth: 1, borderColor: colors.outlineVariant, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 },
   editText: { color: colors.onSurfaceVariant },
+  roasterRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  // Quiet grey "Archived" tag — matches the grayish archive language elsewhere.
+  archivedBadge: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    backgroundColor: colors.surfaceContainer, borderRadius: 999,
+    paddingLeft: 8, paddingRight: 11, paddingVertical: 3,
+  },
+  archivedText: { color: colors.onSurfaceVariant, letterSpacing: 0.4 },
   // Extra line height so EB Garamond's descenders (the "g" tail) aren't clipped on Android.
   title: { marginTop: 6, lineHeight: 48 },
   tags: { marginTop: 10, color: colors.secondary },
