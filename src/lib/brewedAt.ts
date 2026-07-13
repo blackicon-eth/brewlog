@@ -25,12 +25,12 @@ export function dayLabel(dayStart: number, now: number): string {
   return d.getFullYear() === new Date(now).getFullYear() ? base : `${base} ${d.getFullYear()}`;
 }
 
-// The picker's chips: today through six days back. When `existing` (an edited brew's
+// The picker's chips: today through five days back. When `existing` (an edited brew's
 // stored time) falls outside that window, its day is prepended so it stays reachable.
 export function dayOptions(now: number, existing?: number | null): DayOption[] {
   const opts: DayOption[] = [];
   const today = new Date(startOfDayTs(now));
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < 6; i++) {
     // Day-by-day via the Date constructor so a DST shift can't skew the boundary.
     const dayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i).getTime();
     opts.push({ key: String(dayStart), label: dayLabel(dayStart, now), dayStart });

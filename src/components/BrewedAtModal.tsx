@@ -59,7 +59,7 @@ export function BrewedAtModal({ visible, value, onCancel, onSet }: {
         <Pressable style={StyleSheet.absoluteFill} accessibilityLabel="Close brewed picker" onPress={onCancel} />
         <View style={styles.card}>
           <AppText variant="labelSm" style={styles.kicker}>Brew log</AppText>
-          <AppText variant="headlineMd" style={styles.title}>Brewed</AppText>
+          <AppText variant="headlineMd" style={styles.title}>Brewed on</AppText>
 
           <ChipSelect
             label="Day"
@@ -90,10 +90,8 @@ export function BrewedAtModal({ visible, value, onCancel, onSet }: {
           </Pressable>
 
           <View style={styles.actions}>
-            <PillButton label="Set" onPress={onConfirm} />
-            <Pressable onPress={onCancel} hitSlop={8} style={styles.cancelBtn} accessibilityRole="button">
-              <AppText variant="labelMd" style={styles.cancelText}>Cancel</AppText>
-            </Pressable>
+            <PillButton label="Cancel" variant="neutral" style={styles.flex1} onPress={onCancel} />
+            <PillButton label="Set" style={styles.flex1} onPress={onConfirm} />
           </View>
         </View>
       </View>
@@ -120,7 +118,6 @@ const styles = StyleSheet.create({
   futureNote: { marginTop: 10, color: colors.tertiary },
   justNow: { alignSelf: "center", marginTop: 14, padding: 4 },
   justNowText: { color: colors.primary },
-  actions: { marginTop: 14 },
-  cancelBtn: { alignSelf: "center", marginTop: 12, padding: 4 },
-  cancelText: { color: colors.onSurfaceVariant },
+  actions: { flexDirection: "row", gap: spacing.gutter, marginTop: 20 },
+  flex1: { flex: 1 },
 });

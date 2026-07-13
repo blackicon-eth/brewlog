@@ -7,7 +7,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/types";
 import type { Brew } from "../models/types";
 import { getDb } from "../db/database";
-import { getBrew, createBrew, updateBrew, deleteBrew, getLatestBrew } from "../db/brews";
+import { getBrew, createBrew, updateBrew, deleteBrew } from "../db/brews";
 import { computeRatio, formatRatio } from "../lib/ratio";
 import { makeId } from "../lib/ids";
 import { AppText, TextField, ChipSelect, ScaleSelect, PillButton, NaturalLanguageIntake, Chevron, useAppModal, type ChipOption } from "../components/ui";
@@ -112,20 +112,6 @@ export function BrewFormScreen() {
       }
     })();
   }, [editingId]);
-
-  // New logs default to how this coffee was last brewed. Silent fallback to Filter —
-  // a failed lookup shouldn't block the form.
-  useEffect(() => {
-    if (editingId) return;
-    let active = true;
-    (async () => {
-      try {
-        const last = await getLatestBrew(await getDb(), params.coffeeId);
-        if (active && last) setMethod(last.method);
-      } catch { /* keep filter */ }
-    })();
-    return () => { active = false; };
-  }, [editingId, params.coffeeId]);
 
   function applyParsed(p: BrewIntake) {
     if (p.method) setMethod(p.method);
@@ -236,21 +222,6 @@ export function BrewFormScreen() {
             </View>
 
             <SectionHeader>Recipe</SectionHeader>
-            {/* One quiet row; the details live in the Brewed sheet. "Now" = untouched
-                new brew, which keeps the stamp-at-save behavior below. */}
-            <View style={styles.brewedWrap}>
-              <AppText variant="labelMd">Brewed</AppText>
-              <Pressable
-                onPress={() => setBrewedAtOpen(true)}
-                accessibilityRole="button"
-                style={styles.brewedBox}
-              >
-                <AppText variant="bodyMd" style={styles.brewedValue}>
-                  {brewedAt == null ? "Now" : formatBrewedAtValue(brewedAt)}
-                </AppText>
-                <Chevron direction="right" size={11} thickness={2.5} color={colors.outline} />
-              </Pressable>
-            </View>
             <ChipSelect label="Method" options={METHOD_CHIPS} value={method} columns={2}
               onChange={(v) => { if (isBrewMethodId(v)) setMethod(v); }} clearable={false} />
             <View style={styles.row}>
@@ -282,6 +253,20 @@ export function BrewFormScreen() {
                 <ScaleSelect key={t.key} label={t.label} value={taste[t.key] ?? ""} onChange={setTasteKey(t.key)} />
               ))}
             </View>
+
+            <SectionHeader>Brewed on</SectionHeader>
+            {/* One quiet row; the details live in the Brewed sheet. "Now" = untouched
+                new brew, which keeps the stamp-at-save behavior below. */}
+            <Pressable
+              onPress={() => setBrewedAtOpen(true)}
+              accessibilityRole="button"
+              style={styles.brewedBox}
+            >
+              <AppText variant="bodyMd" style={styles.brewedValue}>
+                {brewedAt == null ? "Now" : formatBrewedAtValue(brewedAt)}
+              </AppText>
+              <Chevron direction="right" size={11} thickness={2.5} color={colors.outline} />
+            </Pressable>
 
             <SectionHeader>Notes</SectionHeader>
             <TextField label="Tasting notes" value={notes} onChangeText={setNotes} multiline placeholder="bitter finish, muted acidity" />
@@ -323,7 +308,6 @@ const styles = StyleSheet.create({
   sectionText: { color: colors.secondary },
   row: { flexDirection: "row", gap: spacing.gutter },
   col: { flex: 1 },
-  brewedWrap: { gap: 8, marginBottom: spacing.stack },
   brewedBox: {
     flexDirection: "row",
     alignItems: "center",

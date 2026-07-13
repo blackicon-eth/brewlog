@@ -16,10 +16,10 @@ describe("startOfDayTs", () => {
 });
 
 describe("dayOptions", () => {
-  it("lists today plus six days back with ledger labels", () => {
+  it("lists today plus five days back with ledger labels", () => {
     const opts = dayOptions(NOW);
     expect(opts.map((o) => o.label)).toEqual([
-      "Today", "Yesterday", "Fri 10", "Thu 9", "Wed 8", "Tue 7", "Mon 6",
+      "Today", "Yesterday", "Fri 10", "Thu 9", "Wed 8", "Tue 7",
     ]);
     expect(opts[0].dayStart).toBe(at(2026, 6, 12));
     for (let i = 1; i < opts.length; i++) {
@@ -34,13 +34,13 @@ describe("dayOptions", () => {
 
   it("does not duplicate an existing brew inside the window", () => {
     const opts = dayOptions(NOW, at(2026, 6, 9, 7, 40)); // Thu 9 — already a chip
-    expect(opts).toHaveLength(7);
+    expect(opts).toHaveLength(6);
   });
 
   it("prepends an existing brew's day when it is outside the window", () => {
     const existing = at(2026, 5, 12, 7, 40); // 12 Jun 2026
     const opts = dayOptions(NOW, existing);
-    expect(opts).toHaveLength(8);
+    expect(opts).toHaveLength(7);
     expect(opts[0].label).toBe("12 Jun");
     expect(opts[0].dayStart).toBe(at(2026, 5, 12));
   });
