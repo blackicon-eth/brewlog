@@ -53,11 +53,17 @@ unit. Check items off as they ship.
   originally-listed **Coffees search box was dropped**; the N+1 stats query
   (#6) is untouched and stays its own item.
 
-- [ ] **6. Fix the Coffees N+1 stats query**
-  Each coffee card fetches *all* its brews just to compute count and
-  average rating (`CoffeesScreen.tsx`). Replace with one aggregate SQL
-  query (`GROUP BY coffee_id`). Fold into whichever of #4/#5 touches that
-  screen first.
+- [x] **6. Fix the Coffees N+1 stats query — shipped 2026-07-14.**
+  `CoffeesScreen` used to fetch every coffee, then loop one
+  `listBrewsForCoffee` per coffee (each a `SELECT *` materializing full
+  brew rows) just to read a count and average rating. Replaced with a
+  single aggregate query `listCoffeesWithStats` in `src/db/coffees.ts`:
+  `LEFT JOIN brews … GROUP BY c.id` with `COUNT(b.id)` (brew-less coffees →
+  0, not the null-joined 1) and `AVG(rating)` (ignores NULLs, null when
+  none — matching `avgRating`). One round trip instead of N+1, no full brew
+  rows materialized. `listCoffees`/`listBrewsForCoffee`/`avgRating` stay
+  (CoffeeDetail still needs them); the screen swap is a superset row type,
+  so the archived filter, fade/rise, and card rendering are untouched.
 
 ## Insights
 

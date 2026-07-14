@@ -6,8 +6,7 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/types";
 import { getDb } from "../db/database";
-import { listCoffees } from "../db/coffees";
-import { listBrewsForCoffee, avgRating } from "../db/brews";
+import { listCoffeesWithStats, type CoffeeWithStats } from "../db/coffees";
 import { onLedgerReplaced } from "../lib/ledgerEvents";
 import type { Coffee } from "../models/types";
 import { AppText, AdvisorBadge, CoffeeCard, Fab, SegmentedTabs, type SegmentedTab, useAppModal } from "../components/ui";
@@ -16,7 +15,6 @@ import { useQvac } from "../qvac/QvacProvider";
 import * as Device from "expo-device";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "Main">;
-type Row = Coffee & { brewCount: number; avg: number | null };
 type ShelfView = "active" | "archived";
 
 // Whether a coffee has been archived (a finished bag). The `archived` flag and its
@@ -34,7 +32,7 @@ export function CoffeesScreen() {
   const insets = useSafeAreaInsets();
   const { prepare } = useQvac();
   const modal = useAppModal();
-  const [rows, setRows] = useState<Row[]>([]);
+  const [rows, setRows] = useState<CoffeeWithStats[]>([]);
   const [view, setView] = useState<ShelfView>("active");
   // Gate the empty state on the first load completing, so "Your ledger is empty" can't
   // flash while the initial DB read is still in flight.
@@ -44,12 +42,7 @@ export function CoffeesScreen() {
     (async () => {
       try {
         const db = await getDb();
-        const coffees = await listCoffees(db);
-        const withStats = await Promise.all(coffees.map(async (c) => {
-          const brews = await listBrewsForCoffee(db, c.id);
-          return { ...c, brewCount: brews.length, avg: avgRating(brews) };
-        }));
-        setRows(withStats);
+        setRows(await listCoffeesWithStats(db));
       } catch (e: any) {
         modal.alert("Couldn't load coffees", String(e?.message ?? e));
       } finally {
