@@ -119,4 +119,18 @@ describe("listCoffeesWithStats", () => {
     const rows = await listCoffeesWithStats(db);
     expect(rows[0]).toMatchObject({ id: "c1", roaster: "Sey", name: "Kenya AA", brewCount: 0, avg: null });
   });
+
+  it("reports the most recent brewed_at per coffee, null when brew-less", async () => {
+    const db = await makeTestDb();
+    await createCoffee(db, coffee({ id: "c1" }));
+    await createCoffee(db, coffee({ id: "c2" }));
+    await createBrew(db, brew({ id: "a", coffeeId: "c1", brewedAt: 100 }));
+    await createBrew(db, brew({ id: "b", coffeeId: "c1", brewedAt: 300 }));
+    await createBrew(db, brew({ id: "c", coffeeId: "c1", brewedAt: 200 }));
+    const rows = await listCoffeesWithStats(db);
+    const c1 = rows.find((r) => r.id === "c1")!;
+    const c2 = rows.find((r) => r.id === "c2")!;
+    expect(c1.lastBrewedAt).toBe(300);
+    expect(c2.lastBrewedAt).toBeNull();
+  });
 });

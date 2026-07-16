@@ -75,12 +75,23 @@ unit. Check items off as they ship.
 
 ## The assistant
 
-- [ ] **8. Chat memory & ledger context**
-  Chat is session-only (lost on app close) and free-form chat can't see
-  the ledger — only Diagnose/Best recipe inject data, so "what did I think
-  of the Gardelli?" fails. Two sub-steps, separable: (a) persist chat
-  sessions; (b) give chat a compact ledger summary as context (mind the
-  4096-token ctx budget — see `src/qvac/advisor.ts` for the pattern).
+- [ ] **8. Chat memory & ledger context** — sub-step (b) shipped 2026-07-15.
+  Two sub-steps, separable:
+  - [x] **(b) Ledger context — shipped 2026-07-15.** Free-form chat now sees
+    the ledger: each send prepends a compact, always-fresh per-coffee roll-up
+    to the chat system prompt, so "what did I think of the Gardelli?" works.
+    `listCoffeesWithStats` gained `lastBrewedAt` (MAX(brewed_at)); pure
+    `buildLedgerContext`/`buildChatSystemPrompt` (in `advisor.ts`, layer-pure)
+    render one line per coffee — `roaster — name (origin, process, roast) ·
+    N brews · avg X.X · last Nd ago` — sorted most-recently-brewed first,
+    archived tagged, capped at `LEDGER_CONTEXT_COFFEES_CAP` (24) with a
+    "(+N more)" note to stay inside the 4096-token ctx budget.
+    `ChatScreen.send()` fetches it fresh per message (always-mounted tabs fire
+    no focus event; logging a brew emits no `ledgerReplaced`) and falls back to
+    the bare prompt if the query fails. New `formatDaysAgo` helper.
+  - [ ] **(a) Persist chat sessions** — still open. Chat is session-only, lost
+    on app close. Save chat history (SQLite, like the rest of the ledger) so it
+    survives restarts.
 
 ## Small / cosmetic (batch when convenient)
 

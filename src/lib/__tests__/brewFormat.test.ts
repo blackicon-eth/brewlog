@@ -1,6 +1,6 @@
 import {
   formatSeconds, daysOffRoast, formatBrewLine, formatBrewsTable, formatBrewDetail,
-  dayKey, formatDayHeader, groupBrewsByDay,
+  dayKey, formatDayHeader, groupBrewsByDay, formatDaysAgo,
 } from "../brewFormat";
 import type { Brew } from "../../models/types";
 
@@ -143,5 +143,19 @@ describe("groupBrewsByDay", () => {
 
   it("returns no sections for an empty list", () => {
     expect(groupBrewsByDay([], now)).toEqual([]);
+  });
+});
+
+describe("formatDaysAgo", () => {
+  // Local-time strings (via the file's `at()` helper), matching every other describe block
+  // here — startOfDay buckets by local calendar day, so UTC-"Z" timestamps would make this
+  // test's day-boundary math depend on the machine's timezone.
+  const now = at("2026-06-20T12:00:00");
+  it("says 'today' for the same calendar day", () => {
+    expect(formatDaysAgo(at("2026-06-20T01:00:00"), now)).toBe("today");
+  });
+  it("counts whole calendar days elapsed", () => {
+    expect(formatDaysAgo(at("2026-06-18T23:00:00"), now)).toBe("2d ago");
+    expect(formatDaysAgo(at("2026-06-08T00:00:00"), now)).toBe("12d ago");
   });
 });

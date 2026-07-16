@@ -1,5 +1,20 @@
-import { buildDiagnosePrompt, buildBestRecipePrompt, coffeeHeader, buildChatHistory } from "../advisor";
-import { RECENT_BREWS_CAP, BEST_RECIPE_BREWS_CAP, SYSTEM_PROMPT, CHAT_SYSTEM_PROMPT, CHAT_BREVITY_HINT } from "../promptConfig";
+import {
+  buildDiagnosePrompt,
+  buildBestRecipePrompt,
+  coffeeHeader,
+  buildChatHistory,
+  buildLedgerContext,
+  buildChatSystemPrompt,
+  type LedgerCoffee,
+} from "../advisor";
+import {
+  RECENT_BREWS_CAP,
+  BEST_RECIPE_BREWS_CAP,
+  SYSTEM_PROMPT,
+  CHAT_SYSTEM_PROMPT,
+  CHAT_BREVITY_HINT,
+  LEDGER_CONTEXT_COFFEES_CAP,
+} from "../promptConfig";
 import type { Brew, Coffee } from "../../models/types";
 
 const coffee: Coffee = {
@@ -125,5 +140,89 @@ describe("system prompts", () => {
       expect(s).toContain("moka");
       expect(s).toContain("espresso");
     }
+  });
+});
+
+describe("buildLedgerContext", () => {
+  const lc = (over: Partial<LedgerCoffee> = {}): LedgerCoffee => ({
+    id: "c1", roaster: "Gardelli", name: "Kieni", origin: "Kenya", process: "washed",
+    roastLevel: "light", roastDate: null, notes: null, archived: false, createdAt: 1,
+    brewCount: 6, avg: 4.166, lastBrewedAt: Date.parse("2026-06-08T00:00:00Z"), ...over,
+  });
+
+  it("returns empty string for an empty ledger", () => {
+    expect(buildLedgerContext([], NOW)).toBe("");
+  });
+
+  it("formats a full-detail line with rounded average and relative last-brewed", () => {
+    const out = buildLedgerContext([lc()], NOW);
+    expect(out).toContain("Gardelli — Kieni (Kenya, washed, light)");
+    expect(out).toContain("6 brews");
+    expect(out).toContain("avg 4.2");
+    expect(out).toContain("last 12d ago");
+  });
+
+  it("includes only the present origin/process/roast fields", () => {
+    const out = buildLedgerContext([lc({ origin: "Kenya", process: null, roastLevel: null })], NOW);
+    expect(out).toContain("Kieni (Kenya) ·");
+  });
+
+  it("omits the parenthetical entirely when origin/process/roast are all null", () => {
+    const out = buildLedgerContext([lc({ origin: null, process: null, roastLevel: null })], NOW);
+    expect(out).toContain("Gardelli — Kieni ·");
+    expect(out).not.toContain("Kieni (");
+  });
+
+  it("tags archived coffees", () => {
+    const out = buildLedgerContext([lc({ archived: true })], NOW);
+    expect(out).toContain("(archived)");
+  });
+
+  it("shows 'unrated' when there are ratings-free brews", () => {
+    const out = buildLedgerContext([lc({ avg: null })], NOW);
+    expect(out).toContain("avg unrated");
+  });
+
+  it("shows 'no brews yet' for a brew-less coffee and no avg/last", () => {
+    const out = buildLedgerContext([lc({ brewCount: 0, avg: null, lastBrewedAt: null })], NOW);
+    expect(out).toContain("no brews yet");
+    expect(out).not.toContain("avg");
+    expect(out).not.toContain("last ");
+  });
+
+  it("sorts by last-brewed descending with brew-less coffees last", () => {
+    const older = lc({ id: "old", name: "Older", lastBrewedAt: Date.parse("2026-06-01T00:00:00Z") });
+    const newer = lc({ id: "new", name: "Newer", lastBrewedAt: Date.parse("2026-06-19T00:00:00Z") });
+    const none = lc({ id: "none", name: "Brewless", brewCount: 0, avg: null, lastBrewedAt: null });
+    const out = buildLedgerContext([older, none, newer], NOW);
+    const order = ["Newer", "Older", "Brewless"].map((n) => out.indexOf(n));
+    expect(order[0]).toBeLessThan(order[1]);
+    expect(order[1]).toBeLessThan(order[2]);
+  });
+
+  it("caps at LEDGER_CONTEXT_COFFEES_CAP and notes the remainder", () => {
+    const many = Array.from({ length: LEDGER_CONTEXT_COFFEES_CAP + 3 }, (_, i) =>
+      lc({ id: `c${i}`, name: `Coffee${i}`, lastBrewedAt: 1000 + i }));
+    const out = buildLedgerContext(many, NOW);
+    const lines = out.split("\n").filter((l) => l.startsWith("- "));
+    expect(lines).toHaveLength(LEDGER_CONTEXT_COFFEES_CAP);
+    expect(out).toContain("(+3 more coffees not shown)");
+  });
+});
+
+describe("buildChatSystemPrompt", () => {
+  const lc: LedgerCoffee = {
+    id: "c1", roaster: "Gardelli", name: "Kieni", origin: null, process: null,
+    roastLevel: null, roastDate: null, notes: null, archived: false, createdAt: 1,
+    brewCount: 2, avg: 4, lastBrewedAt: 1000,
+  };
+  it("appends the ledger block after the chat system prompt", () => {
+    const out = buildChatSystemPrompt([lc], Date.parse("2026-06-20T00:00:00Z"));
+    expect(out.startsWith(CHAT_SYSTEM_PROMPT)).toBe(true);
+    expect(out).toContain("Gardelli — Kieni");
+    expect(out.length).toBeGreaterThan(CHAT_SYSTEM_PROMPT.length);
+  });
+  it("returns the bare prompt when the ledger is empty", () => {
+    expect(buildChatSystemPrompt([], 0)).toBe(CHAT_SYSTEM_PROMPT);
   });
 });

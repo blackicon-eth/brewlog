@@ -24,21 +24,26 @@ export async function listCoffees(db: Db): Promise<Coffee[]> {
 }
 
 // A coffee enriched with its brew aggregates — the read model for the Coffees shelf, so
-// the list renders counts and average ratings without an N+1 fetch per card.
-export type CoffeeWithStats = Coffee & { brewCount: number; avg: number | null };
+// the list renders counts, average ratings, and last-brewed date without an N+1 fetch per card.
+export type CoffeeWithStats = Coffee & { brewCount: number; avg: number | null; lastBrewedAt: number | null };
 
-// One aggregate pass: every coffee with its brew count and mean rating. LEFT JOIN keeps
-// brew-less coffees; COUNT(b.id) (not COUNT(*)) yields 0 for them rather than counting the
-// null-joined row; AVG(rating) ignores NULL ratings and is NULL when there are none —
-// matching avgRating(). Newest-first, mirroring listCoffees.
+// One aggregate pass: every coffee with its brew count, mean rating, and most recent brew
+// date. LEFT JOIN keeps brew-less coffees; COUNT(b.id) (not COUNT(*)) yields 0 for them
+// rather than counting the null-joined row; AVG(rating) ignores NULL ratings and is NULL
+// when there are none — matching avgRating(); MAX(brewed_at) is likewise NULL for a
+// brew-less coffee. Newest-first, mirroring listCoffees.
 export async function listCoffeesWithStats(db: Db): Promise<CoffeeWithStats[]> {
-  const rows = await db.getAllAsync<CoffeeRow & { brew_count: number; avg_rating: number | null }>(
-    `SELECT c.*, COUNT(b.id) AS brew_count, AVG(b.rating) AS avg_rating
+  const rows = await db.getAllAsync<
+    CoffeeRow & { brew_count: number; avg_rating: number | null; last_brewed_at: number | null }
+  >(
+    `SELECT c.*, COUNT(b.id) AS brew_count, AVG(b.rating) AS avg_rating, MAX(b.brewed_at) AS last_brewed_at
        FROM coffees c LEFT JOIN brews b ON b.coffee_id = c.id
       GROUP BY c.id
       ORDER BY c.created_at DESC`
   );
-  return rows.map((r) => ({ ...rowToCoffee(r), brewCount: r.brew_count, avg: r.avg_rating }));
+  return rows.map((r) => ({
+    ...rowToCoffee(r), brewCount: r.brew_count, avg: r.avg_rating, lastBrewedAt: r.last_brewed_at,
+  }));
 }
 
 export async function getCoffee(db: Db, id: string): Promise<Coffee | null> {

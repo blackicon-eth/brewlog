@@ -1,7 +1,14 @@
 import type { Coffee, Brew } from "../models/types";
-import { formatBrewsTable, formatBrewDetail, daysOffRoast } from "../lib/brewFormat";
+import { formatBrewsTable, formatBrewDetail, daysOffRoast, formatDaysAgo } from "../lib/brewFormat";
 import { methodSpec, type BrewMethodId } from "../lib/brewMethods";
-import { RECENT_BREWS_CAP, BEST_RECIPE_BREWS_CAP, SYSTEM_PROMPT, CHAT_SYSTEM_PROMPT, CHAT_BREVITY_HINT } from "./promptConfig";
+import {
+  RECENT_BREWS_CAP,
+  BEST_RECIPE_BREWS_CAP,
+  SYSTEM_PROMPT,
+  CHAT_SYSTEM_PROMPT,
+  CHAT_BREVITY_HINT,
+  LEDGER_CONTEXT_COFFEES_CAP,
+} from "./promptConfig";
 
 export type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
@@ -79,4 +86,49 @@ export function buildBestRecipePrompt(
           `${spec.adjustables}. Briefly justify it and reference which brews above support your choice.`,
       ].join("\n");
   return [{ role: "system", content: SYSTEM_PROMPT }, { role: "user", content: user }];
+}
+
+// The chat ledger context input — a coffee plus its aggregate stats. Declared structurally
+// (not imported from src/db) so advisor.ts stays free of the data layer; CoffeeWithStats
+// satisfies it.
+export type LedgerCoffee = Coffee & { brewCount: number; avg: number | null; lastBrewedAt: number | null };
+
+function ledgerLine(c: LedgerCoffee, now: number): string {
+  const facets = [c.origin, c.process, c.roastLevel].filter(Boolean);
+  const paren = facets.length ? ` (${facets.join(", ")})` : "";
+  const tag = c.archived ? " (archived)" : "";
+  const head = `- ${c.roaster} — ${c.name}${paren}${tag}`;
+  if (c.brewCount === 0) return `${head} · no brews yet`;
+  const avg = `avg ${c.avg == null ? "unrated" : c.avg.toFixed(1)}`;
+  const last = c.lastBrewedAt == null ? "" : ` · last ${formatDaysAgo(c.lastBrewedAt, now)}`;
+  return `${head} · ${c.brewCount} brews · ${avg}${last}`;
+}
+
+// A compact, whole-shelf roll-up of the user's coffees for the chat system prompt: one line
+// each, most-recently-brewed first (brew-less coffees last), capped so the block stays inside
+// the 4096-token ctx budget. Empty ledger → "" (chat then uses the bare system prompt).
+export function buildLedgerContext(coffees: LedgerCoffee[], now: number = Date.now()): string {
+  if (coffees.length === 0) return "";
+  const sorted = [...coffees].sort((a, b) => {
+    const al = a.lastBrewedAt, bl = b.lastBrewedAt;
+    if (al == null && bl == null) return b.createdAt - a.createdAt;
+    if (al == null) return 1;
+    if (bl == null) return -1;
+    return bl - al || b.createdAt - a.createdAt;
+  });
+  const shown = sorted.slice(0, LEDGER_CONTEXT_COFFEES_CAP);
+  const lines = shown.map((c) => ledgerLine(c, now));
+  const remainder = sorted.length - shown.length;
+  const header =
+    "The user's coffee ledger — refer to it when they ask about their coffees\n" +
+    "(roaster — name (origin, process, roast) · brews · their average rating 1-5 · most recent brew):";
+  const parts = [header, ...lines];
+  if (remainder > 0) parts.push(`(+${remainder} more coffees not shown)`);
+  return parts.join("\n");
+}
+
+// CHAT_SYSTEM_PROMPT with the ledger block appended (bare prompt when the ledger is empty).
+export function buildChatSystemPrompt(coffees: LedgerCoffee[], now: number = Date.now()): string {
+  const block = buildLedgerContext(coffees, now);
+  return block ? `${CHAT_SYSTEM_PROMPT}\n\n${block}` : CHAT_SYSTEM_PROMPT;
 }

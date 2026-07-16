@@ -5,11 +5,13 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { buildChatHistory } from "../qvac/advisor";
+import { buildChatHistory, buildChatSystemPrompt } from "../qvac/advisor";
 import { useQvac } from "../qvac/QvacProvider";
 import { useStickyScroll } from "../hooks/useStickyScroll";
 import { AppText, ChatBubble, PillButton } from "../components/ui";
 import { colors, fonts, radii, spacing, screenTopGap } from "../design/tokens";
+import { getDb } from "../db/database";
+import { listCoffeesWithStats } from "../db/coffees";
 
 // One visible turn. `pending` marks the assistant bubble that's currently being generated (or
 // waited on); `error` flips it to a cherry failure note. The whole list lives in component
@@ -78,13 +80,11 @@ export function ChatScreen() {
     const userTurn: Turn = { id: `u${idRef.current++}`, role: "user", content };
     const botId = `a${idRef.current++}`;
 
-    // History is the whole transcript so far plus this new question — successful turns only
-    // (drop pending placeholders and prior failures).
-    const history = buildChatHistory(
-      [...turnsRef.current, userTurn]
-        .filter((t) => t.content && !t.error && !t.pending)
-        .map((t) => ({ role: t.role, content: t.content })),
-    );
+    // The transcript to send: successful turns only (drop pending placeholders and prior
+    // failures), plus this new question.
+    const slice = [...turnsRef.current, userTurn]
+      .filter((t) => t.content && !t.error && !t.pending)
+      .map((t) => ({ role: t.role, content: t.content }));
 
     setTurns((prev) => [
       ...prev,
@@ -110,6 +110,18 @@ export function ChatScreen() {
             throw new Error("The assistant couldn't load — check your connection and try again.");
           }
           await sleep(250);
+        }
+        if (gen.cancelled) return;
+
+        // Fresh ledger context each send: always-mounted tabs fire no focus event and logging
+        // a brew emits no ledgerReplaced, so a cached copy would go stale. A stats failure must
+        // not break chat — fall back to the bare system prompt.
+        let history: ReturnType<typeof buildChatHistory>;
+        try {
+          const coffees = await listCoffeesWithStats(await getDb());
+          history = buildChatHistory(slice, buildChatSystemPrompt(coffees));
+        } catch {
+          history = buildChatHistory(slice);
         }
         if (gen.cancelled) return;
 

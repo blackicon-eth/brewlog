@@ -2,6 +2,9 @@
 export const RECENT_BREWS_CAP = 8;
 // Bounds the best-recipe prompt to the most recent brews to avoid ctx_size 4096 overflow.
 export const BEST_RECIPE_BREWS_CAP = 20;
+// Bounds the chat ledger context to the most-recently-brewed coffees so the summary stays
+// within the 4096-token ctx budget alongside the transcript.
+export const LEDGER_CONTEXT_COFFEES_CAP = 24;
 
 export const SYSTEM_PROMPT =
   "You are an expert specialty-coffee barista who coaches home brewing — pour-over (filter), " +

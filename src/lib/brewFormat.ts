@@ -113,3 +113,10 @@ export function formatBrewsTable(brews: Brew[]): string {
 export function formatBrewDetail(brew: Brew): string {
   return formatBrewLine(brew, 1).replace(/^1\) /, "");
 }
+
+// "today" for the same calendar day, else "Nd ago" — calendar-day difference (matching
+// formatDayHeader), not raw 24h chunks. Used in the chat ledger context lines.
+export function formatDaysAgo(ts: number, now: number = Date.now()): string {
+  const diffDays = Math.round((startOfDay(new Date(now)) - startOfDay(new Date(ts))) / DAY_MS);
+  return diffDays <= 0 ? "today" : `${diffDays}d ago`;
+}
