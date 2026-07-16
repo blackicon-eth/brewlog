@@ -8,6 +8,8 @@ import { CoffeeFormScreen } from "../screens/CoffeeFormScreen";
 import { CoffeeDetailScreen } from "../screens/CoffeeDetailScreen";
 import { BrewDetailScreen } from "../screens/BrewDetailScreen";
 import { BrewFormScreen } from "../screens/BrewFormScreen";
+import { RecipeScreen } from "../screens/RecipeScreen";
+import { RecipeEditScreen } from "../screens/RecipeEditScreen";
 import { AdvisorResultScreen } from "../screens/AdvisorResultScreen";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -27,6 +29,8 @@ export function RootNavigator() {
       <Stack.Screen name="CoffeeDetail" component={CoffeeDetailScreen} options={{ title: "Coffee", headerShown: false }} />
       <Stack.Screen name="BrewDetail" component={BrewDetailScreen} options={{ title: "Brew", headerShown: false }} />
       <Stack.Screen name="BrewForm" component={BrewFormScreen} options={{ title: "Brew", headerShown: false }} />
+      <Stack.Screen name="Recipe" component={RecipeScreen} options={{ title: "Recipe", headerShown: false }} />
+      <Stack.Screen name="RecipeEdit" component={RecipeEditScreen} options={{ title: "Recipe", headerShown: false }} />
       <Stack.Screen
         name="AdvisorResult"
         component={AdvisorResultScreen}

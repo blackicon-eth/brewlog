@@ -16,9 +16,14 @@ export type ConfirmOptions = {
   destructive?: boolean;
 };
 
+export type ChooseOption = { key: string; label: string; destructive?: boolean };
+export type ChooseOptions = { title: string; message?: string; options: ChooseOption[] };
+
 export type AppModalApi = {
   alert: (title: string, message?: string) => Promise<void>;
   confirm: (options: ConfirmOptions) => Promise<boolean>;
+  // A titled action sheet — resolves to the chosen option's key, or null if dismissed.
+  choose: (options: ChooseOptions) => Promise<string | null>;
 };
 
 const AppModalContext = createContext<AppModalApi | null>(null);
@@ -39,7 +44,15 @@ type Slot =
       cancelLabel: string;
       destructive: boolean;
       resolve: (value: boolean) => void;
-    };
+    }
+  | { kind: "choose"; title: string; message?: string; options: ChooseOption[]; resolve: (value: string | null) => void };
+
+// The safe "dismissed" outcome for a slot (backdrop tap / hardware back / superseded).
+function resolveDismissed(slot: Slot): void {
+  if (slot.kind === "confirm") slot.resolve(false);
+  else if (slot.kind === "choose") slot.resolve(null);
+  else slot.resolve();
+}
 
 export function AppModalProvider({ children }: { children: React.ReactNode }) {
   const [slot, setSlot] = useState<Slot | null>(null);
@@ -52,7 +65,7 @@ export function AppModalProvider({ children }: { children: React.ReactNode }) {
   const open = useCallback((next: Slot) => {
     // Resolve anything already on screen as a dismissal before showing the next.
     const prev = slotRef.current;
-    if (prev && !closing.current) prev.kind === "confirm" ? prev.resolve(false) : prev.resolve();
+    if (prev && !closing.current) resolveDismissed(prev);
     closing.current = false;
     anim.setValue(0);
     setSlot(next);
@@ -98,17 +111,25 @@ export function AppModalProvider({ children }: { children: React.ReactNode }) {
     [open],
   );
 
-  const api = useMemo<AppModalApi>(() => ({ alert, confirm }), [alert, confirm]);
+  const choose = useCallback(
+    (options: ChooseOptions) =>
+      new Promise<string | null>((resolve) =>
+        open({ kind: "choose", title: options.title, message: options.message, options: options.options, resolve }),
+      ),
+    [open],
+  );
 
-  // Backdrop tap / hardware back = the safe choice (dismiss alert, cancel confirm).
+  const api = useMemo<AppModalApi>(() => ({ alert, confirm, choose }), [alert, confirm, choose]);
+
+  // Backdrop tap / hardware back = the safe choice (dismiss alert, cancel confirm/choose).
   const onDismissRequest = useCallback(() => {
     const cur = slotRef.current;
     if (!cur) return;
-    dismiss(() => (cur.kind === "confirm" ? cur.resolve(false) : cur.resolve()));
+    dismiss(() => resolveDismissed(cur));
   }, [dismiss]);
 
   const tone = slot?.kind === "confirm" && slot.destructive ? colors.tertiary : colors.primary;
-  const kicker = slot?.kind === "confirm" ? "Please confirm" : "Notice";
+  const kicker = slot?.kind === "confirm" ? "Please confirm" : slot?.kind === "choose" ? "Choose" : "Notice";
 
   const cardStyle = {
     opacity: anim,
@@ -157,6 +178,18 @@ export function AppModalProvider({ children }: { children: React.ReactNode }) {
                     onPress={() => dismiss(() => slot.resolve(true))}
                   />
                 </View>
+              ) : slot.kind === "choose" ? (
+                <View style={styles.actionsStack}>
+                  {slot.options.map((o) => (
+                    <PillButton
+                      key={o.key}
+                      label={o.label}
+                      variant={o.destructive ? "dangerSolid" : "primary"}
+                      onPress={() => dismiss(() => slot.resolve(o.key))}
+                    />
+                  ))}
+                  <PillButton label="Cancel" variant="neutral" onPress={() => dismiss(() => slot.resolve(null))} />
+                </View>
               ) : (
                 <View style={styles.actionsSingle}>
                   <PillButton label="Got it" onPress={() => dismiss(() => slot.resolve())} />
@@ -195,5 +228,6 @@ const styles = StyleSheet.create({
   message: { marginTop: 10, lineHeight: 22 },
   actionRow: { flexDirection: "row", gap: spacing.gutter, marginTop: 24 },
   actionsSingle: { marginTop: 24 },
+  actionsStack: { marginTop: 24, gap: spacing.gutter },
   flex1: { flex: 1 },
 });

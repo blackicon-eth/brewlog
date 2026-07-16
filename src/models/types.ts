@@ -41,6 +41,19 @@ export type Brew = {
   createdAt: number;
 };
 
+export type CoffeePhoto = { id: string; coffeeId: string; uri: string; position: number; createdAt: number };
+
+export type Recipe = {
+  coffeeId: string;
+  method: BrewMethodId;
+  doseG: number | null;
+  waterG: number | null;
+  grind: string | null;
+  waterTempC: number | null;
+  notes: string | null;
+  updatedAt: number;
+};
+
 export type NewCoffee = Omit<Coffee, "id" | "createdAt">;
 export type NewBrew = Omit<Brew, "id" | "ratio" | "createdAt">;
 
@@ -59,4 +72,15 @@ export type BrewRow = {
   acidity: number | null; sweetness: number | null; bitterness: number | null;
   body: number | null; clarity: number | null; rating: number | null;
   notes: string | null; created_at: number;
+};
+export type CoffeePhotoRow = { id: string; coffee_id: string; uri: string; position: number; created_at: number };
+export type RecipeRow = {
+  coffee_id: string;
+  method: string;
+  dose_g: number | null;
+  water_g: number | null;
+  grind: string | null;
+  water_temp_c: number | null;
+  notes: string | null;
+  updated_at: number;
 };

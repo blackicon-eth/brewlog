@@ -2,6 +2,8 @@
 // Single source of truth for the form, detail rows, list meta, AI prompts, and NL
 // intake — same registry pattern as the tools shelf. Pure module: no React, no Expo.
 
+import type { Brew } from "../models/types";
+
 export type BrewMethodId = "filter" | "french_press" | "moka" | "espresso";
 export type MokaHeat = "low" | "medium" | "high";
 
@@ -98,4 +100,17 @@ export function methodFilterSql(filter: MethodFilter): { clause: string; params:
     return { clause: "(method IS NULL OR method NOT IN ('french_press','moka','espresso'))", params: [] };
   }
   return { clause: "method = ?", params: [filter] };
+}
+
+// Which method should a per-coffee default land on? The most-brewed method for this
+// coffee (ties → METHODS shelf order; nothing logged → filter). Pure — used by the
+// recipe screen's method default and previously by the removed method picker.
+export function defaultPickerMethod(brews: Brew[]): BrewMethodId {
+  let best: BrewMethodId = "filter";
+  let bestCount = -1;
+  for (const m of METHODS) {
+    const count = brews.filter((b) => b.method === m.id).length;
+    if (count > bestCount) { best = m.id; bestCount = count; }
+  }
+  return best;
 }

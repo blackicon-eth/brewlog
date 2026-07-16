@@ -1,4 +1,13 @@
-import { METHODS, METHODS_BY_ID, isBrewMethodId, methodSpec, methodFilterSql, type MethodFilter } from "../brewMethods";
+import { METHODS, METHODS_BY_ID, isBrewMethodId, methodSpec, methodFilterSql, defaultPickerMethod, type MethodFilter } from "../brewMethods";
+import type { Brew } from "../../models/types";
+
+const mkBrew = (method: Brew["method"]): Brew => ({
+  id: `b-${Math.random()}`, coffeeId: "c1", brewedAt: 1, method,
+  doseG: 15, waterG: 250, ratio: 16.7, grind: null, waterTempC: null, dripper: null,
+  pours: null, pourIntervalS: null, totalTimeS: null, filterType: null, preheat: null, heat: null,
+  acidity: null, sweetness: null, bitterness: null, body: null, clarity: null, rating: null,
+  notes: null, createdAt: 1,
+});
 
 describe("brewMethods registry", () => {
   it("contains exactly the four methods in shelf order", () => {
@@ -64,5 +73,21 @@ describe("methodFilterSql", () => {
   it("emits unqualified column names (safe in both the join and count queries)", () => {
     expect(methodFilterSql("espresso").clause).not.toContain("b.method");
     expect(methodFilterSql("filter").clause).not.toContain("b.method");
+  });
+});
+
+describe("defaultPickerMethod", () => {
+  it("returns filter when there are no brews", () => {
+    expect(defaultPickerMethod([])).toBe("filter");
+  });
+
+  it("returns the most-brewed method", () => {
+    const brews = [mkBrew("moka"), mkBrew("moka"), mkBrew("espresso")];
+    expect(defaultPickerMethod(brews)).toBe("moka");
+  });
+
+  it("breaks ties by shelf order (filter before french_press)", () => {
+    const brews = [mkBrew("french_press"), mkBrew("filter")];
+    expect(defaultPickerMethod(brews)).toBe("filter");
   });
 });

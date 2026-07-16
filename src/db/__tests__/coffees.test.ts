@@ -133,4 +133,16 @@ describe("listCoffeesWithStats", () => {
     expect(c1.lastBrewedAt).toBe(300);
     expect(c2.lastBrewedAt).toBeNull();
   });
+
+  it("returns the position-0 photo uri as coverPhotoUri, null when none", async () => {
+    const db = await makeTestDb();
+    const { createCoffeePhoto } = await import("../coffeePhotos");
+    await createCoffee(db, coffee({ id: "c1" }));
+    await createCoffee(db, coffee({ id: "c2", createdAt: 0 }));
+    await createCoffeePhoto(db, { id: "p1", coffeeId: "c1", uri: "file:///cover.jpg", position: 0, createdAt: 5 });
+    await createCoffeePhoto(db, { id: "p2", coffeeId: "c1", uri: "file:///second.jpg", position: 1, createdAt: 6 });
+    const rows = await listCoffeesWithStats(db);
+    expect(rows.find((r) => r.id === "c1")!.coverPhotoUri).toBe("file:///cover.jpg");
+    expect(rows.find((r) => r.id === "c2")!.coverPhotoUri).toBeNull();
+  });
 });

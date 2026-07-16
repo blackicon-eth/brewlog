@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Easing, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, Easing, FlatList, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
@@ -8,15 +8,13 @@ import type { RootStackParamList } from "../navigation/types";
 import { getDb } from "../db/database";
 import { getCoffee } from "../db/coffees";
 import { listBrewsForCoffee } from "../db/brews";
-import type { Brew, Coffee } from "../models/types";
+import { listPhotosForCoffee } from "../db/coffeePhotos";
+import type { Brew, Coffee, CoffeePhoto } from "../models/types";
 import { formatRatio } from "../lib/ratio";
 import { formatSeconds, formatBrewDate, formatBrewTime } from "../lib/brewFormat";
-import { methodSpec } from "../lib/brewMethods";
-import type { BrewMethodId } from "../lib/brewMethods";
-import { AppText, AiActionCard, BrewLogRow, Fab, Chevron, ClockIcon, ArchiveIcon, useAppModal } from "../components/ui";
-import { MethodPickerModal } from "../components/MethodPickerModal";
-import { useAdvisorGate } from "../hooks/useAdvisorGate";
-import { colors, motion, spacing, screenTopGap } from "../design/tokens";
+import { methodSpec, defaultPickerMethod } from "../lib/brewMethods";
+import { AppText, BrewLogRow, Fab, Chevron, ClockIcon, ArchiveIcon, BookIcon, PhotoViewer, useAppModal } from "../components/ui";
+import { colors, motion, radii, spacing, screenTopGap } from "../design/tokens";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "CoffeeDetail">;
 type Rt = RouteProp<RootStackParamList, "CoffeeDetail">;
@@ -39,11 +37,11 @@ export function CoffeeDetailScreen() {
   const insets = useSafeAreaInsets();
   const { params } = useRoute<Rt>();
   const modal = useAppModal();
-  const gate = useAdvisorGate();
   const [coffee, setCoffee] = useState<Coffee | null>(null);
   const [brews, setBrews] = useState<Brew[]>([]);
+  const [photos, setPhotos] = useState<CoffeePhoto[]>([]);
   const [sort, setSort] = useState<"recent" | "rating">("recent");
-  const [pickerVisible, setPickerVisible] = useState(false);
+  const [viewerUri, setViewerUri] = useState<string | null>(null);
 
   const load = useCallback(() => {
     (async () => {
@@ -51,6 +49,7 @@ export function CoffeeDetailScreen() {
         const db = await getDb();
         setCoffee(await getCoffee(db, params.coffeeId));
         setBrews(await listBrewsForCoffee(db, params.coffeeId));
+        setPhotos(await listPhotosForCoffee(db, params.coffeeId));
       } catch (e: any) {
         modal.alert("Couldn't load coffee", String(e?.message ?? e));
       }
@@ -113,18 +112,38 @@ export function CoffeeDetailScreen() {
             </View>
           ) : null}
         </View>
-        <AppText variant="headlineLg" style={styles.title}>{coffee ? coffee.name : "…"}</AppText>
+        <View style={styles.titleRow}>
+          <AppText variant="headlineLg" style={styles.title}>{coffee ? coffee.name : "…"}</AppText>
+          <Pressable
+            onPress={() => nav.navigate("Recipe", { coffeeId: params.coffeeId, method: defaultPickerMethod(brews) })}
+            style={styles.recipeBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Recipes"
+          >
+            <BookIcon size={20} thickness={1.7} color={colors.primary} />
+          </Pressable>
+        </View>
         {tags ? <AppText variant="labelMd" style={styles.tags}>{tags}</AppText> : null}
 
-        <View style={styles.aiWrap}>
-          <AiActionCard
-            image={require("../../assets/coffee-hero.png")}
-            title="Best recipe"
-            subtitle={hasBrews ? "AI-dialed from your brews" : "Log a brew to unlock AI insights"}
-            enabled={hasBrews}
-            onPress={() => setPickerVisible(true)}
-          />
-        </View>
+        {photos.length > 0 ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.photoStrip}
+            contentContainerStyle={styles.photoStripContent}
+          >
+            {photos.map((p) => (
+              <Pressable
+                key={p.id}
+                onPress={() => setViewerUri(p.uri)}
+                accessibilityRole="imagebutton"
+                accessibilityLabel="View photo"
+              >
+                <Image source={{ uri: p.uri }} style={styles.photoThumb} resizeMode="cover" />
+              </Pressable>
+            ))}
+          </ScrollView>
+        ) : null}
 
         {hasBrews ? (
           <View style={styles.historyRow}>
@@ -193,15 +212,7 @@ export function CoffeeDetailScreen() {
         <Fab label="Log brew" onPress={() => nav.navigate("BrewForm", { coffeeId: params.coffeeId })} />
       ) : null}
 
-      <MethodPickerModal
-        visible={pickerVisible}
-        brews={brews}
-        onCancel={() => setPickerVisible(false)}
-        onConfirm={(method: BrewMethodId) => {
-          setPickerVisible(false);
-          void gate(() => nav.navigate("AdvisorResult", { kind: "bestRecipe", coffeeId: params.coffeeId, title: "Best recipe", method }));
-        }}
-      />
+      <PhotoViewer uri={viewerUri} onClose={() => setViewerUri(null)} />
     </View>
   );
 }
@@ -223,10 +234,32 @@ const styles = StyleSheet.create({
     paddingLeft: 8, paddingRight: 11, paddingVertical: 3,
   },
   archivedText: { color: colors.onSurfaceVariant, letterSpacing: 0.4 },
-  // Extra line height so EB Garamond's descenders (the "g" tail) aren't clipped on Android.
-  title: { marginTop: 6, lineHeight: 48 },
+  // Name on the left, the circular recipe-book button pinned to the right of the same line.
+  titleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 14, marginTop: 6 },
+  // flexShrink so a long name wraps instead of shoving the button off-screen; extra line
+  // height so EB Garamond's descenders (the "g" tail) aren't clipped on Android.
+  title: { flexShrink: 1, lineHeight: 48 },
+  // Quiet cream disc with a hairline ring — a tappable "recipe book" affordance, no elevation
+  // (Fabric flickers elevation on restyle; the app uses borders instead).
+  recipeBtn: {
+    width: 44, height: 44, borderRadius: radii.full,
+    alignItems: "center", justifyContent: "center",
+    backgroundColor: colors.surfaceLowest,
+    borderWidth: 1, borderColor: colors.outlineVariant,
+  },
   tags: { marginTop: 10, color: colors.secondary },
-  aiWrap: { marginTop: 24 },
+  // Bleeds past the header's side padding so thumbnails can scroll edge-to-edge, while the
+  // content padding keeps the first/last thumb aligned with the rest of the page's margins.
+  photoStrip: { marginTop: 18, marginHorizontal: -spacing.container },
+  photoStripContent: { paddingHorizontal: spacing.container, gap: spacing.gutter },
+  photoThumb: {
+    width: 76,
+    height: 76,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+    backgroundColor: colors.surfaceContainer,
+  },
   historyRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 24, marginBottom: 2 },
   sortGroup: { flexDirection: "row", gap: 6 },
   sortChip: { width: 30, height: 30, borderRadius: 999, alignItems: "center", justifyContent: "center" },
@@ -234,6 +267,8 @@ const styles = StyleSheet.create({
   sortStar: { fontSize: 15, lineHeight: 15, marginTop: -1 },
   hairline: { height: StyleSheet.hairlineWidth, backgroundColor: colors.outlineVariant },
   empty: { marginTop: 40, alignItems: "center", paddingHorizontal: 24 },
-  emptyTitle: { textAlign: "center" },
+  // Roomy line box + no extra font padding so EB Garamond's "g" descender (in "logged")
+  // doesn't clip on Android — the app's standard headline fix.
+  emptyTitle: { textAlign: "center", lineHeight: 34, includeFontPadding: false },
   emptyBody: { textAlign: "center", marginTop: 8 },
 });

@@ -39,7 +39,14 @@
       ],
       "@qvac/sdk/expo-plugin",
       "expo-sqlite",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Brewlog uses your photos to add bag shots to a coffee.",
+          "cameraPermission": "Brewlog uses the camera to take a photo of your coffee bag."
+        }
+      ]
     ]
   }
 }

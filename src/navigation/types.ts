@@ -8,6 +8,8 @@ export type RootStackParamList = {
   CoffeeDetail: { coffeeId: string };
   BrewDetail: { coffeeId: string; brewId: string };
   BrewForm: { coffeeId: string; brewId?: string };
+  Recipe: { coffeeId: string; method?: BrewMethodId };
+  RecipeEdit: { coffeeId: string; method: BrewMethodId };
   AdvisorResult: {
     title: string;
     kind: "diagnose" | "bestRecipe";

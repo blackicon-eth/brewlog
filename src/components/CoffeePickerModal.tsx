@@ -6,8 +6,7 @@ import { colors, fonts, spacing } from "../design/tokens";
 
 // Which coffee is this brew for? Opened by the Brews-tab "+" when the shelf holds more
 // than one coffee; tapping a row is the whole interaction — it selects and moves on to
-// the log form (no separate confirm). Mirrors MethodPickerModal's card so the two
-// "pick one thing" sheets read as siblings.
+// the log form (no separate confirm).
 export function CoffeePickerModal({ visible, coffees, onCancel, onSelect }: {
   visible: boolean;
   coffees: Coffee[];

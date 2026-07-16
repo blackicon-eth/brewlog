@@ -1,12 +1,13 @@
-import type { Brew, Coffee } from "../models/types";
+import type { Brew, Coffee, Recipe } from "../models/types";
 import { isBrewMethodId, methodSpec } from "./brewMethods";
 
 // The standardized ledger file: a versioned JSON envelope around the camel-case
 // domain models. Pure module — no Expo imports — so Jest covers every branch.
 export const LEDGER_FORMAT = "brewlog-ledger";
-export const LEDGER_VERSION = 2;
+export const LEDGER_VERSION = 4;
 
-export type LedgerPayload = { coffees: Coffee[]; brews: Brew[] };
+export type LedgerPhoto = { id: string; coffeeId: string; position: number; dataBase64: string; createdAt: number };
+export type LedgerPayload = { coffees: Coffee[]; brews: Brew[]; photos: LedgerPhoto[]; recipes: Recipe[] };
 export type LedgerParseResult =
   | { ok: true; payload: LedgerPayload }
   | { ok: false; reason: string };
@@ -46,7 +47,30 @@ function brewOut(b: Brew): Required<Brew> {
   };
 }
 
-export function serializeLedger(coffees: Coffee[], brews: Brew[], exportedAt: string): string {
+function photoOut(p: LedgerPhoto): LedgerPhoto {
+  return {
+    id: p.id, coffeeId: p.coffeeId, position: p.position,
+    dataBase64: p.dataBase64, createdAt: p.createdAt,
+  };
+}
+
+function recipeOut(r: Recipe): Recipe {
+  return {
+    coffeeId: r.coffeeId,
+    method: methodSpec(r.method).id, // normalizes legacy "v60" → "filter"
+    doseG: r.doseG ?? null,
+    waterG: r.waterG ?? null,
+    grind: r.grind ?? null,
+    waterTempC: r.waterTempC ?? null,
+    notes: r.notes ?? null,
+    updatedAt: r.updatedAt,
+  };
+}
+
+export function serializeLedger(
+  coffees: Coffee[], brews: Brew[], exportedAt: string,
+  photos: LedgerPhoto[] = [], recipes: Recipe[] = []
+): string {
   return JSON.stringify(
     {
       format: LEDGER_FORMAT,
@@ -54,6 +78,8 @@ export function serializeLedger(coffees: Coffee[], brews: Brew[], exportedAt: st
       exportedAt,
       coffees: coffees.map(coffeeOut),
       brews: brews.map(brewOut),
+      photos: photos.map(photoOut),
+      recipes: recipes.map(recipeOut),
     },
     null,
     2
@@ -158,7 +184,57 @@ export function parseLedgerFile(text: string): LedgerParseResult {
     brews.push(brewOut(b as unknown as Brew));
   }
 
-  return { ok: true, payload: { coffees, brews } };
+  const photos: LedgerPhoto[] = [];
+  const rawPhotos = Array.isArray(raw.photos) ? raw.photos : []; // v2 has none
+  const photoIds = new Set<string>();
+  for (let i = 0; i < rawPhotos.length; i++) {
+    const p = rawPhotos[i];
+    const label = `Photo ${i + 1}`;
+    if (!isRec(p)) return { ok: false, reason: `${label} isn't a record.` };
+    for (const field of ["id", "coffeeId", "dataBase64"] as const) {
+      if (!nonEmptyString(p[field])) return { ok: false, reason: `${label} is missing a valid ${field}.` };
+    }
+    if (!finiteNumber(p.position) || !Number.isInteger(p.position) || p.position < 0 || p.position > 2) {
+      return { ok: false, reason: `${label} has an invalid position.` };
+    }
+    if (!finiteNumber(p.createdAt)) return { ok: false, reason: `${label} is missing a valid createdAt.` };
+    if (photoIds.has(p.id as string)) return { ok: false, reason: `${label} repeats the id of an earlier photo.` };
+    photoIds.add(p.id as string);
+    if (!coffeeIds.has(p.coffeeId as string)) return { ok: false, reason: `${label} belongs to a coffee that isn't in the file.` };
+    photos.push({ id: p.id as string, coffeeId: p.coffeeId as string, position: p.position as number, dataBase64: p.dataBase64 as string, createdAt: p.createdAt as number });
+  }
+
+  const recipes: Recipe[] = [];
+  const rawRecipes = Array.isArray(raw.recipes) ? raw.recipes : []; // v3 and earlier have none
+  const recipeKeys = new Set<string>();
+  for (let i = 0; i < rawRecipes.length; i++) {
+    const r = rawRecipes[i];
+    const label = `Recipe ${i + 1}`;
+    if (!isRec(r)) return { ok: false, reason: `${label} isn't a record.` };
+    if (!nonEmptyString(r.coffeeId)) return { ok: false, reason: `${label} is missing a valid coffeeId.` };
+    if (!isBrewMethodId(r.method) && r.method !== "v60") {
+      return { ok: false, reason: `${label} has an invalid method.` };
+    }
+    if (!finiteNumber(r.updatedAt)) return { ok: false, reason: `${label} is missing a valid updatedAt.` };
+    for (const field of ["doseG", "waterG", "waterTempC"] as const) {
+      if (!optionalOk(r[field], "number")) return { ok: false, reason: `${label} has an invalid ${field}.` };
+    }
+    for (const field of ["grind", "notes"] as const) {
+      if (!optionalOk(r[field], "string")) return { ok: false, reason: `${label} has an invalid ${field}.` };
+    }
+    if (!coffeeIds.has(r.coffeeId as string)) {
+      return { ok: false, reason: `${label} belongs to a coffee that isn't in the file.` };
+    }
+    const method = methodSpec(r.method as string).id; // normalize before the uniqueness check
+    const key = `${r.coffeeId as string}::${method}`;
+    if (recipeKeys.has(key)) {
+      return { ok: false, reason: `${label} repeats an earlier recipe for the same coffee and method.` };
+    }
+    recipeKeys.add(key);
+    recipes.push(recipeOut(r as unknown as Recipe));
+  }
+
+  return { ok: true, payload: { coffees, brews, photos, recipes } };
 }
 
 export function ledgerFilename(date: Date): string {

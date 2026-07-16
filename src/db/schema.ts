@@ -40,4 +40,23 @@ CREATE TABLE IF NOT EXISTS brews (
   created_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_brews_coffee ON brews(coffee_id, brewed_at DESC);
+CREATE TABLE IF NOT EXISTS coffee_photos (
+  id TEXT PRIMARY KEY NOT NULL,
+  coffee_id TEXT NOT NULL REFERENCES coffees(id) ON DELETE CASCADE,
+  uri TEXT NOT NULL,
+  position INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_coffee_photos_coffee ON coffee_photos(coffee_id, position);
+CREATE TABLE IF NOT EXISTS recipes (
+  coffee_id TEXT NOT NULL REFERENCES coffees(id) ON DELETE CASCADE,
+  method TEXT NOT NULL,
+  dose_g REAL,
+  water_g REAL,
+  grind TEXT,
+  water_temp_c REAL,
+  notes TEXT,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (coffee_id, method)
+);
 `;

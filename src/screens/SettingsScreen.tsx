@@ -12,9 +12,12 @@ import { colors, fonts, motion, radii, spacing, screenTopGap } from "../design/t
 import { getDb } from "../db/database";
 import { listCoffees } from "../db/coffees";
 import { countAllBrews, listAllBrews } from "../db/brews";
+import { listAllPhotos } from "../db/coffeePhotos";
+import { listAllRecipes } from "../db/recipes";
 import { ledgerFilename, parseLedgerFile, serializeLedger } from "../lib/ledgerFile";
 import { emitLedgerReplaced } from "../lib/ledgerEvents";
 import { replaceLedger } from "../db/importLedger";
+import * as photoStore from "../media/photoStore";
 
 // Export destination — picked once, then remembered. Android bars apps from writing to
 // the Downloads root itself ("to protect your privacy…"), so the user creates or picks a
@@ -75,11 +78,31 @@ export function SettingsScreen() {
         const db = await getDb();
         const coffees = await listCoffees(db);
         const brews = await listAllBrews(db);
+        const allPhotos = await listAllPhotos(db);
+        const recipes = await listAllRecipes(db);
+        const ledgerPhotos = [];
+        for (const p of allPhotos) {
+          let dataBase64: string;
+          try {
+            dataBase64 = await photoStore.readPhotoBase64(p.uri);
+          } catch {
+            // A row whose file is gone (shouldn't happen given the lifecycle) — skip it
+            // rather than abort the whole backup over one orphaned photo.
+            continue;
+          }
+          ledgerPhotos.push({
+            id: p.id,
+            coffeeId: p.coffeeId,
+            position: p.position,
+            dataBase64,
+            createdAt: p.createdAt,
+          });
+        }
         const name = ledgerFilename(new Date());
         let file: InstanceType<typeof File>;
         try {
           file = dest.dir.createFile(name, "application/json") as InstanceType<typeof File>;
-          file.write(serializeLedger(coffees, brews, new Date().toISOString()));
+          file.write(serializeLedger(coffees, brews, new Date().toISOString(), ledgerPhotos, recipes));
         } catch (e) {
           // A remembered folder can go stale in ways `exists` misses — forget it so the
           // next attempt asks for a folder again.
@@ -153,7 +176,29 @@ export function SettingsScreen() {
         }
 
         try {
-          await replaceLedger(db, parsed.payload);
+          const oldPhotos = await listAllPhotos(db); // capture BEFORE writing anything
+          const written: { id: string; coffeeId: string; uri: string; position: number; createdAt: number }[] = [];
+          try {
+            for (const lp of parsed.payload.photos) {
+              const uri = await photoStore.writePhotoFromBase64(lp.id, lp.dataBase64);
+              written.push({ id: lp.id, coffeeId: lp.coffeeId, uri, position: lp.position, createdAt: lp.createdAt });
+            }
+            await replaceLedger(db, {
+              coffees: parsed.payload.coffees,
+              brews: parsed.payload.brews,
+              photos: written,
+              recipes: parsed.payload.recipes,
+            });
+          } catch (e) {
+            // Roll back only the files we just wrote (skip any that overwrote an existing
+            // path); the DB rolled back too, so the old ledger + its files stay intact.
+            const oldUris = new Set(oldPhotos.map((p) => p.uri));
+            for (const w of written) if (!oldUris.has(w.uri)) photoStore.deletePhotoFile(w.uri);
+            throw e;
+          }
+          // Success: drop old photo files the imported ledger no longer references.
+          const newUris = new Set(written.map((w) => w.uri));
+          for (const p of oldPhotos) if (!newUris.has(p.uri)) photoStore.deletePhotoFile(p.uri);
         } catch {
           await modal.alert(
             "Import failed",
@@ -205,9 +250,8 @@ export function SettingsScreen() {
             <LedgerSwitch value={aiEnabled} onToggle={() => setAiEnabled(!aiEnabled)} />
           </View>
 
-          <View style={styles.divider} />
-
-          <View style={aiEnabled ? null : styles.dimmed} pointerEvents={aiEnabled ? "auto" : "none"}>
+          <Collapsible open={aiEnabled}>
+            <View style={styles.divider} />
             <AppText variant="labelSm" style={styles.groupLabel}>Model</AppText>
             <View style={styles.selectedRow}>
               <View style={styles.modelText}>
@@ -223,7 +267,7 @@ export function SettingsScreen() {
                 <AppText variant="labelMd" style={styles.changeText}>Change</AppText>
               </Pressable>
             </View>
-          </View>
+          </Collapsible>
         </View>
 
         {/* ---- Your data ---- */}
@@ -415,6 +459,45 @@ function DataAction({ title, caption, direction, accent, onPress }: {
   );
 }
 
+// Accordion: reveals/hides its children by animating a clipped container between 0 and the
+// children's measured height (plus a matching opacity fade). Height can't ride the native
+// driver, so this is JS-driven — fine here, and it sidesteps the Fabric native-opacity flicker.
+function Collapsible({ open, children }: { open: boolean; children: React.ReactNode }) {
+  const [contentH, setContentH] = useState(0);
+  const anim = useRef(new Animated.Value(open ? 1 : 0)).current;
+
+  useEffect(() => {
+    Animated.timing(anim, {
+      toValue: open ? 1 : 0,
+      duration: motion.standard,
+      easing: Easing.linear,
+      useNativeDriver: false,
+    }).start();
+  }, [open, anim]);
+
+  const height = anim.interpolate({ inputRange: [0, 1], outputRange: [0, contentH] });
+
+  return (
+    <Animated.View
+      // Before the first measure, size naturally when open / stay flat when closed; once
+      // measured, follow the animated height so the reveal tracks the real content height.
+      style={[styles.collapsible, contentH === 0 ? { height: open ? undefined : 0 } : { height }, { opacity: anim }]}
+      pointerEvents={open ? "auto" : "none"}
+    >
+      {/* Inner wrapper keeps its natural height (it isn't height-constrained), so onLayout
+          reports the true content height even while the outer container is clipped to 0. */}
+      <View
+        onLayout={(e) => {
+          const next = e.nativeEvent.layout.height;
+          if (next > 0 && next !== contentH) setContentH(next);
+        }}
+      >
+        {children}
+      </View>
+    </Animated.View>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   masthead: { paddingHorizontal: spacing.container, paddingBottom: 12 },
@@ -447,7 +530,8 @@ const styles = StyleSheet.create({
   cardBlurb: { marginTop: 2 },
 
   divider: { height: 1, backgroundColor: colors.outlineVariant, marginVertical: 16, opacity: 0.6 },
-  dimmed: { opacity: 0.35 },
+  // Clips its children while the accordion height animates.
+  collapsible: { overflow: "hidden" },
   groupLabel: { marginBottom: 4 },
   groupFootnote: { marginTop: 12, color: colors.secondary },
 

@@ -4,8 +4,9 @@ import {
   ledgerFilename,
   parseLedgerFile,
   serializeLedger,
+  type LedgerPhoto,
 } from "../ledgerFile";
-import type { Brew, Coffee } from "../../models/types";
+import type { Brew, Coffee, Recipe } from "../../models/types";
 
 const coffee = (over: Partial<Coffee> = {}): Coffee => ({
   id: "c1", roaster: "La Cabra", name: "Aricha", origin: "Ethiopia", process: "Washed",
@@ -46,10 +47,12 @@ describe("serializeLedger", () => {
     const parsed = JSON.parse(serializeLedger([], [], "2026-07-09T12:00:00.000Z"));
     expect(parsed).toEqual({
       format: "brewlog-ledger",
-      version: 2,
+      version: 4,
       exportedAt: "2026-07-09T12:00:00.000Z",
       coffees: [],
       brews: [],
+      photos: [],
+      recipes: [],
     });
   });
 
@@ -82,7 +85,7 @@ describe("parseLedgerFile rejections", () => {
   });
 
   it("rejects a version newer than the app understands", () => {
-    const res = parseLedgerFile(validFile({ version: 3 }));
+    const res = parseLedgerFile(validFile({ version: 5 }));
     expect(res).toEqual({
       ok: false,
       reason: "This ledger was made by a newer version of Brewlog. Update the app to import it.",
@@ -196,8 +199,8 @@ describe("ledger v2 (methods)", () => {
     if (res.ok) expect(res.payload.brews[0].method).toBe("filter");
   });
 
-  it("rejects version 3 as newer", () => {
-    const res = parseLedgerFile(validFile({ version: 3 }));
+  it("rejects version 5 as newer", () => {
+    const res = parseLedgerFile(validFile({ version: 5 }));
     expect(res).toEqual({
       ok: false,
       reason: "This ledger was made by a newer version of Brewlog. Update the app to import it.",
@@ -222,6 +225,101 @@ describe("ledger v2 (methods)", () => {
 
     const badHeat = parseLedgerFile(validFile({ brews: [{ ...brew(), heat: "max" }] }));
     expect(badHeat).toEqual({ ok: false, reason: "Brew 1 has an invalid heat." });
+  });
+});
+
+describe("ledger v3 photos", () => {
+  const mkCoffee = (id = "c1") => ({ id, roaster: "Sey", name: "Kenya", origin: null, process: null, roastLevel: null, roastDate: null, notes: null, archived: false, createdAt: 1 });
+  const mkPhoto = (over: Partial<LedgerPhoto> = {}): LedgerPhoto => ({ id: "p1", coffeeId: "c1", position: 0, dataBase64: "SGkh", createdAt: 9, ...over });
+
+  it("bumps the version to 4", () => {
+    expect(LEDGER_VERSION).toBe(4);
+  });
+
+  it("round-trips photos through serialize + parse", () => {
+    const text = serializeLedger([mkCoffee()], [], "2026-07-16T00:00:00Z", [mkPhoto()]);
+    const res = parseLedgerFile(text);
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.payload.photos).toEqual([mkPhoto()]);
+  });
+
+  it("accepts a v2 file (no photos) with an empty photos array", () => {
+    const v2 = JSON.stringify({ format: "brewlog-ledger", version: 2, exportedAt: "x", coffees: [mkCoffee()], brews: [] });
+    const res = parseLedgerFile(v2);
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.payload.photos).toEqual([]);
+  });
+
+  it("rejects a photo whose coffeeId isn't in the file", () => {
+    const text = serializeLedger([mkCoffee()], [], "x", [mkPhoto({ coffeeId: "ghost" })]);
+    expect(parseLedgerFile(text).ok).toBe(false);
+  });
+
+  it("rejects an invalid photo position or empty data", () => {
+    const bad = JSON.stringify({ format: "brewlog-ledger", version: 3, exportedAt: "x", coffees: [mkCoffee()], brews: [],
+      photos: [{ id: "p1", coffeeId: "c1", position: 9, dataBase64: "SGkh", createdAt: 1 }] });
+    expect(parseLedgerFile(bad).ok).toBe(false);
+    const empty = JSON.stringify({ format: "brewlog-ledger", version: 3, exportedAt: "x", coffees: [mkCoffee()], brews: [],
+      photos: [{ id: "p1", coffeeId: "c1", position: 0, dataBase64: "", createdAt: 1 }] });
+    expect(parseLedgerFile(empty).ok).toBe(false);
+  });
+});
+
+const mkRecipe = (over: Partial<Recipe> = {}): Recipe => ({
+  coffeeId: "c1", method: "filter", doseG: 18, waterG: 300,
+  grind: "medium", waterTempC: 93, notes: "bloom 45s", updatedAt: 1720000002000, ...over,
+});
+
+describe("ledger v4 recipes", () => {
+  it("round-trips recipes through serialize + parse", () => {
+    const text = serializeLedger([coffee()], [brew()], "2026-07-16T00:00:00.000Z", [], [mkRecipe()]);
+    const res = parseLedgerFile(text);
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.payload.recipes).toEqual([mkRecipe()]);
+  });
+
+  it("loads a v3 file (no recipes) with an empty recipes array", () => {
+    const v3 = JSON.stringify({
+      format: "brewlog-ledger", version: 3, exportedAt: "x",
+      coffees: [coffee()], brews: [], photos: [],
+    });
+    const res = parseLedgerFile(v3);
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.payload.recipes).toEqual([]);
+  });
+
+  it("rejects a recipe with an unknown method", () => {
+    const bad = JSON.stringify({
+      format: "brewlog-ledger", version: 4, exportedAt: "x", coffees: [coffee()], brews: [], photos: [],
+      recipes: [{ ...mkRecipe(), method: "aeropress" }],
+    });
+    expect(parseLedgerFile(bad).ok).toBe(false);
+  });
+
+  it("rejects duplicate recipes for the same coffee + method", () => {
+    const dup = JSON.stringify({
+      format: "brewlog-ledger", version: 4, exportedAt: "x", coffees: [coffee()], brews: [], photos: [],
+      recipes: [mkRecipe(), mkRecipe({ notes: "other" })],
+    });
+    expect(parseLedgerFile(dup).ok).toBe(false);
+  });
+
+  it("rejects a recipe whose coffee isn't in the file", () => {
+    const orphan = JSON.stringify({
+      format: "brewlog-ledger", version: 4, exportedAt: "x", coffees: [coffee()], brews: [], photos: [],
+      recipes: [mkRecipe({ coffeeId: "nope" })],
+    });
+    expect(parseLedgerFile(orphan).ok).toBe(false);
+  });
+
+  it("normalizes a legacy 'v60' recipe method to filter", () => {
+    const legacy = JSON.stringify({
+      format: "brewlog-ledger", version: 4, exportedAt: "x", coffees: [coffee()], brews: [], photos: [],
+      recipes: [{ ...mkRecipe(), method: "v60" }],
+    });
+    const res = parseLedgerFile(legacy);
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.payload.recipes[0].method).toBe("filter");
   });
 });
 
