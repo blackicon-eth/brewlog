@@ -7,8 +7,10 @@ the best recipe per bean. Everything runs locally — no cloud, no account.
 
 ## What's inside
 
-- **Journal** — coffees and their brews (dose, water, ratio, grind, temperature, time,
-  rating, tasting notes); deleting a coffee removes its brews.
+- **Journal** — coffees (each with photos) and their brews across four methods (filter,
+  French press, moka, espresso): dose, water, ratio, grind, temperature, time, rating,
+  tasting notes. Keep a per-method **recipe** page per coffee. Deleting a coffee removes its
+  brews, photos, and recipes.
 - **AI assistant** (opt-in, fully on-device) — freeform chat, "Autofill with AI" on the
   coffee/brew forms, per-brew **Diagnose**, and a **Best recipe** per bean. A model
   picker in Settings offers Qwen3 0.6B–4B and Llama 3.2 1B; models too big for the
@@ -16,8 +18,8 @@ the best recipe per bean. Everything runs locally — no cloud, no account.
 - **Tools** — deterministic offline calculators: **Brew Ratio** and a guided **Brew
   Timer** live today; Extraction Yield, 4:6 Method, and Coffee Compass are built but
   gated behind "coming soon" cards.
-- **Your data** — export the ledger to a versioned JSON file and import it back
-  (validated, all-or-nothing replace).
+- **Your data** — export the whole ledger (coffees, brews, photos, and recipes) to a
+  versioned JSON file and import it back (validated, all-or-nothing replace).
 
 ## Requirements
 
@@ -55,10 +57,10 @@ npm test
 ```
 
 Covers the tool math (ratio, extraction yield, 4:6, pour schedules, coffee compass),
-brew formatting, the SQLite data layer (in-memory `better-sqlite3` behind the same `Db`
-interface), the ledger file format/validation and the import transaction, the prompt
-builders, and the assistant's model lifecycle. 202 tests across 16 suites;
-`npx tsc --noEmit` is clean.
+brew formatting, the SQLite data layer including coffee photos and per-method recipes
+(in-memory `better-sqlite3` behind the same `Db` interface), the ledger file
+format/validation and the import transaction, the prompt builders, and the assistant's
+model lifecycle. 330 tests across 25 suites; `npx tsc --noEmit` is clean.
 
 ## Android setup from scratch
 
@@ -155,8 +157,10 @@ The advisor**. Once ready, chat, Diagnose, and Best recipe stream token-by-token
 - [ ] App launches to the Home ledger; all five tabs (Home, Brews, Chat, Tools, Settings)
       switch instantly with no flicker.
 - [ ] Add / edit / delete a coffee.
+- [ ] Attach, reorder, and remove photos on a coffee; tap a photo to open it full-screen.
 - [ ] Log / edit / delete a brew; ratio preview updates live; brews sort newest-first.
-- [ ] Deleting a coffee removes its brews.
+- [ ] Open a coffee's recipe book, add/edit a per-method recipe, and see it on return.
+- [ ] Deleting a coffee removes its brews, photos, and recipes.
 - [ ] "Autofill with AI" prefills the coffee/brew form from a plain-English description;
       "Enter manually" skips it.
 - [ ] The Home advisor badge fills with download progress, then reads ready; it shows a
@@ -195,8 +199,10 @@ A pure, Jest-tested core with a thin UI layer on top:
 - `src/lib` — pure helpers: ratio and tool math, brew formatting, the ledger file
   format/validation, the cross-tab `ledgerEvents` pub-sub.
 - `src/db` — SQLite schema + data layer behind a minimal async `Db` interface (tested via
-  an in-memory `better-sqlite3` adapter); `importLedger.ts` replaces the ledger in one
-  transaction.
+  an in-memory `better-sqlite3` adapter). `coffees` cascades to `brews`, `coffee_photos`,
+  and per-method `recipes`; `importLedger.ts` replaces the ledger in one transaction.
+- `src/media` — coffee photo files on device (`photoStore.ts`: write/read/delete),
+  embedded as base64 in the ledger export and restored on import.
 - `src/qvac` — all `@qvac/sdk` use: serialized model lifecycle (`service.ts`), React
   context + persisted AI settings (`QvacProvider.tsx`), pure prompt builders.
 - `src/screens` — a native-stack root over `MainTabs`, a hand-rolled tab container that

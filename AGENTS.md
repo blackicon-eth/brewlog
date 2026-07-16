@@ -1,8 +1,9 @@
 # Brewlog — agent guide
 
 Offline pour-over coffee journal for a **physical Android phone** (developed on a Galaxy S23).
-Users log coffees and brews in SQLite; an on-device LLM (QVAC + Qwen3 1.7B) reasons over their
-own data. No cloud, no account, no emulator support (QVAC needs a real GPU).
+Users log coffees (with photos), brews across four methods, and a per-method recipe page in
+SQLite; an on-device LLM (QVAC + Qwen3 1.7B) reasons over their own data. No cloud, no account,
+no emulator support (QVAC needs a real GPU).
 
 ## Expo HAS CHANGED
 
@@ -49,9 +50,12 @@ SQL) in the core; screens should only wire hooks to components.
   `ledgerEvents` pub-sub). No React, no Expo imports. Fully tested.
 - `src/db` — data layer over a minimal async `Db` interface (`src/db/types.ts`). At runtime
   it's expo-sqlite; tests wrap in-memory `better-sqlite3` behind the same interface
-  (`src/db/testdb.ts`), so the whole layer is testable on Node. Schema: `coffees` → `brews`
-  with `ON DELETE CASCADE`. Small key-value persistence uses `expo-sqlite/kv-store`
-  (`Storage.getItemSync/setItemSync`; `src/hooks/usePersistedState.ts`).
+  (`src/db/testdb.ts`), so the whole layer is testable on Node. Schema: `coffees` with three
+  child tables — `brews`, `coffee_photos`, and per-method `recipes` (PK `(coffee_id, method)`)
+  — all `ON DELETE CASCADE`. Small key-value persistence uses `expo-sqlite/kv-store`
+  (`Storage.getItemSync/setItemSync`; `src/hooks/usePersistedState.ts`). Photo files live on
+  disk via `src/media/photoStore.ts` (rows hold the `uri`); the ledger export embeds them as
+  base64.
 - `src/qvac` — the **only** place `@qvac/sdk` is used. `service.ts` owns the model lifecycle
   (download/load/unload) behind a FIFO mutex; `QvacProvider.tsx` exposes it as React context
   plus the persisted AI settings (enabled/model/onboarded); `advisor.ts`/`intake.ts` are pure
