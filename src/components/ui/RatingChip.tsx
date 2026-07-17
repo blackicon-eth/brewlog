@@ -32,14 +32,19 @@ const styles = StyleSheet.create({
   text: { color: colors.tertiary, fontFamily: fonts.sansBold },
 });
 
+// Fixed heights (not vertical padding) so the chip measures the same regardless of font
+// metrics — rows that show a chip for some items and plain text for others (e.g. the
+// coffee shelf's rated vs unrated cards) can reserve exactly this height and stay uniform.
+export const RATING_CHIP_HEIGHT = { md: 22, lg: 32 } as const;
+
 const SIZES = {
   md: StyleSheet.create({
-    chip: { gap: 4, paddingHorizontal: 10, paddingVertical: 4 },
+    chip: { gap: 4, paddingHorizontal: 10, height: RATING_CHIP_HEIGHT.md },
     star: { fontSize: 11 },
     text: { fontSize: 13 },
   }),
   lg: StyleSheet.create({
-    chip: { gap: 5, paddingHorizontal: 13, paddingVertical: 6 },
+    chip: { gap: 5, paddingHorizontal: 13, height: RATING_CHIP_HEIGHT.lg },
     star: { fontSize: 14 },
     text: { fontSize: 16 },
   }),

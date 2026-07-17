@@ -34,8 +34,9 @@ export type CoffeeWithStats = Coffee & {
 // rather than counting the null-joined row; AVG(rating) ignores NULL ratings and is NULL
 // when there are none — matching avgRating(); MAX(brewed_at) is likewise NULL for a
 // brew-less coffee. coverPhotoUri is the position-0 photo (or null when none), fetched
-// via a correlated subquery so the query stays a single pass. Newest-first, mirroring
-// listCoffees.
+// via a correlated subquery so the query stays a single pass. Ordered by last use:
+// brewed coffees first, most recently brewed on top — brewing is the only thing that
+// earns the top of the shelf — then the never-brewed bags, newest-added first.
 export async function listCoffeesWithStats(db: Db): Promise<CoffeeWithStats[]> {
   const rows = await db.getAllAsync<
     CoffeeRow & {
@@ -47,7 +48,7 @@ export async function listCoffeesWithStats(db: Db): Promise<CoffeeWithStats[]> {
             (SELECT uri FROM coffee_photos p WHERE p.coffee_id = c.id ORDER BY p.position LIMIT 1) AS cover_photo_uri
        FROM coffees c LEFT JOIN brews b ON b.coffee_id = c.id
       GROUP BY c.id
-      ORDER BY c.created_at DESC`
+      ORDER BY MAX(b.brewed_at) IS NULL, MAX(b.brewed_at) DESC, c.created_at DESC`
   );
   return rows.map((r) => ({
     ...rowToCoffee(r), brewCount: r.brew_count, avg: r.avg_rating, lastBrewedAt: r.last_brewed_at,

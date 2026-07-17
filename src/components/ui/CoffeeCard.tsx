@@ -1,7 +1,7 @@
 import React from "react";
 import { Image, Pressable, StyleSheet, View } from "react-native";
 import { AppText } from "./AppText";
-import { RatingChip } from "./RatingChip";
+import { RatingChip, RATING_CHIP_HEIGHT } from "./RatingChip";
 import { colors, radii, spacing } from "../../design/tokens";
 
 export type CoffeeCardProps = {
@@ -98,8 +98,13 @@ const styles = StyleSheet.create({
   textCol: { flex: 1, minWidth: 0 },
   // Extra line height so EB Garamond's descenders (g/y tails) aren't clipped.
   name: { marginTop: 5, lineHeight: 34 },
-  divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.outlineVariant, marginVertical: 14 },
-  meta: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.outlineVariant, marginVertical: 10 },
+  // Reserve the rating chip's height even when the card shows plain "Unrated"/"0 brews"
+  // text, so rated and unrated cards measure identically on the shelf.
+  meta: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    minHeight: RATING_CHIP_HEIGHT.md,
+  },
   unrated: { color: colors.outline },
 
   // Cover tile — fixed square, hairline border, no elevation (Fabric flicker rule above).

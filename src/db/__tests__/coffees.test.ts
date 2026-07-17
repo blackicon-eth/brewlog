@@ -56,10 +56,23 @@ describe("listCoffeesWithStats", () => {
     await createBrew(db, brew({ id: "b", coffeeId: "c1", rating: 2 }));
     await createBrew(db, brew({ id: "c", coffeeId: "c2", rating: 5 }));
     const rows = await listCoffeesWithStats(db);
-    // newest createdAt first, matching listCoffees
+    // both last brewed at 10 (a tie) → newest createdAt breaks it
     expect(rows.map((r) => r.id)).toEqual(["c1", "c2"]);
     expect(rows[0]).toMatchObject({ id: "c1", brewCount: 2, avg: 3 });
     expect(rows[1]).toMatchObject({ id: "c2", brewCount: 1, avg: 5 });
+  });
+
+  it("orders brewed coffees by most-recent brew, never-brewed bags after everything", async () => {
+    const db = await makeTestDb();
+    await createCoffee(db, coffee({ id: "old-active", createdAt: 1 }));   // old bag, brewed recently
+    await createCoffee(db, coffee({ id: "new-idle", createdAt: 50 }));    // newer bag, brewed a while ago
+    await createCoffee(db, coffee({ id: "just-added", createdAt: 200 })); // fresh bag, never brewed
+    await createBrew(db, brew({ id: "a", coffeeId: "old-active", brewedAt: 100 }));
+    await createBrew(db, brew({ id: "b", coffeeId: "new-idle", brewedAt: 60 }));
+    const rows = await listCoffeesWithStats(db);
+    // brewing is the only thing that earns the top: old-active (last brew 100) >
+    // new-idle (last brew 60) > just-added (never brewed, despite createdAt 200)
+    expect(rows.map((r) => r.id)).toEqual(["old-active", "new-idle", "just-added"]);
   });
 
   it("reports zero brews and null average for a brew-less coffee", async () => {
