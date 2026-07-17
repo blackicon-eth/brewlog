@@ -2,6 +2,7 @@ import React from "react";
 import { Image, Pressable, StyleSheet, View } from "react-native";
 import { AppText } from "./AppText";
 import { RatingChip, RATING_CHIP_HEIGHT } from "./RatingChip";
+import { useI18n } from "../../i18n/LocaleProvider";
 import { colors, radii, spacing } from "../../design/tokens";
 
 export type CoffeeCardProps = {
@@ -58,6 +59,7 @@ function CoverThumb({ photoUri }: { photoUri?: string | null }) {
 // right at home in the ledger aesthetic — the cover tile follows the same rule (border,
 // no shadow), so it can't reintroduce the flicker either.
 export function CoffeeCard({ roaster, name, brewCount, avg, photoUri, onPress }: CoffeeCardProps) {
+  const { t, tn } = useI18n();
   return (
     <Pressable
       onPress={onPress}
@@ -73,12 +75,12 @@ export function CoffeeCard({ roaster, name, brewCount, avg, photoUri, onPress }:
       <View style={styles.divider} />
       <View style={styles.meta}>
         <AppText variant="labelMd">
-          {brewCount} brew{brewCount === 1 ? "" : "s"}
+          {tn("common.brewCount", brewCount)}
         </AppText>
         {avg != null ? (
           <RatingChip value={avg} />
         ) : (
-          <AppText variant="labelMd" style={styles.unrated}>Unrated</AppText>
+          <AppText variant="labelMd" style={styles.unrated}>{t("common.unrated")}</AppText>
         )}
       </View>
     </Pressable>

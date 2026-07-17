@@ -15,6 +15,10 @@ import { TimerGlyph } from "./TimerGlyph";
 import { usePersistedState } from "../../../hooks/usePersistedState";
 import { Stepper } from "./Stepper";
 import { useStopwatch } from "./useStopwatch";
+import { useI18n } from "../../../i18n/LocaleProvider";
+import { t } from "../../../lib/i18n/t";
+import { toolTitle, toolBlurb } from "../../../lib/i18n/labels";
+import type { Dict } from "../../../lib/i18n/en";
 
 // ---- Setup bounds / defaults (from the tool spec) -------------------------------------
 const BLOOM_G = { min: 20, max: 150, step: 1, default: 30 };
@@ -24,6 +28,15 @@ const POURS = { min: 1, max: 5, step: 1, default: 2 };
 const INTERVAL = { min: 10, max: 60, step: 1, default: 45 };
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
+
+// Localizes a schedule step to its instruction label. The lib only carries the step's kind
+// + 1-based pour number (locale-free); a lone main pour reads as plain "Pour", while two or
+// more read as "Pour {n}" — mainPoursCount tells us which phrasing applies.
+function stepLabel(dict: Dict, step: PourStep, mainPoursCount: number): string {
+  if (step.kind === "bloom") return t(dict, "tools.timer.page.stepBloom");
+  if (mainPoursCount === 1) return t(dict, "tools.timer.page.stepPourSingle");
+  return t(dict, "tools.timer.page.stepPourN", { n: step.pourNumber ?? 0 });
+}
 
 // A short double-buzz cue at each pour boundary. `Vibration` is React Native core (no new
 // dep); it silently no-ops on platforms/simulators without a motor, and we guard the call so
@@ -38,6 +51,7 @@ function pulse() {
 }
 
 function TimerScreen() {
+  const { dict } = useI18n();
   // Setup state (numeric, bounded). Bloom is set directly in grams; total water is explicit.
   const [bloomG, setBloomG] = usePersistedState("tool:timer:bloomG", BLOOM_G.default);
   const [bloomTimeS, setBloomTimeS] = usePersistedState("tool:timer:bloomTimeS", BLOOM_T.default);
@@ -134,7 +148,7 @@ function TimerScreen() {
   }
 
   return (
-    <ToolPage title="Brew Timer" subtitle="Guided pour schedule" scroll={false}>
+    <ToolPage title={toolTitle(dict, "timer")} subtitle={toolBlurb(dict, "timer")} scroll={false}>
       <Animated.View
         style={
           viewFading
@@ -148,6 +162,7 @@ function TimerScreen() {
       >
         {shownLive ? (
           <LiveView
+            dict={dict}
             schedule={schedule}
             elapsedS={liveSnap.current.elapsedS}
             activeIndex={liveSnap.current.activeIndex}
@@ -159,6 +174,7 @@ function TimerScreen() {
           />
         ) : (
           <SetupView
+            dict={dict}
             bloomG={bloomG}
             setBloomG={setBloomG}
             bloomTimeS={bloomTimeS}
@@ -182,6 +198,7 @@ function TimerScreen() {
 // ---- Setup view -----------------------------------------------------------------------
 
 type SetupProps = {
+  dict: Dict;
   bloomG: number;
   setBloomG: (v: number) => void;
   bloomTimeS: number;
@@ -200,16 +217,17 @@ type SetupProps = {
 // The summary card and steppers scroll; the start button stays pinned to the bottom so
 // it's always one thumb-reach away regardless of how tall the pour plan grows.
 function SetupView(p: SetupProps) {
+  const { dict } = p;
   return (
     <View style={styles.setupWrap}>
       <ScrollView style={styles.setupScroll} contentContainerStyle={styles.setupScrollContent} showsVerticalScrollIndicator={false}>
       {/* Steppers — bloom amount and main pours share one row; the increment/decrement
           bounds also keep the bloom a strict prefix of the total (lib requirement). */}
-      <AppText variant="labelMd" style={styles.sectionLabel}>Dial it in</AppText>
+      <AppText variant="labelMd" style={styles.sectionLabel}>{t(dict, "tools.timer.page.dialItIn")}</AppText>
       <View style={styles.stepperRow}>
         <View style={styles.stepperHalf}>
           <Stepper
-            label="Bloom amount (g)"
+            label={t(dict, "tools.timer.page.bloomAmountLabel")}
             display={`${p.bloomG} g`}
             canDecrement={p.bloomG > BLOOM_G.min}
             canIncrement={p.bloomG < BLOOM_G.max && p.bloomG + BLOOM_G.step < p.totalG}
@@ -219,7 +237,7 @@ function SetupView(p: SetupProps) {
         </View>
         <View style={styles.stepperHalf}>
           <Stepper
-            label="Bloom time"
+            label={t(dict, "tools.timer.page.bloomTimeLabel")}
             display={`${p.bloomTimeS} s`}
             canDecrement={p.bloomTimeS > BLOOM_T.min}
             canIncrement={p.bloomTimeS < BLOOM_T.max}
@@ -231,8 +249,8 @@ function SetupView(p: SetupProps) {
       <View style={styles.stepperRow}>
         <View style={styles.stepperHalf}>
           <Stepper
-            label="Main pours"
-            hint={`≈${p.schedule.perPour ? Math.round(p.schedule.mainWater / p.mainPours) : 0} g`}
+            label={t(dict, "tools.timer.page.mainPoursLabel")}
+            hint={t(dict, "tools.timer.page.mainPoursHint", { g: p.schedule.perPour ? Math.round(p.schedule.mainWater / p.mainPours) : 0 })}
             display={`${p.mainPours}`}
             canDecrement={p.mainPours > POURS.min}
             canIncrement={p.mainPours < POURS.max}
@@ -242,7 +260,7 @@ function SetupView(p: SetupProps) {
         </View>
         <View style={styles.stepperHalf}>
           <Stepper
-            label="Pour interval"
+            label={t(dict, "tools.timer.page.pourIntervalLabel")}
             display={`${p.pourIntervalS} s`}
             canDecrement={p.pourIntervalS > INTERVAL.min}
             canIncrement={p.pourIntervalS < INTERVAL.max}
@@ -252,7 +270,7 @@ function SetupView(p: SetupProps) {
         </View>
       </View>
       <Stepper
-        label="Total water (g)"
+        label={t(dict, "tools.timer.page.totalWaterLabel")}
         display={`${p.totalG} g`}
         canDecrement={p.totalG > TOTAL.min && p.totalG - TOTAL.step > p.bloomG}
         canIncrement={p.totalG < TOTAL.max}
@@ -267,13 +285,13 @@ function SetupView(p: SetupProps) {
             <TimerGlyph size={24} color={colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
-            <AppText variant="labelSm" style={styles.summaryKicker}>The pour plan</AppText>
+            <AppText variant="labelSm" style={styles.summaryKicker}>{t(dict, "tools.timer.page.pourPlanKicker")}</AppText>
             <AppText variant="headlineMd" style={styles.summaryTitle}>
-              {p.schedule.totalWater} g total
+              {t(dict, "tools.timer.page.totalGrams", { g: p.schedule.totalWater })}
             </AppText>
           </View>
           <View style={styles.summaryRatio}>
-            <AppText variant="labelSm" style={styles.summaryRatioLabel}>Bloom</AppText>
+            <AppText variant="labelSm" style={styles.summaryRatioLabel}>{t(dict, "tools.timer.page.stepBloom")}</AppText>
             <AppText variant="bodyLg" style={styles.summaryRatioValue}>{p.schedule.bloomWater} g</AppText>
           </View>
         </View>
@@ -284,7 +302,7 @@ function SetupView(p: SetupProps) {
               <View style={styles.stepTime}>
                 <AppText variant="labelMd" style={styles.stepTimeText}>{formatSeconds(step.atSeconds)}</AppText>
               </View>
-              <AppText variant="bodyLg" style={styles.stepLabel}>{step.label}</AppText>
+              <AppText variant="bodyLg" style={styles.stepLabel}>{stepLabel(dict, step, p.mainPours)}</AppText>
               <View style={styles.stepTargetWrap}>
                 <AppText style={styles.stepTarget}>{step.cumulativeTargetG}</AppText>
                 <AppText variant="labelSm" style={styles.stepTargetUnit}>g</AppText>
@@ -292,7 +310,9 @@ function SetupView(p: SetupProps) {
             </View>
           ))}
           <View style={styles.finishRow}>
-            <AppText variant="labelSm" style={styles.finishText}>Drawdown usually finishes near ~{formatSeconds(finishRounded(p.finishS))} — your grind sets the pace</AppText>
+            <AppText variant="labelSm" style={styles.finishText}>
+              {t(dict, "tools.timer.page.finishHint", { time: formatSeconds(finishRounded(p.finishS)) })}
+            </AppText>
           </View>
         </View>
       </View>
@@ -301,14 +321,14 @@ function SetupView(p: SetupProps) {
       {/* Big arm-the-timer control — pinned below the scroll area */}
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Start timer"
+        accessibilityLabel={t(dict, "tools.timer.page.startTimerA11y")}
         onPress={p.onStart}
         style={({ pressed }) => [styles.startBtn, pressed && styles.startBtnPressed]}
       >
         <View style={styles.startGlyph}>
           <View style={styles.playTriangle} />
         </View>
-        <AppText variant="labelMd" style={styles.startText}>Start brewing</AppText>
+        <AppText variant="labelMd" style={styles.startText}>{t(dict, "tools.timer.page.startBrewing")}</AppText>
       </Pressable>
     </View>
   );
@@ -320,6 +340,7 @@ const finishRounded = (s: number) => Math.round(s / 5) * 5;
 // ---- Live run view --------------------------------------------------------------------
 
 type LiveProps = {
+  dict: Dict;
   schedule: PourSchedule;
   elapsedS: number;
   activeIndex: number;
@@ -337,7 +358,17 @@ const PHASE_DIMMED = 0.35;
 // as the timer crosses into/out of its window. Memoized so the stopwatch's every-tick
 // re-render of LiveView doesn't repaint the animated rows (re-rendering a natively
 // animated view can momentarily desync its opacity — visible as flicker).
-const PhaseRow = React.memo(function PhaseRow({ step, active }: { step: PourStep; active: boolean }) {
+const PhaseRow = React.memo(function PhaseRow({
+  dict,
+  step,
+  active,
+  mainPoursCount,
+}: {
+  dict: Dict;
+  step: PourStep;
+  active: boolean;
+  mainPoursCount: number;
+}) {
   const anim = useRef(new Animated.Value(active ? 1 : PHASE_DIMMED)).current;
   useEffect(() => {
     Animated.timing(anim, {
@@ -353,9 +384,9 @@ const PhaseRow = React.memo(function PhaseRow({ step, active }: { step: PourStep
 
   return (
     <Animated.View style={[styles.phaseRow, { opacity: anim }]}>
-      <AppText variant="labelMd" style={styles.phaseLabel}>{step.label}</AppText>
+      <AppText variant="labelMd" style={styles.phaseLabel}>{stepLabel(dict, step, mainPoursCount)}</AppText>
       <View style={styles.phaseTargetWrap}>
-        <AppText variant="bodyLg" style={styles.phaseWord}>pour to</AppText>
+        <AppText variant="bodyLg" style={styles.phaseWord}>{t(dict, "tools.timer.page.pourTo")}</AppText>
         <AppText style={styles.phaseTarget}>{step.cumulativeTargetG}</AppText>
         <AppText variant="labelSm" style={styles.phaseUnit}>g</AppText>
       </View>
@@ -364,7 +395,8 @@ const PhaseRow = React.memo(function PhaseRow({ step, active }: { step: PourStep
 });
 
 function LiveView(p: LiveProps) {
-  const { schedule } = p;
+  const { schedule, dict } = p;
+  const mainPoursCount = schedule.steps.length - 1;
 
   // Step-boundary cue: instead of a hard style toggle, the hero's border and surface rise
   // to the cherry tint quickly, then decay back smoothly. Triggered on `flash` rising edge.
@@ -385,7 +417,11 @@ function LiveView(p: LiveProps) {
       {/* Hero clock */}
       <Animated.View style={[styles.hero, { borderColor: flashBorder, backgroundColor: flashSurface }]}>
         <AppText variant="labelSm" style={styles.heroKicker}>
-          {p.running ? "Brewing" : "Paused"} · Step {p.activeIndex + 1} of {schedule.steps.length}
+          {t(dict, "tools.timer.page.stepOf", {
+            state: t(dict, p.running ? "tools.timer.page.brewing" : "tools.timer.page.paused"),
+            n: p.activeIndex + 1,
+            total: schedule.steps.length,
+          })}
         </AppText>
         <AppText style={styles.clock}>{formatSeconds(p.elapsedS)}</AppText>
       </Animated.View>
@@ -394,7 +430,7 @@ function LiveView(p: LiveProps) {
           scrolls on its own so the controls below never move. */}
       <ScrollView style={styles.phaseScroll} contentContainerStyle={styles.phaseList} showsVerticalScrollIndicator={false}>
         {schedule.steps.map((step, i) => (
-          <PhaseRow key={i} step={step} active={i === p.activeIndex} />
+          <PhaseRow key={i} dict={dict} step={step} active={i === p.activeIndex} mainPoursCount={mainPoursCount} />
         ))}
       </ScrollView>
 
@@ -402,19 +438,19 @@ function LiveView(p: LiveProps) {
       <View style={styles.controls}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Reset timer"
+          accessibilityLabel={t(dict, "tools.timer.page.resetTimerA11y")}
           onPress={p.onReset}
           style={({ pressed }) => [styles.ctrlBtn, styles.ctrlReset, pressed && styles.ctrlPressed]}
         >
-          <AppText variant="labelMd" style={styles.ctrlResetText}>Reset</AppText>
+          <AppText variant="labelMd" style={styles.ctrlResetText}>{t(dict, "tools.timer.page.reset")}</AppText>
         </Pressable>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={p.running ? "Pause timer" : "Resume timer"}
+          accessibilityLabel={t(dict, p.running ? "tools.timer.page.pauseTimerA11y" : "tools.timer.page.resumeTimerA11y")}
           onPress={p.running ? p.onPause : p.onResume}
           style={({ pressed }) => [styles.ctrlBtn, styles.ctrlPrimary, pressed && styles.ctrlPressed]}
         >
-          <AppText variant="labelMd" style={styles.ctrlPrimaryText}>{p.running ? "Pause" : "Resume"}</AppText>
+          <AppText variant="labelMd" style={styles.ctrlPrimaryText}>{t(dict, p.running ? "tools.timer.page.pause" : "tools.timer.page.resume")}</AppText>
         </Pressable>
       </View>
     </View>
@@ -422,7 +458,7 @@ function LiveView(p: LiveProps) {
 }
 
 export const timerTool: ToolModule = {
-  meta: { id: "timer", title: "Brew Timer", blurb: "Guided pour schedule", icon: TimerGlyph },
+  meta: { id: "timer", icon: TimerGlyph },
   Screen: TimerScreen,
 };
 

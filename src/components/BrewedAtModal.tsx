@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { KeyboardAvoidingView, Modal, Pressable, StyleSheet, View } from "react-native";
 import { AppText, ChipSelect, PillButton, TextField } from "./ui";
 import {
-  clampTimePart, composeBrewedAt, dayOptions, pad2, startOfDayTs, type DayOption,
+  clampTimePart, composeBrewedAt, dayOptions, formatDayKind, pad2, startOfDayTs, type DayOption,
 } from "../lib/brewedAt";
+import { brewedAtDayLabels } from "../lib/i18n/labels";
+import { useI18n } from "../i18n/LocaleProvider";
 import { colors, spacing } from "../design/tokens";
 
 // The "Brewed" sheet: pick a day (this week, or the brew's own older day) and an exact
@@ -14,6 +16,9 @@ export function BrewedAtModal({ visible, value, onCancel, onSet }: {
   onCancel: () => void;
   onSet: (ts: number) => void;
 }) {
+  const { dict, locale, t } = useI18n();
+  const dayLabels = useMemo(() => brewedAtDayLabels(dict, locale), [dict, locale]);
+
   const [options, setOptions] = useState<DayOption[]>([]);
   const [dayStart, setDayStart] = useState("");
   const [hh, setHh] = useState("");
@@ -36,9 +41,9 @@ export function BrewedAtModal({ visible, value, onCancel, onSet }: {
     seedFrom(value ?? now, now);
   }, [visible, value]);
 
-  const digits = (t: string) => t.replace(/\D/g, "").slice(0, 2);
-  const onHh = (t: string) => { setHh(digits(t)); setFuture(false); };
-  const onMm = (t: string) => { setMm(digits(t)); setFuture(false); };
+  const digits = (raw: string) => raw.replace(/\D/g, "").slice(0, 2);
+  const onHh = (raw: string) => { setHh(digits(raw)); setFuture(false); };
+  const onMm = (raw: string) => { setMm(digits(raw)); setFuture(false); };
   const clampHh = () => { const v = clampTimePart(hh, 23); if (v != null) setHh(pad2(v)); };
   const clampMm = () => { const v = clampTimePart(mm, 59); if (v != null) setMm(pad2(v)); };
 
@@ -59,14 +64,17 @@ export function BrewedAtModal({ visible, value, onCancel, onSet }: {
           is exempt from adjustResize, so the window never shrinks and "height" would measure
           nothing — padding tracks the keyboard directly and lifts the centered card. */}
       <KeyboardAvoidingView style={styles.backdrop} behavior="padding">
-        <Pressable style={StyleSheet.absoluteFill} accessibilityLabel="Close brewed picker" onPress={onCancel} />
+        <Pressable style={StyleSheet.absoluteFill} accessibilityLabel={t("brewedAt.closeA11y")} onPress={onCancel} />
         <View style={styles.card}>
-          <AppText variant="labelSm" style={styles.kicker}>Brew log</AppText>
-          <AppText variant="headlineMd" style={styles.title}>Brewed on</AppText>
+          <AppText variant="labelSm" style={styles.kicker}>{t("brewedAt.kicker")}</AppText>
+          <AppText variant="headlineMd" style={styles.title}>{t("brewedAt.title")}</AppText>
 
           <ChipSelect
-            label="Day"
-            options={options.map((o) => ({ label: o.label, value: o.key }))}
+            label={t("brewedAt.dayLabel")}
+            options={options.map((o) => ({
+              label: formatDayKind(o.dayStart, o.kind, o.includeYear, dayLabels),
+              value: o.key,
+            }))}
             value={dayStart}
             onChange={(v) => { if (v) { setDayStart(v); setFuture(false); } }}
             clearable={false}
@@ -75,26 +83,26 @@ export function BrewedAtModal({ visible, value, onCancel, onSet }: {
           />
 
           <View style={styles.timeRow}>
-            <TextField label="Hour" value={hh} onChangeText={onHh} onBlur={clampHh}
+            <TextField label={t("brewedAt.hourLabel")} value={hh} onChangeText={onHh} onBlur={clampHh}
               keyboardType="number-pad" placeholder="14" style={styles.timeCol} />
             <AppText variant="headlineMd" style={styles.colon}>:</AppText>
-            <TextField label="Minute" value={mm} onChangeText={onMm} onBlur={clampMm}
+            <TextField label={t("brewedAt.minuteLabel")} value={mm} onChangeText={onMm} onBlur={clampMm}
               keyboardType="number-pad" placeholder="30" style={styles.timeCol} />
           </View>
 
           {future ? (
             <AppText variant="labelMd" style={styles.futureNote}>
-              A brew can't be brewed in the future.
+              {t("brewedAt.future")}
             </AppText>
           ) : null}
 
           <Pressable onPress={onJustNow} hitSlop={8} style={styles.justNow} accessibilityRole="button">
-            <AppText variant="labelMd" style={styles.justNowText}>Just now</AppText>
+            <AppText variant="labelMd" style={styles.justNowText}>{t("brewedAt.justNow")}</AppText>
           </Pressable>
 
           <View style={styles.actions}>
-            <PillButton label="Cancel" variant="neutral" style={styles.flex1} onPress={onCancel} />
-            <PillButton label="Set" style={styles.flex1} onPress={onConfirm} />
+            <PillButton label={t("common.cancel")} variant="neutral" style={styles.flex1} onPress={onCancel} />
+            <PillButton label={t("brewedAt.set")} style={styles.flex1} onPress={onConfirm} />
           </View>
         </View>
       </KeyboardAvoidingView>

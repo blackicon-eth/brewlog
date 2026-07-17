@@ -1,4 +1,5 @@
 import { METHODS, METHODS_BY_ID, isBrewMethodId, methodSpec, methodFilterSql, defaultPickerMethod, type MethodFilter } from "../brewMethods";
+import { en } from "../i18n/en";
 import type { Brew } from "../../models/types";
 
 const mkBrew = (method: Brew["method"]): Brew => ({
@@ -28,20 +29,22 @@ describe("brewMethods registry", () => {
     expect(isBrewMethodId(3)).toBe(false);
   });
 
-  it("gives every spec complete display metadata", () => {
+  it("gives every spec complete prompt/behavioral metadata", () => {
     for (const m of METHODS) {
-      expect(m.label.length).toBeGreaterThan(0);
-      expect(m.shortLabel.length).toBeGreaterThan(0);
       expect(m.noun.length).toBeGreaterThan(0);
       expect(m.adjustables.length).toBeGreaterThan(0);
       expect(m.process.length).toBeGreaterThan(0);
     }
   });
 
-  it("espresso is the only yield-labeled method; moka the only temp-less one", () => {
-    expect(METHODS.filter((m) => m.waterLabel === "Yield (g)").map((m) => m.id)).toEqual(["espresso"]);
+  it("moka is the only temp-less method", () => {
     expect(METHODS.filter((m) => !m.showTemp).map((m) => m.id)).toEqual(["moka"]);
-    expect(METHODS_BY_ID.espresso.ratioNoun).toBe("dose to yield");
+  });
+
+  it("espresso is the only yield-labeled method (per the en dictionary)", () => {
+    expect(en.methods.espresso.waterLabel).toBe("Yield (g)");
+    expect(METHODS.filter((m) => m.id !== "espresso").every((m) => en.methods[m.id].waterLabel === "Water (g)")).toBe(true);
+    expect(en.methods.espresso.ratioNoun).toBe("dose to yield");
   });
 
   it("filter's process matches today's form; moka carries preheat and heat", () => {

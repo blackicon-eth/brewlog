@@ -13,6 +13,7 @@ import { getBrew, listBrewsForCoffee } from "../db/brews";
 import { buildDiagnosePrompt, buildBestRecipePrompt, type ChatMessage } from "../qvac/advisor";
 import { useQvac } from "../qvac/QvacProvider";
 import { useStickyScroll } from "../hooks/useStickyScroll";
+import { useI18n } from "../i18n/LocaleProvider";
 import { AppText, MarkdownText, PillButton, ReasoningDisclosure } from "../components/ui";
 import { colors, fonts, motion, radii, spacing } from "../design/tokens";
 
@@ -41,6 +42,7 @@ export function AdvisorResultScreen() {
   const insets = useSafeAreaInsets();
   const { params } = useRoute<Rt>();
   const { status, prepare, retry, runAdvice } = useQvac();
+  const { t, dict } = useI18n();
 
   const [phase, setPhase] = useState<"preparing" | "thinking" | "streaming" | "done" | "error">("preparing");
   const [answer, setAnswer] = useState("");
@@ -106,12 +108,12 @@ export function AdvisorResultScreen() {
       // Build the prompt from current data.
       const db = await getDb();
       const coffee = await getCoffee(db, params.coffeeId);
-      if (!coffee) { setErrorMsg("Coffee not found"); setPhase("error"); return; }
+      if (!coffee) { setErrorMsg(dict.advisor.coffeeNotFound); setPhase("error"); return; }
       const brews = await listBrewsForCoffee(db, params.coffeeId);
       let history: ChatMessage[];
       if (params.kind === "diagnose") {
         const selected = params.brewId ? await getBrew(db, params.brewId) : brews[0];
-        if (!selected) { setErrorMsg("Brew not found"); setPhase("error"); return; }
+        if (!selected) { setErrorMsg(dict.advisor.brewNotFound); setPhase("error"); return; }
         const recent = brews.filter((b) => b.method === selected.method);
         history = buildDiagnosePrompt(coffee, selected, recent);
       } else {
@@ -122,7 +124,7 @@ export function AdvisorResultScreen() {
       // Wait for the model to be ready. 'status' is in this effect's deps, so each status change re-runs the effect; this loop just keeps the run alive (and cancellable) until a re-run arrives with status==="ready".
       while (active && status !== "ready") {
         await new Promise((r) => setTimeout(r, 300));
-        if (status === "error") { setErrorMsg("Advisor failed to load"); setPhase("error"); return; }
+        if (status === "error") { setErrorMsg(dict.advisor.loadFailed); setPhase("error"); return; }
       }
       if (!active) return;
 
@@ -178,7 +180,7 @@ export function AdvisorResultScreen() {
           <View style={styles.handle} />
           <View style={styles.kickerRow}>
             <Text style={styles.sparkle}>✦</Text>
-            <AppText variant="labelSm" style={styles.kicker}>On-device · Private</AppText>
+            <AppText variant="labelSm" style={styles.kicker}>{t("advisor.kicker")}</AppText>
           </View>
           <AppText variant="headlineLg" style={styles.title}>{params.title}</AppText>
         </View>
@@ -200,10 +202,10 @@ export function AdvisorResultScreen() {
             <View style={styles.loading}>
               <ActivityIndicator color={colors.primary} />
               <AppText variant="headlineMd" style={styles.loadingTitle}>
-                {status === "ready" ? "Thinking…" : "Preparing advisor…"}
+                {status === "ready" ? t("advisor.thinking") : t("advisor.preparing")}
               </AppText>
               <AppText variant="bodyMd" style={styles.loadingSub}>
-                Reading your brew history on-device.
+                {t("advisor.loadingSub")}
               </AppText>
             </View>
           ) : null}
@@ -218,7 +220,7 @@ export function AdvisorResultScreen() {
             <View style={styles.errorBox}>
               <AppText variant="bodyLg" style={styles.errorText}>✕ {errorMsg}</AppText>
               <AppText variant="bodyMd" style={styles.errorSub}>
-                The advisor runs locally — try again in a moment.
+                {t("advisor.errorSub")}
               </AppText>
             </View>
           ) : null}
@@ -227,19 +229,19 @@ export function AdvisorResultScreen() {
         <View style={styles.actions}>
           {generating ? (
             // Stop means "I'm done here" — cancel the run and dismiss, never an error box.
-            <PillButton label="Stop" variant="danger" onPress={() => { stopping.current = true; cancelRef.current?.(); close(); }} />
+            <PillButton label={t("advisor.stop")} variant="danger" onPress={() => { stopping.current = true; cancelRef.current?.(); close(); }} />
           ) : phase === "error" ? (
             <View style={styles.errorActions}>
               <PillButton
-                label="Retry"
+                label={t("advisor.retry")}
                 variant="danger"
                 style={styles.flex1}
                 onPress={() => { setErrorMsg(null); setAnswer(""); setThinking(""); setPhase("preparing"); retry(); }}
               />
-              <PillButton label="Close" style={styles.flex1} onPress={close} />
+              <PillButton label={t("advisor.close")} style={styles.flex1} onPress={close} />
             </View>
           ) : phase === "done" ? (
-            <PillButton label="Close" onPress={close} />
+            <PillButton label={t("advisor.close")} onPress={close} />
           ) : null}
         </View>
       </Animated.View>

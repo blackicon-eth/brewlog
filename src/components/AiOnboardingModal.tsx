@@ -4,6 +4,7 @@ import * as Device from "expo-device";
 import { AppText, PillButton } from "./ui";
 import { useQvac } from "../qvac/QvacProvider";
 import { defaultModelId, resolveModel } from "../lib/aiModels";
+import { useI18n } from "../i18n/LocaleProvider";
 import { colors, fonts, motion, radii, spacing } from "../design/tokens";
 
 // The welcome mat: a centered two-step card shown exactly once, on the very first launch.
@@ -18,6 +19,7 @@ export function AiOnboardingModal() {
     setAiEnabled, setModel, prepare, retry,
     status, progress, error,
   } = useQvac();
+  const { t } = useI18n();
 
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<"welcome" | "assistant" | "busy">("welcome");
@@ -65,10 +67,10 @@ export function AiOnboardingModal() {
   };
 
   const statusLine =
-    status === "ready" ? "All set — the assistant is ready." :
-      status === "loading" ? `Loading ${progress}%` :
-        status === "error" ? (error ?? "The download failed — check your connection.") :
-          `Downloading ${progress}%`;
+    status === "ready" ? t("onboarding.busy.statusReady") :
+      status === "loading" ? t("onboarding.busy.statusLoading", { progress }) :
+        status === "error" ? (error ?? t("onboarding.busy.statusDownloadFailed")) :
+          t("onboarding.busy.statusDownloading", { progress });
 
   const cardStyle = {
     opacity: anim,
@@ -86,45 +88,44 @@ export function AiOnboardingModal() {
         <Animated.View style={[styles.card, cardStyle]} accessibilityViewIsModal>
           {step === "welcome" ? (
             <>
-              <CardHeader kicker="The brew ledger" />
-              <AppText variant="headlineMd" style={styles.title}>Welcome to Brewlog!</AppText>
+              <CardHeader kicker={t("onboarding.welcome.kicker")} />
+              <AppText variant="headlineMd" style={styles.title}>{t("onboarding.welcome.title")}</AppText>
               <AppText variant="bodyMd" style={styles.body}>
-                A quiet place to keep track of your coffee and your brews:
+                {t("onboarding.welcome.body")}
               </AppText>
               <View style={styles.featureList}>
-                <FeatureRow text="Log your coffees and every brew of your favorite beans" />
-                <FeatureRow text="Dial recipes in with the bench tools" />
-                <FeatureRow text="Get advice from a private, on-device AI assistant" />
+                <FeatureRow text={t("onboarding.welcome.featureLog")} />
+                <FeatureRow text={t("onboarding.welcome.featureRecipes")} />
+                <FeatureRow text={t("onboarding.welcome.featureAssistant")} />
               </View>
-              <PillButton label="Continue" variant="primary" onPress={() => setStep("assistant")} />
+              <PillButton label={t("onboarding.welcome.continue")} variant="primary" onPress={() => setStep("assistant")} />
             </>
           ) : step === "assistant" ? (
             <>
-              <CardHeader kicker="On-device assistant" />
-              <AppText variant="headlineMd" style={styles.title}>Add the assistant?</AppText>
+              <CardHeader kicker={t("onboarding.assistant.kicker")} />
+              <AppText variant="headlineMd" style={styles.title}>{t("onboarding.assistant.title")}</AppText>
               <AppText variant="bodyMd" style={styles.body}>
-                It can diagnose brews, suggest recipes and chat about technique. A model
-                that runs entirely on your phone, privately.
+                {t("onboarding.assistant.body")}
               </AppText>
               <View style={styles.modelNote}>
-                <AppText variant="labelSm" style={styles.modelNoteLabel}>Suggested for this device</AppText>
+                <AppText variant="labelSm" style={styles.modelNoteLabel}>{t("onboarding.assistant.suggestedLabel")}</AppText>
                 <AppText variant="bodyMd" style={styles.modelNoteValue}>
-                  {suggested.name} · {suggested.size} one-time download
+                  {t("onboarding.assistant.suggestedValue", { name: suggested.name, size: suggested.size })}
                 </AppText>
               </View>
               <AppText variant="bodyMd" style={styles.optionalNote}>
-                This is optional — you can turn the assistant on any time in Settings.
+                {t("onboarding.assistant.optionalNote")}
               </AppText>
-              <PillButton label="Download and turn it on" variant="primary" onPress={turnOn} />
+              <PillButton label={t("onboarding.assistant.download")} variant="primary" onPress={turnOn} />
               <Pressable accessibilityRole="button" onPress={skip} style={({ pressed }) => [styles.laterBtn, pressed && styles.pressed]}>
-                <AppText variant="labelMd" style={styles.laterText}>Maybe later</AppText>
+                <AppText variant="labelMd" style={styles.laterText}>{t("onboarding.assistant.later")}</AppText>
               </Pressable>
             </>
           ) : (
             <>
-              <CardHeader kicker="On-device assistant" />
+              <CardHeader kicker={t("onboarding.assistant.kicker")} />
               <AppText variant="headlineMd" style={styles.title}>
-                {status === "ready" ? "The assistant is in" : "Brewing up the assistant"}
+                {status === "ready" ? t("onboarding.busy.titleReady") : t("onboarding.busy.titleLoading")}
               </AppText>
               <View style={styles.progressTrack}>
                 <View style={[styles.progressFill, { width: `${status === "ready" ? 100 : progress}%` }]} />
@@ -134,14 +135,14 @@ export function AiOnboardingModal() {
               </AppText>
               {status === "error" ? (
                 <>
-                  <PillButton label="Try again" variant="primary" onPress={retry} />
+                  <PillButton label={t("onboarding.busy.tryAgain")} variant="primary" onPress={retry} />
                   <Pressable accessibilityRole="button" onPress={skip} style={({ pressed }) => [styles.laterBtn, pressed && styles.pressed]}>
-                    <AppText variant="labelMd" style={styles.laterText}>Maybe later</AppText>
+                    <AppText variant="labelMd" style={styles.laterText}>{t("onboarding.busy.later")}</AppText>
                   </Pressable>
                 </>
               ) : (
                 <PillButton
-                  label={status === "ready" ? "Done" : "Keep brewing — it'll finish itself"}
+                  label={status === "ready" ? t("onboarding.busy.done") : t("onboarding.busy.keepBrewing")}
                   variant={status === "ready" ? "primary" : "neutral"}
                   onPress={() => setOpen(false)}
                 />

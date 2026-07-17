@@ -5,9 +5,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Device from "expo-device";
 import { Directory, File } from "expo-file-system";
 import Storage from "expo-sqlite/kv-store";
-import { AppText, Chevron, SparkGlyph, useAppModal } from "../components/ui";
+import { AppText, Chevron, SegmentedTabs, SparkGlyph, useAppModal } from "../components/ui";
 import { useQvac } from "../qvac/QvacProvider";
+import { useI18n } from "../i18n/LocaleProvider";
+import { type Locale } from "../lib/i18n/t";
 import { AI_MODELS, modelFits, resolveModel, type AiModel } from "../lib/aiModels";
+import { aiModelNote } from "../lib/i18n/labels";
 import { colors, fonts, motion, radii, spacing, screenTopGap } from "../design/tokens";
 import { getDb } from "../db/database";
 import { listCoffees } from "../db/coffees";
@@ -60,13 +63,17 @@ export function SettingsScreen() {
   const modal = useAppModal();
 
   const { aiEnabled, setAiEnabled, modelId, setModel } = useQvac();
+  const { locale, setLocale, t, tn, dict } = useI18n();
   const [pickerOpen, setPickerOpen] = useState(false);
 
   // One data operation at a time — a double-tap must not stack two pickers.
   const busyRef = useRef(false);
 
   const counts = (nCoffees: number, nBrews: number) =>
-    `${nCoffees} ${nCoffees === 1 ? "coffee" : "coffees"} and ${nBrews} ${nBrews === 1 ? "brew" : "brews"}`;
+    t("settings.countsJoin", {
+      coffees: tn("common.coffeeCount", nCoffees),
+      brews: tn("common.brewCount", nBrews),
+    });
 
   const exportLedger = async () => {
     if (busyRef.current) return;
@@ -108,22 +115,22 @@ export function SettingsScreen() {
           // next attempt asks for a folder again.
           Storage.removeItemSync(EXPORT_DIR_KEY);
           await modal.alert(
-            "Couldn't save the file",
+            t("settings.couldntSaveTitle"),
             e instanceof Error
-              ? `${e.message} Try exporting again to choose a folder.`
-              : "Something went wrong while writing. Try exporting again to choose a folder."
+              ? `${e.message} ${t("settings.tryExportAgainSuffix")}`
+              : `${t("settings.writingWentWrong")} ${t("settings.tryExportAgainSuffix")}`
           );
           return;
         }
         // Android SAF may auto-rename on collision — report the file it actually made.
         const savedName = file.name;
         await modal.alert(
-          "Ledger saved",
-          `${savedName} holds ${counts(coffees.length, brews.length)}.` +
-          (dest.fresh ? " Exports will land in this folder from now on." : "")
+          t("settings.savedTitle"),
+          t("settings.savedBody", { name: savedName, counts: counts(coffees.length, brews.length) }) +
+          (dest.fresh ? ` ${t("settings.freshFolderNote")}` : "")
         );
       } catch {
-        await modal.alert("Something went wrong", "The operation didn't finish. Your ledger is unchanged.");
+        await modal.alert(t("settings.somethingWentWrongTitle"), t("settings.somethingWentWrongBody"));
       }
     } finally {
       busyRef.current = false;
@@ -148,13 +155,13 @@ export function SettingsScreen() {
         try {
           text = await file.text();
         } catch {
-          await modal.alert("Couldn't read the file", "The file couldn't be opened.");
+          await modal.alert(t("settings.couldntReadTitle"), t("settings.couldntReadBody"));
           return;
         }
 
         const parsed = parseLedgerFile(text);
         if (!parsed.ok) {
-          await modal.alert("Can't import this file", parsed.reason);
+          await modal.alert(t("settings.cantImportTitle"), parsed.reason);
           return;
         }
 
@@ -164,12 +171,12 @@ export function SettingsScreen() {
         // An empty ledger has nothing to lose — only warn when the import overwrites data.
         if (curCoffees > 0 || curBrews > 0) {
           const proceed = await modal.confirm({
-            title: "Replace your ledger?",
-            message:
-              `This file holds ${counts(parsed.payload.coffees.length, parsed.payload.brews.length)}. ` +
-              `Importing replaces everything currently in Brewlog. Your current ` +
-              `${counts(curCoffees, curBrews)} will be lost.`,
-            confirmLabel: "Replace",
+            title: t("settings.replaceTitle"),
+            message: t("settings.replaceMessage", {
+              fileCounts: counts(parsed.payload.coffees.length, parsed.payload.brews.length),
+              curCounts: counts(curCoffees, curBrews),
+            }),
+            confirmLabel: t("settings.replaceConfirm"),
             destructive: true,
           });
           if (!proceed) return;
@@ -200,21 +207,18 @@ export function SettingsScreen() {
           const newUris = new Set(written.map((w) => w.uri));
           for (const p of oldPhotos) if (!newUris.has(p.uri)) photoStore.deletePhotoFile(p.uri);
         } catch {
-          await modal.alert(
-            "Import failed",
-            "Nothing was changed — your current ledger is intact."
-          );
+          await modal.alert(t("settings.importFailedTitle"), t("settings.importFailedBody"));
           return;
         }
         // The mounted Home/Brews tabs refetch behind this modal — tab switches never
         // fire navigation focus, so they'd otherwise show the old ledger.
         emitLedgerReplaced();
         await modal.alert(
-          "Ledger restored",
-          `Brewlog now holds ${counts(parsed.payload.coffees.length, parsed.payload.brews.length)}.`
+          t("settings.restoredTitle"),
+          t("settings.restoredBody", { counts: counts(parsed.payload.coffees.length, parsed.payload.brews.length) })
         );
       } catch {
-        await modal.alert("Something went wrong", "The operation didn't finish. Your ledger is unchanged.");
+        await modal.alert(t("settings.somethingWentWrongTitle"), t("settings.somethingWentWrongBody"));
       }
     } finally {
       busyRef.current = false;
@@ -228,7 +232,7 @@ export function SettingsScreen() {
       <StatusBar style="dark" />
 
       <View style={[styles.masthead, { paddingTop: insets.top + screenTopGap }]}>
-        <AppText variant="headlineLg" style={styles.title}>Settings</AppText>
+        <AppText variant="headlineLg" style={styles.title}>{t("settings.title")}</AppText>
       </View>
 
       <ScrollView
@@ -237,58 +241,71 @@ export function SettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* ---- The advisor ---- */}
-        <AppText variant="labelMd" style={styles.sectionLabel}>The advisor</AppText>
+        <AppText variant="labelMd" style={styles.sectionLabel}>{t("settings.advisorLabel")}</AppText>
         <View style={styles.card}>
           <View style={styles.cardHead}>
             <View style={styles.halo}>
               <SparkGlyph size={22} color={colors.primary} />
             </View>
             <View style={styles.cardHeadText}>
-              <AppText variant="bodyLg" style={styles.cardTitle}>On-device AI</AppText>
-              <AppText variant="bodyMd" style={styles.cardBlurb}>Private and local</AppText>
+              <AppText variant="bodyLg" style={styles.cardTitle}>{t("settings.onDeviceAi")}</AppText>
+              <AppText variant="bodyMd" style={styles.cardBlurb}>{t("settings.privateAndLocal")}</AppText>
             </View>
             <LedgerSwitch value={aiEnabled} onToggle={() => setAiEnabled(!aiEnabled)} />
           </View>
 
           <Collapsible open={aiEnabled}>
             <View style={styles.divider} />
-            <AppText variant="labelSm" style={styles.groupLabel}>Model</AppText>
+            <AppText variant="labelSm" style={styles.groupLabel}>{t("settings.modelLabel")}</AppText>
             <View style={styles.selectedRow}>
               <View style={styles.modelText}>
                 <AppText variant="bodyLg" style={styles.modelName}>{selected.name}</AppText>
-                <AppText variant="bodyMd" style={styles.modelNote}>{selected.size} · {selected.note}</AppText>
+                <AppText variant="bodyMd" style={styles.modelNote}>{selected.size} · {aiModelNote(dict, selected.id)}</AppText>
               </View>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Change model"
+                accessibilityLabel={t("settings.changeModelA11y")}
                 onPress={() => setPickerOpen(true)}
                 style={({ pressed }) => [styles.changeBtn, pressed && styles.rowPressed]}
               >
-                <AppText variant="labelMd" style={styles.changeText}>Change</AppText>
+                <AppText variant="labelMd" style={styles.changeText}>{t("settings.change")}</AppText>
               </Pressable>
             </View>
           </Collapsible>
         </View>
 
         {/* ---- Your data ---- */}
-        <AppText variant="labelMd" style={[styles.sectionLabel, styles.sectionGap]}>Your data</AppText>
+        <AppText variant="labelMd" style={[styles.sectionLabel, styles.sectionGap]}>{t("settings.dataLabel")}</AppText>
         <View style={styles.card}>
           <AppText variant="bodyMd" style={styles.dataBlurb}>
-            The whole ledger can be saved and restored from a file.
+            {t("settings.dataBlurb")}
           </AppText>
 
           <DataAction
-            title="Export ledger"
-            caption="Save everything to a file"
+            title={t("settings.exportTitle")}
+            caption={t("settings.exportCaption")}
             direction="up"
             accent
             onPress={() => void exportLedger()}
           />
           <DataAction
-            title="Import ledger"
-            caption="Restore from a file"
+            title={t("settings.importTitle")}
+            caption={t("settings.importCaption")}
             direction="down"
             onPress={() => void importLedger()}
+          />
+        </View>
+
+        {/* ---- Language ---- */}
+        <AppText variant="labelMd" style={[styles.sectionLabel, styles.sectionGap]}>{t("settings.language.label")}</AppText>
+        <View style={styles.card}>
+          <SegmentedTabs
+            options={[
+              { value: "en", label: t("settings.language.english") },
+              { value: "it", label: t("settings.language.italian") },
+            ]}
+            value={locale}
+            onChange={(v) => setLocale(v as Locale)}
           />
         </View>
       </ScrollView>
@@ -315,6 +332,7 @@ function ModelPicker({ visible, selectedId, onSelect, onClose }: {
   onClose: () => void;
 }) {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   const anim = useRef(new Animated.Value(0)).current;
   // Stays mounted through the exit animation, then unmounts.
   const [shown, setShown] = useState(visible);
@@ -334,7 +352,7 @@ function ModelPicker({ visible, selectedId, onSelect, onClose }: {
   return (
     <Modal transparent visible statusBarTranslucent onRequestClose={onClose}>
       <Animated.View style={[styles.pickerBackdrop, { opacity: anim }]}>
-        <Pressable style={StyleSheet.absoluteFill} accessibilityLabel="Close model picker" onPress={onClose} />
+        <Pressable style={StyleSheet.absoluteFill} accessibilityLabel={t("aiModels.picker.closeA11y")} onPress={onClose} />
       </Animated.View>
       <View style={styles.pickerHost} pointerEvents="box-none">
         <Animated.View
@@ -345,8 +363,8 @@ function ModelPicker({ visible, selectedId, onSelect, onClose }: {
           ]}
         >
           <View style={styles.grabber} />
-          <AppText variant="labelSm" style={styles.pickerKicker}>On-device library</AppText>
-          <AppText variant="headlineMd" style={styles.pickerTitle}>Choose a model</AppText>
+          <AppText variant="labelSm" style={styles.pickerKicker}>{t("aiModels.picker.kicker")}</AppText>
+          <AppText variant="headlineMd" style={styles.pickerTitle}>{t("aiModels.picker.title")}</AppText>
 
           {AI_MODELS.map((m, i) => (
             <ModelRow
@@ -360,7 +378,7 @@ function ModelPicker({ visible, selectedId, onSelect, onClose }: {
           ))}
 
           <AppText variant="bodyMd" style={styles.groupFootnote}>
-            Switching models starts the download straight away.
+            {t("aiModels.picker.footnote")}
           </AppText>
         </Animated.View>
       </View>
@@ -399,6 +417,7 @@ function LedgerSwitch({ value, onToggle }: { value: boolean; onToggle: () => voi
 function ModelRow({ model, active, fits, last, onSelect }: {
   model: AiModel; active: boolean; fits: boolean; last: boolean; onSelect: () => void;
 }) {
+  const { t, dict } = useI18n();
   return (
     <Pressable
       accessibilityRole="radio"
@@ -418,7 +437,7 @@ function ModelRow({ model, active, fits, last, onSelect }: {
       <View style={styles.modelText}>
         <AppText variant="bodyLg" style={[styles.modelName, active && styles.modelNameActive]}>{model.name}</AppText>
         <AppText variant="bodyMd" style={styles.modelNote}>
-          {fits ? model.note : "Needs more memory than this device has"}
+          {fits ? aiModelNote(dict, model.id) : t("aiModels.needsMoreMemory")}
         </AppText>
       </View>
       <View style={[styles.sizeChip, active && styles.sizeChipActive]}>

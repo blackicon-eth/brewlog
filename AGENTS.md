@@ -90,8 +90,18 @@ SQL) in the core; screens should only wire hooks to components.
   by A/B (same content scrolls smoothly after generation ends). Don't burn time trying
   to fix it in view code; the only lever is a smaller model.
 
-## Copy voice
+## Copy voice & i18n
 
 Calm ledger language. The data is the user's **"ledger"** (never "database"); the AI is
 **"the assistant"** (never "coach"); model descriptions never say "this phone". Match the
 existing sentence-case, unhurried tone in modals and empty states.
+
+The UI is bilingual (English + Italian; picker in Settings, device locale on first
+launch). **Every user-facing string lives in `src/lib/i18n/en.ts` AND `it.ts`** — never
+hardcode copy in a screen. `it.ts` is `satisfies Dict`, so a missing key fails
+`npx tsc --noEmit`. Screens read `useI18n()` → `{ t, tn, locale, dict }`
+(`src/i18n/LocaleProvider.tsx`); method/tool/model display labels resolve via
+`src/lib/i18n/labels.ts` helpers; locale-aware dates/numbers via `src/lib/i18n/format.ts`
+(legacy `formatRatio`/`formatBrewDate` stay English for filenames + prompts). Italian
+voice: the ledger is the **"registro"**, the AI is **"l'assistente"**. **The assistant
+itself stays English** — nothing under `src/qvac` is ever localized.

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -8,14 +8,21 @@ import type { RootStackParamList } from "../navigation/types";
 import type { Brew } from "../models/types";
 import { getDb } from "../db/database";
 import { getBrew, createBrew, updateBrew, deleteBrew } from "../db/brews";
-import { computeRatio, formatRatio } from "../lib/ratio";
+import { computeRatio } from "../lib/ratio";
+import { formatRatioLocale } from "../lib/i18n/format";
 import { makeId } from "../lib/ids";
 import { AppText, TextField, ChipSelect, ScaleSelect, PillButton, NaturalLanguageIntake, Chevron, TrashIcon, useAppModal, type ChipOption } from "../components/ui";
 import { BrewedAtModal } from "../components/BrewedAtModal";
 import { formatBrewedAtValue } from "../lib/brewedAt";
 import { buildBrewIntakePrompt, parseBrewIntake, type BrewIntake } from "../qvac/intake";
 import { useQvac } from "../qvac/QvacProvider";
-import { METHODS, methodSpec, isBrewMethodId, type BrewMethodId, type ProcessFieldId } from "../lib/brewMethods";
+import { methodSpec, isBrewMethodId, type BrewMethodId, type ProcessFieldId } from "../lib/brewMethods";
+import {
+  methodOptions, methodWaterLabel, methodDosePlaceholder, methodWaterPlaceholder,
+  methodTimeLabel, methodTimePlaceholder, methodRatioNoun, brewedAtDayLabels,
+} from "../lib/i18n/labels";
+import type { Dict } from "../lib/i18n/en";
+import { useI18n } from "../i18n/LocaleProvider";
 import { colors, radii, shadows, spacing, screenTopGap } from "../design/tokens";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "BrewForm">;
@@ -24,23 +31,35 @@ type Rt = RouteProp<RootStackParamList, "BrewForm">;
 const num = (s: string): number | null => { const n = parseFloat(s); return Number.isFinite(n) ? n : null; };
 const int = (s: string): number | null => { const n = parseInt(s, 10); return Number.isFinite(n) ? n : null; };
 
-const FILTERS: ChipOption[] = [
-  { label: "White", value: "white" },
-  { label: "Unbleached", value: "unbleached" },
-];
-const METHOD_CHIPS: ChipOption[] = METHODS.map((m) => ({ label: m.label, value: m.id }));
-const PREHEATS: ChipOption[] = [{ label: "Yes", value: "yes" }, { label: "No", value: "no" }];
-const HEATS: ChipOption[] = [
-  { label: "Low", value: "low" }, { label: "Medium", value: "medium" }, { label: "High", value: "high" },
-];
-const TASTES = [
-  { label: "Acidity", key: "acidity" },
-  { label: "Sweetness", key: "sweetness" },
-  { label: "Bitterness", key: "bitterness" },
-  { label: "Body", key: "body" },
-  { label: "Clarity", key: "clarity" },
-  { label: "Overall", key: "rating" },
-] as const;
+function filterOptions(dict: Dict): ChipOption[] {
+  return [
+    { label: dict.brewForm.filterWhite, value: "white" },
+    { label: dict.brewForm.filterUnbleached, value: "unbleached" },
+  ];
+}
+function preheatOptions(dict: Dict): ChipOption[] {
+  return [
+    { label: dict.brewForm.preheatYes, value: "yes" },
+    { label: dict.brewForm.preheatNo, value: "no" },
+  ];
+}
+function heatOptions(dict: Dict): ChipOption[] {
+  return [
+    { label: dict.brewForm.heatLow, value: "low" },
+    { label: dict.brewForm.heatMedium, value: "medium" },
+    { label: dict.brewForm.heatHigh, value: "high" },
+  ];
+}
+function tasteOptions(dict: Dict): { label: string; key: string }[] {
+  return [
+    { label: dict.brewForm.tasteAcidity, key: "acidity" },
+    { label: dict.brewForm.tasteSweetness, key: "sweetness" },
+    { label: dict.brewForm.tasteBitterness, key: "bitterness" },
+    { label: dict.brewForm.tasteBody, key: "body" },
+    { label: dict.brewForm.tasteClarity, key: "clarity" },
+    { label: dict.brewForm.tasteOverall, key: "rating" },
+  ];
+}
 
 function SectionHeader({ children }: { children: string }) {
   return (
@@ -56,7 +75,14 @@ export function BrewFormScreen() {
   const { params } = useRoute<Rt>();
   const modal = useAppModal();
   const { aiEnabled } = useQvac();
+  const { dict, locale, t } = useI18n();
   const editingId = params.brewId;
+  const methodChips = useMemo(() => methodOptions(dict), [dict]);
+  const filterChips = useMemo(() => filterOptions(dict), [dict]);
+  const preheatChips = useMemo(() => preheatOptions(dict), [dict]);
+  const heatChips = useMemo(() => heatOptions(dict), [dict]);
+  const tasteRows = useMemo(() => tasteOptions(dict), [dict]);
+  const dayLabels = useMemo(() => brewedAtDayLabels(dict, locale), [dict, locale]);
   // The freeform intake box only exists when the assistant is on — with it off, a new
   // log must open straight on the manual form (the intake renders null and would leave
   // the page empty forever).
@@ -76,7 +102,7 @@ export function BrewFormScreen() {
   const [brewedAtOpen, setBrewedAtOpen] = useState(false);
 
   const spec = methodSpec(method);
-  const setTasteKey = (key: string) => (v: string) => setTaste((t) => ({ ...t, [key]: v }));
+  const setTasteKey = (key: string) => (v: string) => setTaste((prev) => ({ ...prev, [key]: v }));
 
   useEffect(() => {
     if (!editingId) return;
@@ -84,7 +110,7 @@ export function BrewFormScreen() {
       try {
         const b = await getBrew(await getDb(), editingId);
         if (!b) {
-          modal.alert("Couldn't open brew", "Brew not found.");
+          modal.alert(t("brewForm.openErrorTitle"), t("brewForm.openErrorBody"));
           nav.goBack();
           return;
         }
@@ -107,7 +133,7 @@ export function BrewFormScreen() {
         });
         setNotes(b.notes ?? ""); setCreatedAt(b.createdAt); setBrewedAt(b.brewedAt);
       } catch (e: any) {
-        modal.alert("Couldn't open brew", String(e?.message ?? e));
+        modal.alert(t("brewForm.openErrorTitle"), String(e?.message ?? e));
         nav.goBack();
       }
     })();
@@ -132,8 +158,8 @@ export function BrewFormScreen() {
   async function onSave() {
     const doseG = num(dose); const waterG = num(water);
     if (doseG == null || waterG == null || doseG <= 0 || waterG <= 0) {
-      const second = method === "espresso" ? "yield" : "water";
-      modal.alert("Missing details", `Dose and ${second} are required and must be greater than 0.`); return;
+      const word = method === "espresso" ? t("brewForm.yieldWord") : t("brewForm.waterWord");
+      modal.alert(t("brewForm.missingTitle"), t("brewForm.missingBody", { word })); return;
     }
     try {
       const db = await getDb();
@@ -159,16 +185,16 @@ export function BrewFormScreen() {
       if (editingId) await updateBrew(db, brew); else await createBrew(db, brew);
       nav.goBack();
     } catch (e: any) {
-      modal.alert("Couldn't save brew", String(e?.message ?? e));
+      modal.alert(t("brewForm.saveErrorTitle"), String(e?.message ?? e));
     }
   }
 
   async function onDelete() {
     if (!editingId) return;
     const ok = await modal.confirm({
-      title: "Delete this brew?",
-      message: "This removes the brew log for good. This can't be undone.",
-      confirmLabel: "Delete",
+      title: t("brewForm.deleteConfirmTitle"),
+      message: t("brewForm.deleteConfirmMessage"),
+      confirmLabel: t("common.delete"),
       destructive: true,
     });
     if (!ok) return;
@@ -176,12 +202,12 @@ export function BrewFormScreen() {
       await deleteBrew(await getDb(), editingId);
       nav.goBack();
     } catch (e: any) {
-      modal.alert("Couldn't delete brew", String(e?.message ?? e));
+      modal.alert(t("brewForm.deleteErrorTitle"), String(e?.message ?? e));
     }
   }
 
   const d = num(dose), w = num(water);
-  const ratioPreview = d && w && d > 0 ? formatRatio(computeRatio(d, w)) : "—";
+  const ratioPreview = d && w && d > 0 ? formatRatioLocale(computeRatio(d, w), locale) : "-";
 
   return (
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === "ios" ? "padding" : "height"}>
@@ -200,19 +226,19 @@ export function BrewFormScreen() {
               onPress={onDelete}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Delete brew"
+              accessibilityLabel={t("brewForm.deleteA11y")}
               style={({ pressed }) => [styles.deleteBtn, pressed && styles.deletePressed]}
             >
               <TrashIcon size={16} color={colors.tertiary} thickness={1.6} />
-              <AppText variant="labelMd" style={styles.deleteText}>Delete</AppText>
+              <AppText variant="labelMd" style={styles.deleteText}>{t("common.delete")}</AppText>
             </Pressable>
           ) : null}
         </View>
 
         {!revealed ? (
           <NaturalLanguageIntake
-            kicker="Describe your brew"
-            placeholder="15g in, 250g out, V60, 94°C, 3 pours about 30s apart, ~2:45 total — or: 18g espresso, 36g out in 28s."
+            kicker={t("brewForm.intakeKicker")}
+            placeholder={t("brewForm.intakePlaceholder")}
             buildPrompt={buildBrewIntakePrompt}
             parse={parseBrewIntake}
             onParsed={applyParsed}
@@ -227,45 +253,47 @@ export function BrewFormScreen() {
             </View>
 
             <View style={styles.hero}>
-              <AppText variant="labelSm">{editingId ? "Edit brew" : "Log brew"}</AppText>
+              <AppText variant="labelSm">{editingId ? t("brewForm.editKicker") : t("brewForm.newKicker")}</AppText>
               <AppText variant="headlineLg" style={styles.ratio}>{ratioPreview}</AppText>
-              <AppText variant="labelMd" style={styles.ratioCaption}>{`Ratio · ${spec.ratioNoun}`}</AppText>
+              <AppText variant="labelMd" style={styles.ratioCaption}>
+                {t("brewForm.ratioCaption", { noun: methodRatioNoun(dict, spec.id) })}
+              </AppText>
             </View>
 
-            <SectionHeader>Recipe</SectionHeader>
-            <ChipSelect label="Method" options={METHOD_CHIPS} value={method} columns={2}
+            <SectionHeader>{t("brewForm.sectionRecipe")}</SectionHeader>
+            <ChipSelect label={t("brewForm.methodLabel")} options={methodChips} value={method} columns={2}
               onChange={(v) => { if (isBrewMethodId(v)) setMethod(v); }} clearable={false} />
             <View style={styles.row}>
-              <TextField label="Dose (g)" value={dose} onChangeText={setDose} keyboardType="decimal-pad" placeholder={spec.dosePlaceholder} required style={styles.col} />
-              <TextField label={spec.waterLabel} value={water} onChangeText={setWater} keyboardType="decimal-pad" placeholder={spec.waterPlaceholder} required style={styles.col} />
+              <TextField label={t("brewForm.doseLabel")} value={dose} onChangeText={setDose} keyboardType="decimal-pad" placeholder={methodDosePlaceholder(spec.id)} required style={styles.col} />
+              <TextField label={methodWaterLabel(dict, spec.id)} value={water} onChangeText={setWater} keyboardType="decimal-pad" placeholder={methodWaterPlaceholder(spec.id)} required style={styles.col} />
             </View>
-            <TextField label="Grind" value={grind} onChangeText={setGrind} placeholder="medium-fine / 18 clicks" autoCapitalize="none" />
+            <TextField label={t("brewForm.grindLabel")} value={grind} onChangeText={setGrind} placeholder={t("brewForm.grindPlaceholder")} autoCapitalize="none" />
             {spec.showTemp ? (
-              <TextField label="Water temp (°C)" value={temp} onChangeText={setTemp} keyboardType="decimal-pad" placeholder="94" />
+              <TextField label={t("brewForm.waterTempLabel")} value={temp} onChangeText={setTemp} keyboardType="decimal-pad" placeholder="94" />
             ) : null}
 
-            <SectionHeader>Process</SectionHeader>
+            <SectionHeader>{t("brewForm.sectionProcess")}</SectionHeader>
             {spec.process.map((f) => {
-              if (f === "filterType") return <ChipSelect key={f} label="Filter" options={FILTERS} value={filterType} onChange={setFilterType} />;
+              if (f === "filterType") return <ChipSelect key={f} label={t("brewForm.filterLabel")} options={filterChips} value={filterType} onChange={setFilterType} />;
               if (f === "pours") return (
                 <View key={f} style={styles.row}>
-                  <TextField label="# Pours" value={pours} onChangeText={setPours} keyboardType="numeric" placeholder="3" style={styles.col} />
-                  <TextField label="Interval (s)" value={pourInterval} onChangeText={setPourInterval} keyboardType="numeric" placeholder="30" style={styles.col} />
+                  <TextField label={t("brewForm.poursCountLabel")} value={pours} onChangeText={setPours} keyboardType="numeric" placeholder="3" style={styles.col} />
+                  <TextField label={t("brewForm.intervalLabel")} value={pourInterval} onChangeText={setPourInterval} keyboardType="numeric" placeholder="30" style={styles.col} />
                 </View>
               );
-              if (f === "preheat") return <ChipSelect key={f} label="Preheat" options={PREHEATS} value={preheat} onChange={setPreheat} />;
-              if (f === "heat") return <ChipSelect key={f} label="Heat" options={HEATS} value={heat} onChange={setHeat} />;
-              return <TextField key={f} label={spec.timeLabel} value={totalTime} onChangeText={setTotalTime} keyboardType="numeric" placeholder={spec.timePlaceholder} />;
+              if (f === "preheat") return <ChipSelect key={f} label={t("brewForm.preheatLabel")} options={preheatChips} value={preheat} onChange={setPreheat} />;
+              if (f === "heat") return <ChipSelect key={f} label={t("brewForm.heatLabel")} options={heatChips} value={heat} onChange={setHeat} />;
+              return <TextField key={f} label={methodTimeLabel(dict, spec.id)} value={totalTime} onChangeText={setTotalTime} keyboardType="numeric" placeholder={methodTimePlaceholder(spec.id)} />;
             })}
 
-            <SectionHeader>Taste</SectionHeader>
+            <SectionHeader>{t("brewForm.sectionTaste")}</SectionHeader>
             <View style={styles.taste}>
-              {TASTES.map((t) => (
-                <ScaleSelect key={t.key} label={t.label} value={taste[t.key] ?? ""} onChange={setTasteKey(t.key)} />
+              {tasteRows.map((row) => (
+                <ScaleSelect key={row.key} label={row.label} value={taste[row.key] ?? ""} onChange={setTasteKey(row.key)} />
               ))}
             </View>
 
-            <SectionHeader>Brewed on</SectionHeader>
+            <SectionHeader>{t("brewForm.sectionBrewedOn")}</SectionHeader>
             {/* One quiet row; the details live in the Brewed sheet. "Now" = untouched
                 new brew, which keeps the stamp-at-save behavior below. */}
             <Pressable
@@ -274,16 +302,16 @@ export function BrewFormScreen() {
               style={styles.brewedBox}
             >
               <AppText variant="bodyMd" style={styles.brewedValue}>
-                {brewedAt == null ? "Now" : formatBrewedAtValue(brewedAt)}
+                {brewedAt == null ? t("brewForm.brewedNow") : formatBrewedAtValue(brewedAt, dayLabels)}
               </AppText>
               <Chevron direction="right" size={11} thickness={2.5} color={colors.outline} />
             </Pressable>
 
-            <SectionHeader>Notes</SectionHeader>
-            <TextField value={notes} onChangeText={setNotes} multiline placeholder="bitter finish, muted acidity" />
+            <SectionHeader>{t("brewForm.sectionNotes")}</SectionHeader>
+            <TextField value={notes} onChangeText={setNotes} multiline placeholder={t("brewForm.notesPlaceholder")} />
 
             <View style={styles.actions}>
-              <PillButton label={editingId ? "Save changes" : "Save brew"} onPress={onSave} />
+              <PillButton label={editingId ? t("brewForm.saveEdit") : t("brewForm.saveNew")} onPress={onSave} />
             </View>
           </>
         )}

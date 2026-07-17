@@ -29,10 +29,6 @@ export type StrAxis = "weak" | "ideal" | "strong";
 export type Verdict = {
   exAxis: ExAxis;
   strAxis: StrAxis;
-  /** Short taste headline, e.g. "Sour & watery". */
-  title: string;
-  /** One concrete fix sentence combining both axes. */
-  advice: string;
   /** True only for the dialed-in centre cell. */
   ideal: boolean;
 };
@@ -53,63 +49,17 @@ export function strAxisOf(tds: number): StrAxis {
   return "ideal";
 }
 
-// The 3×3 lookup: taste headline + fix for every combination of the two axes. Authored
-// statically (verified brewing advice) rather than generated so the copy stays exact.
-const CELLS: Record<ExAxis, Record<StrAxis, { title: string; advice: string }>> = {
-  under: {
-    weak: {
-      title: "Sour & watery",
-      advice: "Under-extracted and thin — grind finer (or brew longer) AND use more coffee for a tighter ratio.",
-    },
-    ideal: {
-      title: "Sour & sharp",
-      advice: "Good strength but under-extracted — grind finer, brew longer, or add agitation to dissolve more.",
-    },
-    strong: {
-      title: "Sour & heavy",
-      advice: "Under-extracted yet over-concentrated — grind finer to extract more AND cut coffee for a wider ratio.",
-    },
-  },
-  ideal: {
-    weak: {
-      title: "Balanced but thin",
-      advice: "Extraction is dialed in — just use more coffee (a tighter ratio) to build body.",
-    },
-    ideal: {
-      title: "Dialed in",
-      advice: "Right in the zone of deliciousness — balanced extraction and strength. Brew it again exactly like this.",
-    },
-    strong: {
-      title: "Balanced but heavy",
-      advice: "Extraction is dialed in — just use less coffee (a wider ratio) to lighten the cup.",
-    },
-  },
-  over: {
-    weak: {
-      title: "Bitter & thin",
-      advice: "Over-extracted and watery — grind coarser (or shorten the brew) AND use more coffee to firm up the body.",
-    },
-    ideal: {
-      title: "Bitter & dry",
-      advice: "Good strength but over-extracted — grind coarser, shorten the brew, or ease off agitation.",
-    },
-    strong: {
-      title: "Bitter & heavy",
-      advice: "Over-extracted and over-concentrated — grind coarser to pull less AND cut coffee for a wider ratio.",
-    },
-  },
-};
+// The taste headline + fix for each of the 9 (exAxis × strAxis) cells lives in the
+// dictionary now (tools.compass.page.cells), not here — this lib only classifies which
+// cell a reading falls into. See src/lib/i18n/labels.ts `compassCellText`.
 
 /** Classify a brew by its extraction (EY%) and strength (TDS%) into a verdict cell. */
 export function classify(ey: number, tds: number): Verdict {
   const exAxis = exAxisOf(ey);
   const strAxis = strAxisOf(tds);
-  const cell = CELLS[exAxis][strAxis];
   return {
     exAxis,
     strAxis,
-    title: cell.title,
-    advice: cell.advice,
     ideal: exAxis === "ideal" && strAxis === "ideal",
   };
 }

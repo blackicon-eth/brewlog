@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 import { AppText } from "./AppText";
 import type { TabIconProps } from "./TabIcons";
 import { colors, radii, shadows } from "../../design/tokens";
+import { useI18n } from "../../i18n/LocaleProvider";
 
 export type ToolCardProps = {
   title: string;
@@ -19,10 +20,12 @@ export type ToolCardProps = {
 // cell (two per row); the card fills it and holds a fixed minimum height so rows align even
 // when titles wrap to two lines.
 export function ToolCard({ title, blurb, icon: Icon, onPress, comingSoon }: ToolCardProps) {
+  const { t } = useI18n();
+  const comingSoonLabel = t("tools.comingSoon");
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={comingSoon ? `${title} — coming soon` : title}
+      accessibilityLabel={comingSoon ? `${title}, ${comingSoonLabel}` : title}
       accessibilityState={{ disabled: !!comingSoon }}
       disabled={comingSoon}
       onPress={onPress}
@@ -41,7 +44,7 @@ export function ToolCard({ title, blurb, icon: Icon, onPress, comingSoon }: Tool
       {comingSoon ? (
         <View style={styles.soonOverlay} pointerEvents="none">
           <View style={styles.soonTag}>
-            <AppText variant="labelSm" style={styles.soonText}>Coming soon</AppText>
+            <AppText variant="labelSm" style={styles.soonText}>{comingSoonLabel}</AppText>
           </View>
         </View>
       ) : null}

@@ -12,6 +12,7 @@ import type { Coffee } from "../models/types";
 import { AppText, AdvisorBadge, CoffeeCard, Fab, SegmentedTabs, type SegmentedTab, useAppModal } from "../components/ui";
 import { colors, motion, spacing, screenTopGap } from "../design/tokens";
 import { useQvac } from "../qvac/QvacProvider";
+import { useI18n } from "../i18n/LocaleProvider";
 import * as Device from "expo-device";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "Main">;
@@ -22,16 +23,19 @@ type ShelfView = "active" | "archived";
 // so Active shows the whole shelf and Archived previews as empty.
 const isArchived = (c: Coffee): boolean => (c as { archived?: boolean | null }).archived === true;
 
-const SHELF_OPTIONS: SegmentedTab<ShelfView>[] = [
-  { value: "active", label: "Active" },
-  { value: "archived", label: "Archived" },
-];
-
 export function CoffeesScreen() {
   const nav = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
   const { prepare } = useQvac();
   const modal = useAppModal();
+  const { t } = useI18n();
+  const SHELF_OPTIONS = useMemo<SegmentedTab<ShelfView>[]>(
+    () => [
+      { value: "active", label: t("home.active") },
+      { value: "archived", label: t("home.archived") },
+    ],
+    [t],
+  );
   const [rows, setRows] = useState<CoffeeWithStats[]>([]);
   const [view, setView] = useState<ShelfView>("active");
   // Gate the empty state on the first load completing, so "Your ledger is empty" can't
@@ -44,12 +48,12 @@ export function CoffeesScreen() {
         const db = await getDb();
         setRows(await listCoffeesWithStats(db));
       } catch (e: any) {
-        modal.alert("Couldn't load coffees", String(e?.message ?? e));
+        modal.alert(t("home.loadErrorTitle"), String(e?.message ?? e));
       } finally {
         setLoaded(true);
       }
     })();
-  }, [modal]);
+  }, [modal, t]);
 
   useFocusEffect(useCallback(() => { prepare(); load(); }, [prepare, load]));
   // An import swaps the ledger out from under this always-mounted tab — refetch on the spot.
@@ -97,13 +101,13 @@ export function CoffeesScreen() {
         {!Device.isDevice ? (
           <View style={styles.notice}>
             <AppText variant="bodyMd" style={styles.noticeText}>
-              Emulator detected — QVAC needs a physical device, so the AI advisor won't run here.
+              {t("home.emulatorNotice")}
             </AppText>
           </View>
         ) : null}
         {hasRows ? (
           <>
-            <AppText variant="labelMd" style={styles.section}>Your coffee collection</AppText>
+            <AppText variant="labelMd" style={styles.section}>{t("home.shelfCaption")}</AppText>
             <SegmentedTabs options={SHELF_OPTIONS} value={view} onChange={setView} style={styles.toggle} />
           </>
         ) : null}
@@ -126,16 +130,16 @@ export function CoffeesScreen() {
           loaded ? (
             view === "archived" ? (
               <View style={styles.empty}>
-                <AppText variant="headlineMd" style={styles.emptyTitle}>No archived coffees</AppText>
+                <AppText variant="headlineMd" style={styles.emptyTitle}>{t("home.emptyArchivedTitle")}</AppText>
                 <AppText variant="bodyMd" style={styles.emptyBody}>
-                  Bags you archive will rest here — their brews stay in the ledger.
+                  {t("home.emptyArchivedBody")}
                 </AppText>
               </View>
             ) : (
               <View style={styles.empty}>
-                <AppText variant="headlineMd" style={styles.emptyTitle}>Your ledger is empty</AppText>
+                <AppText variant="headlineMd" style={styles.emptyTitle}>{t("home.emptyTitle")}</AppText>
                 <AppText variant="bodyMd" style={styles.emptyBody}>
-                  Add your first bag to start logging brews and tasting notes.
+                  {t("home.emptyBody")}
                 </AppText>
               </View>
             )
@@ -153,7 +157,7 @@ export function CoffeesScreen() {
         )}
       />
       </Animated.View>
-      <Fab label="Add coffee" onPress={() => nav.navigate("CoffeeForm", {})} />
+      <Fab label={t("home.addCoffee")} onPress={() => nav.navigate("CoffeeForm", {})} />
     </View>
   );
 }

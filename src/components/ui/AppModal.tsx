@@ -3,6 +3,7 @@ import { Animated, Modal, Pressable, StyleSheet, View } from "react-native";
 import { AppText } from "./AppText";
 import { PillButton } from "./PillButton";
 import { colors, motion, radii, spacing } from "../../design/tokens";
+import { useI18n } from "../../i18n/LocaleProvider";
 
 // A themed replacement for the stark native Alert dialog. Exposed as an imperative
 // context API (alert / confirm) so call sites read like the Alert.alert they replace,
@@ -55,6 +56,7 @@ function resolveDismissed(slot: Slot): void {
 }
 
 export function AppModalProvider({ children }: { children: React.ReactNode }) {
+  const { t } = useI18n();
   const [slot, setSlot] = useState<Slot | null>(null);
   const [visible, setVisible] = useState(false);
   const anim = useRef(new Animated.Value(0)).current;
@@ -102,13 +104,13 @@ export function AppModalProvider({ children }: { children: React.ReactNode }) {
           kind: "confirm",
           title: options.title,
           message: options.message,
-          confirmLabel: options.confirmLabel ?? "Confirm",
-          cancelLabel: options.cancelLabel ?? "Cancel",
+          confirmLabel: options.confirmLabel ?? t("common.confirm"),
+          cancelLabel: options.cancelLabel ?? t("common.cancel"),
           destructive: options.destructive ?? false,
           resolve,
         }),
       ),
-    [open],
+    [open, t],
   );
 
   const choose = useCallback(
@@ -129,7 +131,11 @@ export function AppModalProvider({ children }: { children: React.ReactNode }) {
   }, [dismiss]);
 
   const tone = slot?.kind === "confirm" && slot.destructive ? colors.tertiary : colors.primary;
-  const kicker = slot?.kind === "confirm" ? "Please confirm" : slot?.kind === "choose" ? "Choose" : "Notice";
+  const kicker = slot?.kind === "confirm"
+    ? t("appModal.confirmKicker")
+    : slot?.kind === "choose"
+      ? t("appModal.chooseKicker")
+      : t("appModal.noticeKicker");
 
   const cardStyle = {
     opacity: anim,
@@ -188,11 +194,11 @@ export function AppModalProvider({ children }: { children: React.ReactNode }) {
                       onPress={() => dismiss(() => slot.resolve(o.key))}
                     />
                   ))}
-                  <PillButton label="Cancel" variant="neutral" onPress={() => dismiss(() => slot.resolve(null))} />
+                  <PillButton label={t("common.cancel")} variant="neutral" onPress={() => dismiss(() => slot.resolve(null))} />
                 </View>
               ) : (
                 <View style={styles.actionsSingle}>
-                  <PillButton label="Got it" onPress={() => dismiss(() => slot.resolve())} />
+                  <PillButton label={t("common.gotIt")} onPress={() => dismiss(() => slot.resolve())} />
                 </View>
               )}
             </Animated.View>

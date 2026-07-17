@@ -14,55 +14,42 @@ export type ProcessFieldId = "filterType" | "pours" | "preheat" | "heat" | "time
 
 export type MethodSpec = {
   id: BrewMethodId;
-  label: string;          // chips, detail row: "French Press"
-  shortLabel: string;     // list meta tag: "Press"
-  waterLabel: string;     // waterG's UI label — "Water (g)", or "Yield (g)" for espresso
-  waterPlaceholder: string;
-  dosePlaceholder: string;
   showTemp: boolean;      // moka has no settable water temperature
-  timeLabel: string;      // form label for totalTimeS
-  timeDetailLabel: string;// detail-row label for totalTimeS
-  timePlaceholder: string;
-  ratioNoun: string;      // "dose to water" | "dose to yield" (hero/detail captions)
   process: ProcessFieldId[];
   noun: string;           // AI prompt vocabulary: "pour-over", "moka pot", ...
   adjustables: string;    // what Diagnose may suggest changing for this method
 };
 
+// Display strings (label, shortLabel, water/time labels, ratio noun) and numeric
+// placeholders live in src/lib/i18n — see labels.ts and the dictionaries' `methods`
+// branch — so they can be localized. This registry keeps only English prompt
+// vocabulary and behavioral metadata.
 export const METHODS: MethodSpec[] = [
   {
-    id: "filter", label: "Filter", shortLabel: "Filter",
-    waterLabel: "Water (g)", waterPlaceholder: "250", dosePlaceholder: "15",
-    showTemp: true, timeLabel: "Total (s)", timeDetailLabel: "Total time", timePlaceholder: "165",
-    ratioNoun: "dose to water",
+    id: "filter",
+    showTemp: true,
     process: ["filterType", "pours", "time"],
     noun: "pour-over",
     adjustables: "grind, ratio, water temperature, number of pours, pour interval",
   },
   {
-    id: "french_press", label: "French Press", shortLabel: "Press",
-    waterLabel: "Water (g)", waterPlaceholder: "500", dosePlaceholder: "30",
-    showTemp: true, timeLabel: "Steep (s)", timeDetailLabel: "Steep time", timePlaceholder: "240",
-    ratioNoun: "dose to water",
+    id: "french_press",
+    showTemp: true,
     process: ["time"],
     noun: "French press",
     adjustables: "grind, ratio, water temperature, steep time",
   },
   {
-    id: "moka", label: "Moka", shortLabel: "Moka",
-    waterLabel: "Water (g)", waterPlaceholder: "200", dosePlaceholder: "16",
-    showTemp: false, timeLabel: "Total (s)", timeDetailLabel: "Total time", timePlaceholder: "270",
-    ratioNoun: "dose to water",
+    id: "moka",
+    showTemp: false,
     // No "time" block: moka duration tracks pot size more than technique, so it isn't logged.
     process: ["preheat", "heat"],
     noun: "moka pot",
     adjustables: "grind, dose, water preheating, heat level",
   },
   {
-    id: "espresso", label: "Espresso", shortLabel: "Espresso",
-    waterLabel: "Yield (g)", waterPlaceholder: "36", dosePlaceholder: "18",
-    showTemp: true, timeLabel: "Shot (s)", timeDetailLabel: "Shot time", timePlaceholder: "28",
-    ratioNoun: "dose to yield",
+    id: "espresso",
+    showTemp: true,
     process: ["time"],
     noun: "espresso",
     adjustables: "grind, dose, yield, shot time, water temperature",

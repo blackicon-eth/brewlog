@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { AppText } from "../../../components/ui";
 import { colors, fonts, radii } from "../../../design/tokens";
+import { useI18n } from "../../../i18n/LocaleProvider";
 
 export type StepperProps = {
   label: string;
@@ -19,6 +20,7 @@ export type StepperProps = {
 // hands are busy; the value sits centred between them in the tabular sans so it doesn't jump
 // as digits change. Disabled ends fade rather than vanish so the control keeps its footprint.
 export function Stepper({ label, display, onDecrement, onIncrement, canDecrement, canIncrement, hint }: StepperProps) {
+  const { t } = useI18n();
   return (
     <View style={styles.wrap}>
       <View style={styles.labelRow}>
@@ -26,11 +28,11 @@ export function Stepper({ label, display, onDecrement, onIncrement, canDecrement
         {hint ? <AppText variant="labelSm" style={styles.hint}>{hint}</AppText> : null}
       </View>
       <View style={styles.row}>
-        <StepButton symbol="−" onPress={onDecrement} disabled={!canDecrement} accessibilityLabel={`Decrease ${label}`} />
+        <StepButton symbol="−" onPress={onDecrement} disabled={!canDecrement} accessibilityLabel={t("tools.timer.page.decreaseA11y", { label })} />
         <View style={styles.valueBox}>
           <AppText style={styles.value}>{display}</AppText>
         </View>
-        <StepButton symbol="+" onPress={onIncrement} disabled={!canIncrement} accessibilityLabel={`Increase ${label}`} />
+        <StepButton symbol="+" onPress={onIncrement} disabled={!canIncrement} accessibilityLabel={t("tools.timer.page.increaseA11y", { label })} />
       </View>
     </View>
   );

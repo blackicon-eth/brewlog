@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Image, Modal, Pressable, StyleSheet, View } from "react-native";
 import { motion } from "../../design/tokens";
+import { useI18n } from "../../i18n/LocaleProvider";
 
 // A full-screen, immersive viewer for a single coffee photo. Tap anywhere (or the ✕) to
 // dismiss. The image is contained (never cropped) on a near-black backdrop so the whole
@@ -10,6 +11,7 @@ import { motion } from "../../design/tokens";
 // than Modal's built-in animationType="fade", whose fixed ~300ms open feels sluggish for a
 // tap-to-zoom. The last uri is held while closing so the image doesn't vanish mid-fade.
 export function PhotoViewer({ uri, onClose }: { uri: string | null; onClose: () => void }) {
+  const { t } = useI18n();
   const open = uri !== null;
   const anim = useRef(new Animated.Value(0)).current;
   const [mounted, setMounted] = useState(open);
@@ -30,7 +32,7 @@ export function PhotoViewer({ uri, onClose }: { uri: string | null; onClose: () 
   return (
     <Modal visible={mounted} transparent statusBarTranslucent animationType="none" onRequestClose={onClose}>
       <Animated.View style={[styles.backdrop, { opacity: anim }]}>
-        <Pressable style={styles.fill} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close photo">
+        <Pressable style={styles.fill} onPress={onClose} accessibilityRole="button" accessibilityLabel={t("photoViewer.closeA11y")}>
           {shownUri.current !== null ? (
             <Image source={{ uri: shownUri.current }} style={styles.image} resizeMode="contain" />
           ) : null}

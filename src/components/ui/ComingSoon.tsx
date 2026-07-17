@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "./AppText";
 import type { TabIconProps } from "./TabIcons";
 import { colors, spacing, screenTopGap } from "../../design/tokens";
+import { useI18n } from "../../i18n/LocaleProvider";
 
 export type ComingSoonProps = {
   section: string; // uppercase kicker, e.g. "BREWS"
@@ -17,6 +18,7 @@ export type ComingSoonProps = {
 // section kicker up top, then a haloed glyph, serif headline, and a quiet promise below.
 export function ComingSoon({ section, title, blurb, icon: Icon }: ComingSoonProps) {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   return (
     <View style={styles.screen}>
       <StatusBar style="dark" />
@@ -28,7 +30,7 @@ export function ComingSoon({ section, title, blurb, icon: Icon }: ComingSoonProp
         <AppText variant="headlineMd" style={styles.title}>{title}</AppText>
         <AppText variant="bodyMd" style={styles.blurb}>{blurb}</AppText>
         <View style={styles.pill}>
-          <AppText variant="labelSm" style={styles.pillText}>In the works</AppText>
+          <AppText variant="labelSm" style={styles.pillText}>{t("tools.inTheWorks")}</AppText>
         </View>
       </View>
     </View>

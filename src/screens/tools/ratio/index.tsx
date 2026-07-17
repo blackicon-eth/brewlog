@@ -5,16 +5,25 @@ import { ToolPage } from "../ToolPage";
 import { usePersistedState } from "../../../hooks/usePersistedState";
 import type { ToolModule } from "../types";
 import { colors, fonts, motion, radii, shadows, spacing } from "../../../design/tokens";
-import { computeRatio, formatRatio, solveDose, solveWater } from "../../../lib/ratio";
+import { computeRatio, solveDose, solveWater } from "../../../lib/ratio";
+import { formatRatioLocale, formatNumberLocale } from "../../../lib/i18n/format";
+import { useI18n } from "../../../i18n/LocaleProvider";
+import { t } from "../../../lib/i18n/t";
+import { toolTitle } from "../../../lib/i18n/labels";
+import type { Dict } from "../../../lib/i18n/en";
 import { RatioGlyph } from "./RatioGlyph";
 
 type SolveFor = "water" | "dose" | "ratio";
 
-const SOLVE_OPTIONS: { key: SolveFor; label: string }[] = [
-  { key: "water", label: "Water" },
-  { key: "dose", label: "Dose" },
-  { key: "ratio", label: "Ratio" },
-];
+// Localized label for each solved variable — shared by the segment control and the hero
+// readout so both read from one source instead of duplicating the ternary.
+function solveLabel(dict: Dict, key: SolveFor): string {
+  if (key === "water") return t(dict, "tools.ratio.page.solveWater");
+  if (key === "dose") return t(dict, "tools.ratio.page.solveDose");
+  return t(dict, "tools.ratio.page.solveRatio");
+}
+
+const SOLVE_KEYS: SolveFor[] = ["water", "dose", "ratio"];
 
 const DEFAULT_DOSE = "18";
 const DEFAULT_WATER = "300";
@@ -31,6 +40,7 @@ function toNumber(text: string): number {
 // of {dose, water, ratio} they already know and this solves the third live, with the solved
 // value as the page's hero (large serif readout) and the full recipe underneath.
 function RatioScreen() {
+  const { dict, locale } = useI18n();
   const [solveFor, setSolveFor] = usePersistedState<SolveFor>("tool:ratio:solveFor", "water");
   const [doseText, setDoseText] = usePersistedState("tool:ratio:dose", DEFAULT_DOSE);
   const [waterText, setWaterText] = usePersistedState("tool:ratio:water", DEFAULT_WATER);
@@ -40,7 +50,7 @@ function RatioScreen() {
   // switching modes reads as the same pill gliding rather than two pills swapping.
   const [segmentW, setSegmentW] = useState(0);
   const pillAnim = useRef(new Animated.Value(0)).current;
-  const solveIndex = SOLVE_OPTIONS.findIndex((o) => o.key === solveFor);
+  const solveIndex = SOLVE_KEYS.indexOf(solveFor);
   useEffect(() => {
     Animated.spring(pillAnim, {
       toValue: solveIndex,
@@ -48,7 +58,7 @@ function RatioScreen() {
       useNativeDriver: true,
     }).start();
   }, [solveIndex, pillAnim]);
-  const pillW = segmentW > 0 ? (segmentW - 8) / SOLVE_OPTIONS.length : 0;
+  const pillW = segmentW > 0 ? (segmentW - 8) / SOLVE_KEYS.length : 0;
 
   const doseIn = toNumber(doseText);
   const waterIn = toNumber(waterText);
@@ -71,8 +81,15 @@ function RatioScreen() {
 
   const heroValue = solveFor === "water" ? water : solveFor === "dose" ? dose : ratio;
   const heroUnit = solveFor === "ratio" ? "" : "g";
-  const heroLabel = solveFor === "water" ? "Water" : solveFor === "dose" ? "Dose" : "Ratio";
-  const heroText = solveFor === "ratio" ? formatRatio(heroValue) : heroValue > 0 ? heroValue.toFixed(solveFor === "dose" ? 1 : 0) : "—";
+  const heroLabel = solveLabel(dict, solveFor);
+  const heroText = solveFor === "ratio"
+    ? formatRatioLocale(heroValue, locale)
+    : heroValue > 0
+      ? formatNumberLocale(heroValue, locale, {
+          minimumFractionDigits: solveFor === "dose" ? 1 : 0,
+          maximumFractionDigits: solveFor === "dose" ? 1 : 0,
+        })
+      : "-";
 
   const recipeReady = dose > 0 && water > 0 && ratio > 0;
 
@@ -88,9 +105,9 @@ function RatioScreen() {
   }
 
   return (
-    <ToolPage title="Brew Ratio" subtitle="Lock two, solve the third">
+    <ToolPage title={toolTitle(dict, "ratio")} subtitle={t(dict, "tools.ratio.page.subtitle")}>
       {/* Solve-for selector */}
-      <AppText variant="labelMd" style={styles.sectionLabel}>Solve for</AppText>
+      <AppText variant="labelMd" style={styles.sectionLabel}>{t(dict, "tools.ratio.page.solveForLabel")}</AppText>
       <View style={styles.segment} onLayout={(e) => setSegmentW(e.nativeEvent.layout.width)}>
         {pillW > 0 ? (
           <Animated.View
@@ -101,18 +118,18 @@ function RatioScreen() {
             ]}
           />
         ) : null}
-        {SOLVE_OPTIONS.map((opt) => {
-          const active = solveFor === opt.key;
+        {SOLVE_KEYS.map((key) => {
+          const active = solveFor === key;
           return (
             <Pressable
-              key={opt.key}
+              key={key}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
-              onPress={() => changeSolveFor(opt.key)}
+              onPress={() => changeSolveFor(key)}
               style={styles.segmentItem}
             >
               <AppText variant="labelMd" style={active ? styles.segmentTextActive : styles.segmentText}>
-                {opt.label}
+                {solveLabel(dict, key)}
               </AppText>
             </Pressable>
           );
@@ -121,54 +138,56 @@ function RatioScreen() {
 
       {/* Hero readout — the solved value, large serif */}
       <View style={styles.hero}>
-        <AppText variant="labelSm" style={styles.heroLabel}>{heroLabel} · solved</AppText>
+        <AppText variant="labelSm" style={styles.heroLabel}>{t(dict, "tools.ratio.page.heroSolved", { label: heroLabel })}</AppText>
         <View style={styles.heroValueRow}>
           <AppText style={styles.heroValue}>{heroText}</AppText>
           {heroUnit ? <AppText style={styles.heroUnit}>{heroUnit}</AppText> : null}
         </View>
         <View style={styles.recipeStrip}>
           <AppText variant="bodyMd" style={styles.recipeText}>
-            {recipeReady ? `${dose.toFixed(1)} g : ${water.toFixed(0)} g` : "Enter values above"}
+            {recipeReady
+              ? `${formatNumberLocale(dose, locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} g : ${formatNumberLocale(water, locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} g`
+              : t(dict, "tools.ratio.page.enterValues")}
           </AppText>
           <View style={styles.recipeDot} />
           <AppText variant="bodyMd" style={styles.recipeText}>
-            {recipeReady ? formatRatio(ratio) : "—"}
+            {recipeReady ? formatRatioLocale(ratio, locale) : "-"}
           </AppText>
         </View>
       </View>
 
       {/* Inputs — whichever two are not being solved. Dose and water share one row. */}
-      <AppText variant="labelMd" style={styles.sectionLabel}>Known values</AppText>
+      <AppText variant="labelMd" style={styles.sectionLabel}>{t(dict, "tools.ratio.page.knownValuesLabel")}</AppText>
       <View style={styles.fieldRow}>
         <View style={styles.fieldHalf}>
           <RatioField
-            label="Dose (g)"
+            label={t(dict, "tools.ratio.page.doseFieldLabel")}
             solved={solveFor === "dose"}
             text={doseText}
             onChangeText={setDoseText}
-            solvedValue={dose > 0 ? dose.toFixed(1) : "—"}
+            solvedValue={dose > 0 ? formatNumberLocale(dose, locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : "-"}
             placeholder="18"
           />
         </View>
 
         <View style={styles.fieldHalf}>
           <RatioField
-            label="Water (g)"
+            label={t(dict, "tools.ratio.page.waterFieldLabel")}
             solved={solveFor === "water"}
             text={waterText}
             onChangeText={setWaterText}
-            solvedValue={water > 0 ? water.toFixed(0) : "—"}
+            solvedValue={water > 0 ? formatNumberLocale(water, locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : "-"}
             placeholder="300"
           />
         </View>
       </View>
 
       <RatioField
-        label="Ratio (the X in 1:X)"
+        label={t(dict, "tools.ratio.page.ratioFieldLabel")}
         solved={solveFor === "ratio"}
         text={ratioText}
         onChangeText={setRatioText}
-        solvedValue={ratio > 0 ? ratio.toFixed(2) : "—"}
+        solvedValue={ratio > 0 ? formatNumberLocale(ratio, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-"}
         placeholder="16.67"
       />
     </ToolPage>
@@ -189,6 +208,7 @@ type RatioFieldProps = {
 // hairline) and "solved slate" (container tone, borderless), with the Solved tag fading in.
 // Same metrics as the shared TextField (16/22 text, 12px vertical padding, 1px border = 48px).
 function RatioField({ label, solved, text, onChangeText, solvedValue, placeholder }: RatioFieldProps) {
+  const { dict } = useI18n();
   const anim = useRef(new Animated.Value(solved ? 1 : 0)).current;
   const [focused, setFocused] = useState(false);
 
@@ -232,7 +252,7 @@ function RatioField({ label, solved, text, onChangeText, solvedValue, placeholde
           onBlur={() => setFocused(false)}
         />
         <Animated.View style={[styles.fieldTagWrap, { opacity: anim }]} pointerEvents="none">
-          <AppText variant="labelSm" style={styles.fieldTag}>Solved</AppText>
+          <AppText variant="labelSm" style={styles.fieldTag}>{t(dict, "tools.ratio.page.solvedTag")}</AppText>
         </Animated.View>
       </Animated.View>
     </View>
@@ -240,7 +260,7 @@ function RatioField({ label, solved, text, onChangeText, solvedValue, placeholde
 }
 
 export const ratioTool: ToolModule = {
-  meta: { id: "ratio", title: "Brew Ratio", blurb: "Solve dose, water, or ratio", icon: RatioGlyph },
+  meta: { id: "ratio", icon: RatioGlyph },
   Screen: RatioScreen,
 };
 

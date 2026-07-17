@@ -7,7 +7,6 @@ export type AiModel = {
   id: string;
   name: string;
   size: string;
-  note: string;
   // Minimum device RAM this model is trusted on. The GPU pins the whole weight file plus
   // context, and the OS + app need their share: the 4B (2.5 GB) OOM-killed an 8 GB Galaxy
   // S23, the 1.7B (1.1 GB) runs comfortably there. These floors are deliberately cautious.
@@ -16,11 +15,14 @@ export type AiModel = {
 
 const GB = 1024 * 1024 * 1024;
 
+// Display note per model (locale-independent English fallback and dictionary key) lives in
+// src/lib/i18n/{en,it}.ts under `aiModels`, resolved via `aiModelNote(dict, id)` in labels.ts
+// — name/size stay here as proper nouns and units.
 export const AI_MODELS: AiModel[] = [
-  { id: "QWEN3_600M_INST_Q4", name: "Qwen3 0.6B", size: "0.4 GB", note: "Featherweight — instant, simple advice", minRamBytes: 0 },
-  { id: "LLAMA_3_2_1B_INST_Q4_0", name: "Llama 3.2 1B", size: "0.8 GB", note: "Meta's pocket model — quick and chatty", minRamBytes: 3 * GB },
-  { id: "QWEN3_1_7B_INST_Q4", name: "Qwen3 1.7B", size: "1.1 GB", note: "Balanced — the everyday sweet spot", minRamBytes: 4 * GB },
-  { id: "QWEN3_4B_INST_Q4_K_M", name: "Qwen3 4B", size: "2.5 GB", note: "Deepest reasoning — too heavy for most phones", minRamBytes: 12 * GB },
+  { id: "QWEN3_600M_INST_Q4", name: "Qwen3 0.6B", size: "0.4 GB", minRamBytes: 0 },
+  { id: "LLAMA_3_2_1B_INST_Q4_0", name: "Llama 3.2 1B", size: "0.8 GB", minRamBytes: 3 * GB },
+  { id: "QWEN3_1_7B_INST_Q4", name: "Qwen3 1.7B", size: "1.1 GB", minRamBytes: 4 * GB },
+  { id: "QWEN3_4B_INST_Q4_K_M", name: "Qwen3 4B", size: "2.5 GB", minRamBytes: 12 * GB },
 ];
 
 export const DEFAULT_MODEL_ID = "QWEN3_1_7B_INST_Q4";

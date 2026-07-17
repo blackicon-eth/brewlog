@@ -13,6 +13,7 @@ import { makeId } from "../lib/ids";
 import { AppText, TextField, PillButton, NaturalLanguageIntake, Chevron, TrashIcon, ArchiveIcon, useAppModal } from "../components/ui";
 import { buildCoffeeIntakePrompt, parseCoffeeIntake, type CoffeeIntake } from "../qvac/intake";
 import { useQvac } from "../qvac/QvacProvider";
+import { useI18n } from "../i18n/LocaleProvider";
 import { colors, radii, spacing, screenTopGap } from "../design/tokens";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "CoffeeForm">;
@@ -24,6 +25,7 @@ export function CoffeeFormScreen() {
   const { params } = useRoute<Rt>();
   const modal = useAppModal();
   const { aiEnabled } = useQvac();
+  const { t } = useI18n();
   const editingId = params?.coffeeId;
   // The freeform intake box only exists when the assistant is on — with it off, a new
   // log must open straight on the manual form (the intake renders null and would leave
@@ -56,7 +58,7 @@ export function CoffeeFormScreen() {
         const db = await getDb();
         const c = await getCoffee(db, editingId);
         if (!c) {
-          modal.alert("Couldn't open coffee", "Coffee not found.");
+          modal.alert(t("coffeeForm.openErrorTitle"), t("coffeeForm.openErrorBody"));
           nav.goBack();
           return;
         }
@@ -66,7 +68,7 @@ export function CoffeeFormScreen() {
         setArchived(!!c.archived); setCreatedAt(c.createdAt);
         setPhotos((await listPhotosForCoffee(db, editingId)).map((p) => ({ id: p.id, uri: p.uri, persisted: true })));
       } catch (e: any) {
-        modal.alert("Couldn't open coffee", String(e?.message ?? e));
+        modal.alert(t("coffeeForm.openErrorTitle"), String(e?.message ?? e));
         nav.goBack();
       }
     })();
@@ -89,10 +91,10 @@ export function CoffeeFormScreen() {
     if (photos.length >= photoStore.MAX_PHOTOS) return;
     if (pickingRef.current) return;
     const choice = await modal.choose({
-      title: "Add a photo",
+      title: t("coffeeForm.addPhotoModalTitle"),
       options: [
-        { key: "camera", label: "Take photo" },
-        { key: "gallery", label: "Choose from gallery" },
+        { key: "camera", label: t("coffeeForm.takePhoto") },
+        { key: "gallery", label: t("coffeeForm.chooseFromGallery") },
       ],
     });
     if (!choice) return;
@@ -101,7 +103,7 @@ export function CoffeeFormScreen() {
       if (choice === "camera") {
         const r = await photoStore.takePhoto();
         if (r === "denied") {
-          await modal.alert("Camera access needed", "Allow camera access for Brewlog to take a photo of your bag.");
+          await modal.alert(t("coffeeForm.cameraDeniedTitle"), t("coffeeForm.cameraDeniedBody"));
           return;
         }
         if (r) setPhotos((prev) => [...prev, { id: r.id, uri: r.uri, persisted: false }]);
@@ -139,7 +141,7 @@ export function CoffeeFormScreen() {
   }
 
   async function onSave() {
-    if (!roaster.trim() || !name.trim()) { modal.alert("Missing details", "Roaster and name are required."); return; }
+    if (!roaster.trim() || !name.trim()) { modal.alert(t("coffeeForm.missingTitle"), t("coffeeForm.missingBody")); return; }
     try {
       const db = await getDb();
       const coffee = {
@@ -176,16 +178,16 @@ export function CoffeeFormScreen() {
 
       nav.goBack();
     } catch (e: any) {
-      modal.alert("Couldn't save coffee", String(e?.message ?? e));
+      modal.alert(t("coffeeForm.saveErrorTitle"), String(e?.message ?? e));
     }
   }
 
   async function onDelete() {
     if (!editingId) return;
     const ok = await modal.confirm({
-      title: "Delete this coffee?",
-      message: "This removes the coffee and every brew logged against it. This can't be undone.",
-      confirmLabel: "Delete",
+      title: t("coffeeForm.deleteConfirmTitle"),
+      message: t("coffeeForm.deleteConfirmMessage"),
+      confirmLabel: t("common.delete"),
       destructive: true,
     });
     if (!ok) return;
@@ -196,7 +198,7 @@ export function CoffeeFormScreen() {
       for (const p of existing) photoStore.deletePhotoFile(p.uri);
       nav.navigate("Main");
     } catch (e: any) {
-      modal.alert("Couldn't delete coffee", String(e?.message ?? e));
+      modal.alert(t("coffeeForm.deleteErrorTitle"), String(e?.message ?? e));
     }
   }
 
@@ -209,21 +211,21 @@ export function CoffeeFormScreen() {
         await setCoffeeArchived(await getDb(), editingId, false);
         setArchived(false);
       } catch (e: any) {
-        modal.alert("Couldn't restore coffee", String(e?.message ?? e));
+        modal.alert(t("coffeeForm.restoreErrorTitle"), String(e?.message ?? e));
       }
       return;
     }
     const ok = await modal.confirm({
-      title: "Archive this coffee?",
-      message: "It leaves your active shelf, but every brew stays in the ledger. You can restore it anytime.",
-      confirmLabel: "Archive",
+      title: t("coffeeForm.archiveConfirmTitle"),
+      message: t("coffeeForm.archiveConfirmMessage"),
+      confirmLabel: t("coffeeForm.archive"),
     });
     if (!ok) return;
     try {
       await setCoffeeArchived(await getDb(), editingId, true);
       setArchived(true);
     } catch (e: any) {
-      modal.alert("Couldn't archive coffee", String(e?.message ?? e));
+      modal.alert(t("coffeeForm.archiveErrorTitle"), String(e?.message ?? e));
     }
   }
 
@@ -245,36 +247,36 @@ export function CoffeeFormScreen() {
                 onPress={onToggleArchive}
                 hitSlop={8}
                 accessibilityRole="button"
-                accessibilityLabel={archived ? "Unarchive coffee" : "Archive coffee"}
+                accessibilityLabel={archived ? t("coffeeForm.a11y.unarchiveCoffee") : t("coffeeForm.a11y.archiveCoffee")}
                 style={({ pressed }) => [styles.archiveBtn, pressed && styles.archivePressed]}
               >
                 <ArchiveIcon size={15} color={colors.onSurfaceVariant} thickness={1.6} />
                 <AppText variant="labelMd" style={styles.archiveText}>
-                  {archived ? "Unarchive" : "Archive"}
+                  {archived ? t("coffeeForm.unarchive") : t("coffeeForm.archive")}
                 </AppText>
               </Pressable>
               <Pressable
                 onPress={onDelete}
                 hitSlop={8}
                 accessibilityRole="button"
-                accessibilityLabel="Delete coffee"
+                accessibilityLabel={t("coffeeForm.a11y.deleteCoffee")}
                 style={({ pressed }) => [styles.deleteBtn, pressed && styles.deletePressed]}
               >
                 <TrashIcon size={16} color={colors.tertiary} thickness={1.6} />
-                <AppText variant="labelMd" style={styles.deleteText}>Delete</AppText>
+                <AppText variant="labelMd" style={styles.deleteText}>{t("common.delete")}</AppText>
               </Pressable>
             </View>
           ) : null}
         </View>
-        <AppText variant="labelSm">{editingId ? "Edit · Ledger" : "New · Ledger"}</AppText>
+        <AppText variant="labelSm">{editingId ? t("coffeeForm.editKicker") : t("coffeeForm.newKicker")}</AppText>
         <AppText variant="headlineLg" style={styles.title}>
-          {editingId ? "Edit coffee" : "New coffee"}
+          {editingId ? t("coffeeForm.editTitle") : t("coffeeForm.newTitle")}
         </AppText>
 
         {!revealed ? (
           <NaturalLanguageIntake
-            kicker="Describe this coffee"
-            placeholder="Sey Coffee, Kenya Nyeri AA, washed, light roast, roasted 2026-06-10. Blackcurrant and floral."
+            kicker={t("coffeeForm.intakeKicker")}
+            placeholder={t("coffeeForm.intakePlaceholder")}
             buildPrompt={buildCoffeeIntakePrompt}
             parse={parseCoffeeIntake}
             onParsed={applyParsed}
@@ -282,7 +284,7 @@ export function CoffeeFormScreen() {
           />
         ) : (
           <>
-            <AppText variant="labelSm" style={styles.firstSection}>Photos</AppText>
+            <AppText variant="labelSm" style={styles.firstSection}>{t("coffeeForm.photosSection")}</AppText>
             <View style={styles.photoRow}>
               {photos.map((p) => (
                 <View key={p.id} style={styles.photoTile}>
@@ -291,7 +293,7 @@ export function CoffeeFormScreen() {
                     onPress={() => onRemovePhoto(p.id)}
                     hitSlop={8}
                     accessibilityRole="button"
-                    accessibilityLabel="Remove photo"
+                    accessibilityLabel={t("coffeeForm.removePhoto")}
                     style={({ pressed }) => [styles.removeBadge, pressed && styles.removeBadgePressed]}
                   >
                     <RemoveGlyph />
@@ -302,34 +304,34 @@ export function CoffeeFormScreen() {
                 <Pressable
                   onPress={onAddPhoto}
                   accessibilityRole="button"
-                  accessibilityLabel="Add photo"
+                  accessibilityLabel={t("coffeeForm.addPhoto")}
                   style={({ pressed }) => [styles.addTile, pressed && styles.addTilePressed]}
                 >
                   <PlusGlyph />
-                  <AppText variant="labelSm" style={styles.addTileLabel}>Add photo</AppText>
+                  <AppText variant="labelSm" style={styles.addTileLabel}>{t("coffeeForm.addPhoto")}</AppText>
                 </Pressable>
               ) : null}
             </View>
 
-            <AppText variant="labelSm" style={styles.section}>The bean</AppText>
-            <TextField label="Roaster" value={roaster} onChangeText={setRoaster} placeholder="Sey Coffee" required autoCapitalize="words" />
-            <TextField label="Name / variety" value={name} onChangeText={setName} placeholder="Kenya Nyeri AA" required autoCapitalize="words" />
+            <AppText variant="labelSm" style={styles.section}>{t("coffeeForm.beanSection")}</AppText>
+            <TextField label={t("coffeeForm.roasterLabel")} value={roaster} onChangeText={setRoaster} placeholder={t("coffeeForm.roasterPlaceholder")} required autoCapitalize="words" />
+            <TextField label={t("coffeeForm.nameLabel")} value={name} onChangeText={setName} placeholder={t("coffeeForm.namePlaceholder")} required autoCapitalize="words" />
 
-            <AppText variant="labelSm" style={styles.section}>Details</AppText>
+            <AppText variant="labelSm" style={styles.section}>{t("coffeeForm.detailsSection")}</AppText>
             <View style={styles.row}>
-              <TextField label="Origin" value={origin} onChangeText={setOrigin} placeholder="Kenya" autoCapitalize="words" style={styles.col} />
-              <TextField label="Process" value={process} onChangeText={setProcess} placeholder="washed" style={styles.col} />
+              <TextField label={t("coffeeForm.originLabel")} value={origin} onChangeText={setOrigin} placeholder={t("coffeeForm.originPlaceholder")} autoCapitalize="words" style={styles.col} />
+              <TextField label={t("coffeeForm.processLabel")} value={process} onChangeText={setProcess} placeholder={t("coffeeForm.processPlaceholder")} style={styles.col} />
             </View>
             <View style={styles.row}>
-              <TextField label="Roast level" value={roastLevel} onChangeText={setRoastLevel} placeholder="light" style={styles.col} />
-              <TextField label="Roast date" value={roastDate} onChangeText={setRoastDate} placeholder="2026-06-10" autoCapitalize="none" style={styles.col} />
+              <TextField label={t("coffeeForm.roastLevelLabel")} value={roastLevel} onChangeText={setRoastLevel} placeholder={t("coffeeForm.roastLevelPlaceholder")} style={styles.col} />
+              <TextField label={t("coffeeForm.roastDateLabel")} value={roastDate} onChangeText={setRoastDate} placeholder={t("coffeeForm.roastDatePlaceholder")} autoCapitalize="none" style={styles.col} />
             </View>
 
-            <AppText variant="labelSm" style={styles.section}>Notes</AppText>
-            <TextField value={notes} onChangeText={setNotes} multiline placeholder="blackcurrant, floral, juicy" />
+            <AppText variant="labelSm" style={styles.section}>{t("coffeeForm.notesSection")}</AppText>
+            <TextField value={notes} onChangeText={setNotes} multiline placeholder={t("coffeeForm.notesPlaceholder")} />
 
             <View style={styles.actions}>
-              <PillButton label={editingId ? "Save changes" : "Save coffee"} onPress={onSave} />
+              <PillButton label={editingId ? t("coffeeForm.saveEdit") : t("coffeeForm.saveNew")} onPress={onSave} />
             </View>
           </>
         )}
@@ -421,6 +423,8 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center", gap: 4,
   },
   addTilePressed: { backgroundColor: "rgba(0,74,198,0.12)" },
-  addTileLabel: { color: colors.primary },
+  // textAlign so a label wider than the tile (e.g. Italian "Aggiungi foto") stays
+  // centered under the + instead of left-aligning once it spans the full width.
+  addTileLabel: { color: colors.primary, textAlign: "center", paddingHorizontal: 4 },
   actions: { marginTop: spacing.section },
 });

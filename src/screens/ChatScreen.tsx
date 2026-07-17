@@ -8,6 +8,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { buildChatHistory, buildChatSystemPrompt } from "../qvac/advisor";
 import { useQvac } from "../qvac/QvacProvider";
 import { useStickyScroll } from "../hooks/useStickyScroll";
+import { useI18n } from "../i18n/LocaleProvider";
+import type { Dict } from "../lib/i18n/en";
 import { AppText, ChatBubble, PillButton } from "../components/ui";
 import { colors, fonts, radii, spacing, screenTopGap } from "../design/tokens";
 import { getDb } from "../db/database";
@@ -18,29 +20,26 @@ import { listCoffeesWithStats } from "../db/coffees";
 // state only — it's the single app session's chat, never written to the database.
 type Turn = { id: string; role: "user" | "assistant"; content: string; pending?: boolean; error?: boolean };
 
-// Conversation openers shown on the empty canvas — tap to send.
-const SUGGESTIONS = [
-  "Why does my pour-over taste sour?",
-  "What ratio should I start with for a light roast?",
-  "How do I dial in a bitter, muddy cup?",
-];
-
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // Scrub anything request-scoped out of a raw SDK error before it reaches a bubble: the
 // completion request id (a UUID) is an internal detail and must never be shown to the user.
-function cleanErrorMessage(raw: string): string {
+function cleanErrorMessage(dict: Dict, raw: string): string {
   const cleaned = raw
     .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, "")
     .replace(/\brequest[\s_-]?id\b:?/gi, "")
     .replace(/\s{2,}/g, " ")
     .trim();
-  return cleaned || "Something went wrong. Please try again.";
+  return cleaned || dict.chat.genericError;
 }
 
 export function ChatScreen() {
   const insets = useSafeAreaInsets();
   const { status, prepare, retry, runAdvice, aiEnabled, setAiEnabled } = useQvac();
+  const { t, dict } = useI18n();
+
+  // Conversation openers shown on the empty canvas — tap to send.
+  const suggestions = [dict.chat.suggestions.sour, dict.chat.suggestions.ratio, dict.chat.suggestions.bitter];
 
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
@@ -107,7 +106,7 @@ export function ChatScreen() {
           // The assistant was turned off mid-wait: status pins at "idle", so bail out.
           if (!aiEnabledRef.current) { gen.cancelled = true; return; }
           if (statusRef.current === "error") {
-            throw new Error("The assistant couldn't load — check your connection and try again.");
+            throw new Error(dict.chat.loadFailedError);
           }
           await sleep(250);
         }
@@ -134,9 +133,9 @@ export function ChatScreen() {
         if (gen.cancelled) {
           // The user pressed Stop — keep whatever streamed; only if nothing did, leave a red
           // note. Never surface the SDK's cancellation error (it carries the request id).
-          patch(botId, (b) => (b.content ? b : { ...b, error: true, content: "Inference cancelled by the user." }));
+          patch(botId, (b) => (b.content ? b : { ...b, error: true, content: dict.chat.cancelledError }));
         } else {
-          const msg = cleanErrorMessage(String(e?.message ?? e));
+          const msg = cleanErrorMessage(dict, String(e?.message ?? e));
           patch(botId, (b) => ({ ...b, error: true, content: b.content || msg }));
         }
       } finally {
@@ -152,7 +151,7 @@ export function ChatScreen() {
         setGenerating(false);
       }
     })();
-  }, [patch, prepare, runAdvice]);
+  }, [patch, prepare, runAdvice, dict]);
 
   const stop = useCallback(() => {
     const gen = genRef.current;
@@ -171,18 +170,17 @@ export function ChatScreen() {
       <View style={styles.screen}>
         <StatusBar style="dark" />
         <View style={[styles.masthead, { paddingTop: insets.top + screenTopGap }]}>
-          <AppText variant="headlineLg" style={styles.title}>Chat</AppText>
-          <AppText variant="labelMd" style={styles.subtitle}>On-device brewing assistant</AppText>
+          <AppText variant="headlineLg" style={styles.title}>{t("chat.title")}</AppText>
+          <AppText variant="labelMd" style={styles.subtitle}>{t("chat.subtitle")}</AppText>
         </View>
         <View style={styles.offWrap}>
           <AppText style={styles.spark}>✦</AppText>
-          <AppText variant="headlineMd" style={styles.emptyTitle}>The assistant is off</AppText>
+          <AppText variant="headlineMd" style={styles.emptyTitle}>{t("chat.off.title")}</AppText>
           <AppText variant="bodyMd" style={styles.emptyBody}>
-            Turn on the on-device AI to chat about grind, ratio, water and technique.
-            Everything runs privately on your phone — nothing you brew ever leaves it.
+            {t("chat.off.body")}
           </AppText>
           <PillButton
-            label="Turn on the assistant"
+            label={t("chat.off.cta")}
             variant="primary"
             style={styles.offBtn}
             onPress={() => { setAiEnabled(true); prepare(); }}
@@ -198,8 +196,8 @@ export function ChatScreen() {
 
       {/* Fixed masthead — matches the Brews ledger header. */}
       <View style={[styles.masthead, { paddingTop: insets.top + screenTopGap }]}>
-        <AppText variant="headlineLg" style={styles.title}>Chat</AppText>
-        <AppText variant="labelMd" style={styles.subtitle}>On-device brewing assistant</AppText>
+        <AppText variant="headlineLg" style={styles.title}>{t("chat.title")}</AppText>
+        <AppText variant="labelMd" style={styles.subtitle}>{t("chat.subtitle")}</AppText>
       </View>
 
       <KeyboardAvoidingView
@@ -209,13 +207,12 @@ export function ChatScreen() {
         {isEmpty ? (
           <View style={styles.emptyWrap}>
             <AppText style={styles.spark}>✦</AppText>
-            <AppText variant="headlineMd" style={styles.emptyTitle}>Ask your brewing assistant</AppText>
+            <AppText variant="headlineMd" style={styles.emptyTitle}>{t("chat.emptyTitle")}</AppText>
             <AppText variant="bodyMd" style={styles.emptyBody}>
-              On-device answers on grind, ratio, water and technique. Nothing leaves your phone,
-              and this chat clears when you close the app.
+              {t("chat.emptyBody")}
             </AppText>
             <View style={styles.suggestions}>
-              {SUGGESTIONS.map((s) => (
+              {suggestions.map((s) => (
                 <Pressable
                   key={s}
                   onPress={() => send(s)}
@@ -241,15 +238,15 @@ export function ChatScreen() {
             onContentSizeChange={sticky.onContentSizeChange}
             keyboardDismissMode="interactive"
           >
-            {turns.map((t) => {
+            {turns.map((turn) => {
               // Assistant bubble with nothing streamed yet: show a loader + status line instead.
-              if (t.pending && !t.content) {
+              if (turn.pending && !turn.content) {
                 return (
-                  <View key={t.id} style={styles.typingRow}>
+                  <View key={turn.id} style={styles.typingRow}>
                     <View style={styles.typingBubble}>
                       <ActivityIndicator size="small" color={colors.secondary} />
                       <AppText variant="bodyMd" style={styles.typingText}>
-                        {status === "ready" ? "Thinking…" : "Waking the assistant…"}
+                        {status === "ready" ? dict.chat.thinking : dict.chat.waking}
                       </AppText>
                     </View>
                   </View>
@@ -257,11 +254,11 @@ export function ChatScreen() {
               }
               return (
                 <ChatBubble
-                  key={t.id}
-                  role={t.role}
-                  text={t.content}
-                  streaming={t.pending && !t.error}
-                  error={t.error}
+                  key={turn.id}
+                  role={turn.role}
+                  text={turn.content}
+                  streaming={turn.pending && !turn.error}
+                  error={turn.error}
                 />
               );
             })}
@@ -270,9 +267,9 @@ export function ChatScreen() {
 
         {status === "error" ? (
           <View style={styles.banner}>
-            <AppText variant="bodyMd" style={styles.bannerText}>Assistant unavailable offline.</AppText>
+            <AppText variant="bodyMd" style={styles.bannerText}>{t("chat.offlineBanner")}</AppText>
             <Pressable onPress={retry} hitSlop={8}>
-              <AppText variant="labelMd" style={styles.bannerRetry}>Retry</AppText>
+              <AppText variant="labelMd" style={styles.bannerRetry}>{t("chat.retry")}</AppText>
             </Pressable>
           </View>
         ) : null}
@@ -283,7 +280,7 @@ export function ChatScreen() {
             style={styles.field}
             value={input}
             onChangeText={setInput}
-            placeholder="Ask something…"
+            placeholder={t("chat.composerPlaceholder")}
             placeholderTextColor={colors.outline}
             // Multiline so the field grows with wrapped text up to maxHeight, then scrolls —
             // but the return key SENDS (submitBehavior="submit" keeps the keyboard open and
@@ -299,7 +296,7 @@ export function ChatScreen() {
             onPress={generating ? stop : () => send(input)}
             disabled={!generating && !canSend}
             accessibilityRole="button"
-            accessibilityLabel={generating ? "Stop" : "Send"}
+            accessibilityLabel={generating ? t("chat.stopA11y") : t("chat.sendA11y")}
             style={({ pressed }) => [
               styles.sendBtn,
               generating ? styles.sendStop : canSend ? styles.sendReady : styles.sendIdle,

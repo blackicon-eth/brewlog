@@ -13,6 +13,9 @@ import {
   DEFAULT_POINT,
   TARGET,
 } from "../../../lib/coffeeCompass";
+import { useI18n } from "../../../i18n/LocaleProvider";
+import { t } from "../../../lib/i18n/t";
+import { toolTitle, compassCellText } from "../../../lib/i18n/labels";
 import { CompassRoseIcon } from "./CompassRoseIcon";
 
 const RANGES = DEFAULT_RANGES;
@@ -30,6 +33,7 @@ function parseNum(raw: string): number | null {
 }
 
 function CompassScreen() {
+  const { dict } = useI18n();
   const [eyText, setEyText] = usePersistedState("tool:compass:ey", String(DEFAULT_POINT.ey));
   const [tdsText, setTdsText] = usePersistedState("tool:compass:tds", String(DEFAULT_POINT.tds));
   // Measured inner-plot size, so the dot maps precisely on any device (S23 included).
@@ -40,6 +44,7 @@ function CompassScreen() {
   const hasBoth = ey != null && tds != null;
 
   const verdict = hasBoth ? classify(ey, tds) : null;
+  const verdictText = verdict ? compassCellText(dict, verdict.exAxis, verdict.strAxis) : null;
   // Off-target readings are accented cherry; a dialed-in reading glows action-blue.
   const accent = verdict?.ideal ? colors.primary : verdict ? colors.tertiary : colors.outline;
 
@@ -50,13 +55,13 @@ function CompassScreen() {
   const box = useMemo(() => targetRect(RANGES), []);
 
   return (
-    <ToolPage title="Coffee Compass" subtitle="Diagnose taste by extraction & strength">
+    <ToolPage title={toolTitle(dict, "compass")} subtitle={t(dict, "tools.compass.page.subtitle")}>
       {/* ── The chart: the crafted centrepiece ─────────────────────────────── */}
       <View style={styles.chartBlock}>
         {/* Y-axis caption, rotated up the left edge. */}
         <View style={styles.yAxisLabel} pointerEvents="none">
           <AppText variant="labelSm" style={styles.axisCaption}>
-            Strength · TDS %
+            {t(dict, "tools.compass.page.strengthAxisCaption")}
           </AppText>
         </View>
 
@@ -67,13 +72,13 @@ function CompassScreen() {
             onLayout={(e) => setPlot(e.nativeEvent.layout.width)}
           >
             {/* Grid ticks — hairline guides at each tick fraction. */}
-            {EY_TICKS.map((t) => {
-              const f = (t - RANGES.ey.min) / (RANGES.ey.max - RANGES.ey.min);
-              return <View key={`vx${t}`} style={[styles.gridV, { left: `${f * 100}%` }]} />;
+            {EY_TICKS.map((tick) => {
+              const f = (tick - RANGES.ey.min) / (RANGES.ey.max - RANGES.ey.min);
+              return <View key={`vx${tick}`} style={[styles.gridV, { left: `${f * 100}%` }]} />;
             })}
-            {TDS_TICKS.map((t) => {
-              const f = 1 - (t - RANGES.tds.min) / (RANGES.tds.max - RANGES.tds.min);
-              return <View key={`hz${t}`} style={[styles.gridH, { top: `${f * 100}%` }]} />;
+            {TDS_TICKS.map((tick) => {
+              const f = 1 - (tick - RANGES.tds.min) / (RANGES.tds.max - RANGES.tds.min);
+              return <View key={`hz${tick}`} style={[styles.gridH, { top: `${f * 100}%` }]} />;
             })}
 
             {/* Target box — the calm-blue "zone of deliciousness". */}
@@ -90,7 +95,7 @@ function CompassScreen() {
               ]}
             >
               <AppText variant="labelSm" style={styles.targetTag}>
-                Ideal
+                {t(dict, "tools.compass.page.idealTag")}
               </AppText>
             </View>
 
@@ -114,14 +119,14 @@ function CompassScreen() {
 
           {/* X-axis ticks + caption. */}
           <View style={styles.xTicks}>
-            {EY_TICKS.map((t) => (
-              <AppText key={`xt${t}`} variant="labelSm" style={styles.tickText}>
-                {t}
+            {EY_TICKS.map((tick) => (
+              <AppText key={`xt${tick}`} variant="labelSm" style={styles.tickText}>
+                {tick}
               </AppText>
             ))}
           </View>
           <AppText variant="labelSm" style={[styles.axisCaption, styles.xCaption]}>
-            Extraction · EY %
+            {t(dict, "tools.compass.page.extractionAxisCaption")}
           </AppText>
         </View>
       </View>
@@ -130,7 +135,7 @@ function CompassScreen() {
       <View style={styles.inputs}>
         <View style={styles.inputCol}>
           <TextField
-            label="Extraction %"
+            label={t(dict, "tools.compass.page.extractionFieldLabel")}
             value={eyText}
             onChangeText={setEyText}
             keyboardType="decimal-pad"
@@ -139,7 +144,7 @@ function CompassScreen() {
         </View>
         <View style={styles.inputCol}>
           <TextField
-            label="Strength TDS %"
+            label={t(dict, "tools.compass.page.strengthFieldLabel")}
             value={tdsText}
             onChangeText={setTdsText}
             keyboardType="decimal-pad"
@@ -149,25 +154,25 @@ function CompassScreen() {
       </View>
 
       {/* ── Verdict ─────────────────────────────────────────────────────────── */}
-      {verdict ? (
+      {verdict && verdictText ? (
         <View style={[styles.verdict, { borderColor: accent }]}>
           <View style={[styles.verdictBar, { backgroundColor: accent }]} />
           <View style={styles.verdictBody}>
             <AppText variant="labelSm" style={{ color: accent }}>
-              {verdict.ideal ? "On target" : "Off target"}
+              {t(dict, verdict.ideal ? "tools.compass.page.onTarget" : "tools.compass.page.offTarget")}
             </AppText>
             <AppText variant="headlineMd" style={styles.verdictTitle}>
-              {verdict.title}
+              {verdictText.title}
             </AppText>
             <AppText variant="bodyMd" style={styles.verdictAdvice}>
-              {verdict.advice}
+              {verdictText.advice}
             </AppText>
           </View>
         </View>
       ) : (
         <View style={styles.emptyHint}>
           <AppText variant="bodyMd">
-            Enter your measured extraction and strength to plot the cup and read its fix.
+            {t(dict, "tools.compass.page.emptyHint")}
           </AppText>
         </View>
       )}
@@ -175,13 +180,19 @@ function CompassScreen() {
       {/* ── Legend / model note ─────────────────────────────────────────────── */}
       <View style={styles.legend}>
         <AppText variant="labelSm" style={styles.legendKicker}>
-          Reading the compass
+          {t(dict, "tools.compass.page.legendKicker")}
         </AppText>
         <AppText variant="bodyMd" style={styles.legendLine}>
-          Left–right is <AppText variant="bodyMd" style={styles.em}>extraction</AppText> — move it with grind, time
-          and agitation. Up–down is <AppText variant="bodyMd" style={styles.em}>strength</AppText> — move it with your
-          coffee-to-water ratio. Land inside the box (EY {TARGET.ey.min}–{TARGET.ey.max}%, TDS {TARGET.tds.min}–
-          {TARGET.tds.max}%) and you're in the zone of deliciousness.
+          {t(dict, "tools.compass.page.legendPart1")}
+          <AppText variant="bodyMd" style={styles.em}>{t(dict, "tools.compass.page.legendExtractionWord")}</AppText>
+          {t(dict, "tools.compass.page.legendPart2")}
+          <AppText variant="bodyMd" style={styles.em}>{t(dict, "tools.compass.page.legendStrengthWord")}</AppText>
+          {t(dict, "tools.compass.page.legendPart3", {
+            eyMin: TARGET.ey.min,
+            eyMax: TARGET.ey.max,
+            tdsMin: TARGET.tds.min,
+            tdsMax: TARGET.tds.max,
+          })}
         </AppText>
       </View>
     </ToolPage>
@@ -191,7 +202,7 @@ function CompassScreen() {
 const DOT = 26; // plotted marker diameter
 
 export const compassTool: ToolModule = {
-  meta: { id: "compass", title: "Coffee Compass", blurb: "Diagnose by taste", icon: CompassRoseIcon, comingSoon: true },
+  meta: { id: "compass", icon: CompassRoseIcon, comingSoon: true },
   Screen: CompassScreen,
 };
 

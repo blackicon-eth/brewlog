@@ -10,10 +10,14 @@ import { listAllBrews, countAllBrews, type BrewWithCoffee } from "../db/brews";
 import { listCoffees } from "../db/coffees";
 import type { Coffee } from "../models/types";
 import { onLedgerReplaced } from "../lib/ledgerEvents";
-import { formatRatio } from "../lib/ratio";
-import { formatSeconds, formatBrewTime, groupBrewsByDay } from "../lib/brewFormat";
+import { formatSeconds, groupBrewsByDay } from "../lib/brewFormat";
+import { formatRatioLocale, formatBrewTimeLocale } from "../lib/i18n/format";
 import { methodSpec } from "../lib/brewMethods";
 import type { MethodFilter } from "../lib/brewMethods";
+import { methodShortLabel, methodLabel, brewedAtDayLabels } from "../lib/i18n/labels";
+import type { Dict } from "../lib/i18n/en";
+import { t, tn } from "../lib/i18n/t";
+import { useI18n } from "../i18n/LocaleProvider";
 import { AppText, BrewListRow, Fab, MethodFilterBar, useAppModal } from "../components/ui";
 import { CoffeePickerModal } from "../components/CoffeePickerModal";
 import { colors, motion, spacing, screenTopGap } from "../design/tokens";
@@ -28,9 +32,9 @@ const PAGE_SIZE = 20;
 const GRIND_MAX = 12;
 const truncate = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s);
 
-function brewMeta(b: BrewWithCoffee): string {
+function brewMeta(dict: Dict, b: BrewWithCoffee): string {
   return [
-    methodSpec(b.method).shortLabel,
+    methodShortLabel(dict, methodSpec(b.method).id),
     b.grind ? truncate(b.grind, GRIND_MAX) : null,
     b.waterTempC != null ? `${b.waterTempC}°C` : null,
     b.totalTimeS != null ? formatSeconds(b.totalTimeS) : null,
@@ -41,6 +45,7 @@ export function BrewsScreen() {
   const nav = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
   const modal = useAppModal();
+  const { dict, locale } = useI18n();
   const [brews, setBrews] = useState<BrewWithCoffee[]>([]);
   const [coffees, setCoffees] = useState<Coffee[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -103,14 +108,14 @@ export function BrewsScreen() {
         setTotal(totalCount);
         setEnd(page.length >= totalCount);
       } catch (e: any) {
-        modal.alert("Couldn't load brews", String(e?.message ?? e));
+        modal.alert(t(dict, "brews.loadErrorTitle"), String(e?.message ?? e));
       } finally {
         // Only the latest refresh clears the flags; a superseded one leaves them for the
         // newer fetch still in flight.
         if (gen === reqGenRef.current) { setLoaded(true); setRefreshing(false); }
       }
     })();
-  }, [modal]);
+  }, [modal, dict]);
 
   useFocusEffect(useCallback(() => {
     refresh(Math.max(PAGE_SIZE, loadedCountRef.current));
@@ -173,13 +178,13 @@ export function BrewsScreen() {
         if (next.length) setBrews((prev) => [...prev, ...next]);
         if (next.length < PAGE_SIZE) setEnd(true);
       } catch (e: any) {
-        modal.alert("Couldn't load more brews", String(e?.message ?? e));
+        modal.alert(t(dict, "brews.loadMoreErrorTitle"), String(e?.message ?? e));
       } finally {
         fetchingRef.current = false;
         setLoadingMore(false);
       }
     })();
-  }, [modal]);
+  }, [modal, dict]);
 
   // You log new brews only against coffees still on the active shelf — a finished
   // (archived) bag drops out of the picker even though its past brews stay in the ledger.
@@ -192,7 +197,10 @@ export function BrewsScreen() {
     setPickerOpen(true);
   }, [activeCoffees, nav]);
 
-  const sections = useMemo(() => groupBrewsByDay(brews), [brews]);
+  const sections = useMemo(
+    () => groupBrewsByDay(brews, brewedAtDayLabels(dict, locale)),
+    [brews, dict, locale]
+  );
 
   return (
     <View style={styles.screen}>
@@ -200,10 +208,12 @@ export function BrewsScreen() {
 
       {/* Fixed masthead — only the ledger below scrolls. */}
       <View style={[styles.masthead, { paddingTop: insets.top + screenTopGap }]}>
-        <AppText variant="headlineLg" style={styles.title}>Brew ledger</AppText>
-        {total > 0 ? (
+        <AppText variant="headlineLg" style={styles.title}>{t(dict, "brews.title")}</AppText>
+        {/* Keep the count line during the first load only if there's something to say —
+            the zero wording waits for `loaded` so it can't flash before the fetch lands. */}
+        {total > 0 || loaded ? (
           <AppText variant="labelMd" style={styles.subtitle}>
-            {total} brew{total === 1 ? "" : "s"}
+            {total > 0 ? tn(dict, "common.brewCount", total) : t(dict, "brews.countZero")}
           </AppText>
         ) : null}
         {loaded && (total > 0 || method !== "all") ? (
@@ -247,7 +257,7 @@ export function BrewsScreen() {
             <View style={[styles.dayHeader, isFirst ? styles.dayHeaderFirst : styles.dayHeaderRest]}>
               <AppText variant="labelMd" style={styles.dayTitle}>{section.title}</AppText>
               <AppText variant="labelSm" style={styles.dayCount}>
-                {section.data.length} brew{section.data.length === 1 ? "" : "s"}
+                {tn(dict, "common.brewCount", section.data.length)}
               </AppText>
             </View>
           );
@@ -257,17 +267,17 @@ export function BrewsScreen() {
             method !== "all" ? (
               <View style={styles.empty}>
                 <AppText variant="headlineMd" style={styles.emptyTitle}>
-                  No {methodSpec(method).label.toLowerCase()} brews yet
+                  {t(dict, "brews.emptyFilteredTitle", { method: methodLabel(dict, methodSpec(method).id).toLowerCase() })}
                 </AppText>
                 <AppText variant="bodyMd" style={styles.emptyBody}>
-                  Switch the filter above, or log one from a coffee's page.
+                  {t(dict, "brews.emptyFilteredBody")}
                 </AppText>
               </View>
             ) : (
               <View style={styles.empty}>
-                <AppText variant="headlineMd" style={styles.emptyTitle}>No brews logged yet</AppText>
+                <AppText variant="headlineMd" style={styles.emptyTitle}>{t(dict, "brews.emptyAllTitle")}</AppText>
                 <AppText variant="bodyMd" style={styles.emptyBody}>
-                  Open a coffee and log a pour — every brew you record lands here, newest first.
+                  {t(dict, "brews.emptyAllBody")}
                 </AppText>
               </View>
             )
@@ -277,10 +287,10 @@ export function BrewsScreen() {
           <BrewListRow
             roaster={item.roaster}
             coffeeName={item.coffeeName}
-            time={formatBrewTime(item.brewedAt)}
+            time={formatBrewTimeLocale(item.brewedAt, locale)}
             recipe={`${item.doseG}g : ${item.waterG}g`}
-            ratio={formatRatio(item.ratio)}
-            meta={brewMeta(item)}
+            ratio={formatRatioLocale(item.ratio, locale)}
+            meta={brewMeta(dict, item)}
             rating={item.rating ?? null}
             first={index === 0}
             last={index === section.data.length - 1}
@@ -298,7 +308,7 @@ export function BrewsScreen() {
 
       {/* Only offer the "+" once there's a coffee to log against — a brand-new, empty
           ledger leans on its own empty-state guidance instead. */}
-      {activeCoffees.length > 0 ? <Fab round label="Log brew" onPress={onLogBrew} /> : null}
+      {activeCoffees.length > 0 ? <Fab round label={t(dict, "brews.logBrew")} onPress={onLogBrew} /> : null}
 
       <CoffeePickerModal
         visible={pickerOpen}

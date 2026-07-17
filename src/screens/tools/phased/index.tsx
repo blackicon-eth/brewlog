@@ -6,7 +6,7 @@ import { ToolPage } from "../ToolPage";
 import { usePersistedState } from "../../../hooks/usePersistedState";
 import type { ToolModule } from "../types";
 import { formatSeconds } from "../../../lib/brewFormat";
-import { formatRatio } from "../../../lib/ratio";
+import { formatRatioLocale } from "../../../lib/i18n/format";
 import {
   buildFortySix,
   DEFAULT_DOSE_G,
@@ -17,17 +17,29 @@ import {
   type FirstPourBias,
   type PhasedPour,
 } from "../../../lib/fortySix";
+import { useI18n } from "../../../i18n/LocaleProvider";
+import { t, tn } from "../../../lib/i18n/t";
+import { toolTitle } from "../../../lib/i18n/labels";
+import type { Dict } from "../../../lib/i18n/en";
 import { PhasedGlyph } from "./PhasedGlyph";
 
-const BIAS_OPTIONS: { label: string; value: FirstPourBias }[] = [
-  { label: "Sweeter", value: "sweeter" },
-  { label: "Balanced", value: "balanced" },
-  { label: "Brighter", value: "brighter" },
-];
+// Localized bias-option / phase labels — resolved from the dictionary rather than hardcoded
+// so the ChipSelect and the pour-list dividers read in the active locale.
+function biasOptions(dict: Dict): { label: string; value: FirstPourBias }[] {
+  return [
+    { label: t(dict, "tools.phased.page.biasSweeter"), value: "sweeter" },
+    { label: t(dict, "tools.phased.page.biasBalanced"), value: "balanced" },
+    { label: t(dict, "tools.phased.page.biasBrighter"), value: "brighter" },
+  ];
+}
 
-const PHASE_LABEL: Record<PhasedPour["phase"], string> = { taste: "Taste — 40%", strength: "Strength — 60%" };
+function phaseLabel(dict: Dict, phase: PhasedPour["phase"]): string {
+  return phase === "taste" ? t(dict, "tools.phased.page.phaseTasteLabel") : t(dict, "tools.phased.page.phaseStrengthLabel");
+}
 
 function PhasedScreen() {
+  const { dict, locale } = useI18n();
+  const BIAS_OPTIONS = biasOptions(dict);
   const [doseText, setDoseText] = usePersistedState("tool:phased:dose", String(DEFAULT_DOSE_G));
   const [ratioText, setRatioText] = usePersistedState("tool:phased:ratio", String(DEFAULT_RATIO));
   const [phase60Pours, setPhase60Pours] = usePersistedState("tool:phased:phase60Pours", DEFAULT_PHASE60_POURS);
@@ -46,11 +58,11 @@ function PhasedScreen() {
   const canIncrease = phase60Pours < MAX_PHASE60_POURS;
 
   return (
-    <ToolPage title="4:6 Method" subtitle="Tetsu Kasuya's phased recipe — taste first, strength last">
+    <ToolPage title={toolTitle(dict, "phased")} subtitle={t(dict, "tools.phased.page.subtitle")}>
       {/* Inputs -------------------------------------------------------------------- */}
       <View style={styles.inputsRow}>
         <TextField
-          label="Dose"
+          label={t(dict, "tools.phased.page.doseLabel")}
           value={doseText}
           onChangeText={setDoseText}
           placeholder="20"
@@ -58,7 +70,7 @@ function PhasedScreen() {
           style={styles.inputHalf}
         />
         <TextField
-          label="Ratio (1:x)"
+          label={t(dict, "tools.phased.page.ratioLabel")}
           value={ratioText}
           onChangeText={setRatioText}
           placeholder="15"
@@ -68,42 +80,62 @@ function PhasedScreen() {
       </View>
 
       <View style={styles.stepperWrap}>
-        <AppText variant="labelMd">Strength phase pours</AppText>
+        <AppText variant="labelMd">{t(dict, "tools.phased.page.strengthPhasePoursLabel")}</AppText>
         <View style={styles.stepperRow}>
-          <StepperButton label="–" disabled={!canDecrease} onPress={() => setPhase60Pours((n) => Math.max(MIN_PHASE60_POURS, n - 1))} />
+          <StepperButton
+            label="–"
+            a11yLabel={t(dict, "tools.phased.page.decreasePoursA11y")}
+            disabled={!canDecrease}
+            onPress={() => setPhase60Pours((n) => Math.max(MIN_PHASE60_POURS, n - 1))}
+          />
           <View style={styles.stepperValueBox}>
             <AppText variant="headlineMd" style={styles.stepperValue}>{phase60Pours}</AppText>
           </View>
-          <StepperButton label="+" disabled={!canIncrease} onPress={() => setPhase60Pours((n) => Math.min(MAX_PHASE60_POURS, n + 1))} />
+          <StepperButton
+            label="+"
+            a11yLabel={t(dict, "tools.phased.page.increasePoursA11y")}
+            disabled={!canIncrease}
+            onPress={() => setPhase60Pours((n) => Math.min(MAX_PHASE60_POURS, n + 1))}
+          />
           <AppText variant="bodyMd" style={styles.stepperHint}>
-            {phase60Pours <= 2 ? "Fewer pours — stronger, bolder" : phase60Pours >= 4 ? "More pours — lighter, gentler" : "Balanced body"}
+            {phase60Pours <= 2
+              ? t(dict, "tools.phased.page.hintFewer")
+              : phase60Pours >= 4
+                ? t(dict, "tools.phased.page.hintMore")
+                : t(dict, "tools.phased.page.hintBalanced")}
           </AppText>
         </View>
       </View>
 
-      <ChipSelect label="First pour" options={BIAS_OPTIONS} value={bias} onChange={(v) => setBias((v || "balanced") as FirstPourBias)} clearable={false} />
+      <ChipSelect
+        label={t(dict, "tools.phased.page.firstPourLabel")}
+        options={BIAS_OPTIONS}
+        value={bias}
+        onChange={(v) => setBias((v || "balanced") as FirstPourBias)}
+        clearable={false}
+      />
 
       {!valid ? (
         <Card style={styles.errorCard}>
-          <AppText variant="bodyMd">Enter a dose and ratio above 0 to build the recipe.</AppText>
+          <AppText variant="bodyMd">{t(dict, "tools.phased.page.enterRecipeError")}</AppText>
         </Card>
       ) : (
         <>
           {/* Totals ------------------------------------------------------------------ */}
           <View style={styles.totalsRow}>
-            <TotalStat label="Total water" value={`${recipe.totalWaterG}g`} />
-            <TotalStat label="Ratio" value={formatRatio(recipe.ratio)} />
-            <TotalStat label="Brew time" value={`~${formatSeconds(recipe.totalSeconds)}`} />
+            <TotalStat label={t(dict, "tools.phased.page.totalWaterStatLabel")} value={`${recipe.totalWaterG}g`} />
+            <TotalStat label={t(dict, "tools.phased.page.ratioStatLabel")} value={formatRatioLocale(recipe.ratio, locale)} />
+            <TotalStat label={t(dict, "tools.phased.page.brewTimeStatLabel")} value={`~${formatSeconds(recipe.totalSeconds)}`} />
           </View>
 
           {/* Phase summary ------------------------------------------------------------ */}
           <View style={styles.phaseSummaryRow}>
-            <PhaseSummary label="Taste — 40%" grams={recipe.phase40G} pours={2} muted />
-            <PhaseSummary label="Strength — 60%" grams={recipe.phase60G} pours={recipe.phase60Pours} />
+            <PhaseSummary dict={dict} label={phaseLabel(dict, "taste")} grams={recipe.phase40G} pours={2} muted />
+            <PhaseSummary dict={dict} label={phaseLabel(dict, "strength")} grams={recipe.phase60G} pours={recipe.phase60Pours} />
           </View>
 
           {/* Pour list — the centerpiece ------------------------------------------------ */}
-          <AppText variant="labelSm" style={styles.pourListKicker}>Pour Sequence</AppText>
+          <AppText variant="labelSm" style={styles.pourListKicker}>{t(dict, "tools.phased.page.pourSequenceKicker")}</AppText>
           <View style={styles.timeline}>
             {recipe.pours.map((pour, i) => {
               const isPhaseStart = i === 0 || recipe.pours[i - 1].phase !== pour.phase;
@@ -112,10 +144,10 @@ function PhasedScreen() {
                 <View key={pour.index}>
                   {isPhaseStart ? (
                     <AppText variant="labelMd" style={[styles.phaseDivider, pour.phase === "strength" && styles.phaseDividerStrength]}>
-                      {PHASE_LABEL[pour.phase]}
+                      {phaseLabel(dict, pour.phase)}
                     </AppText>
                   ) : null}
-                  <PourRow pour={pour} isLast={isLast} />
+                  <PourRow dict={dict} pour={pour} isLast={isLast} />
                 </View>
               );
             })}
@@ -135,17 +167,29 @@ function TotalStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function PhaseSummary({ label, grams, pours, muted }: { label: string; grams: number; pours: number; muted?: boolean }) {
+function PhaseSummary({
+  dict,
+  label,
+  grams,
+  pours,
+  muted,
+}: {
+  dict: Dict;
+  label: string;
+  grams: number;
+  pours: number;
+  muted?: boolean;
+}) {
   return (
     <Card style={[styles.phaseSummaryCard, muted && styles.phaseSummaryCardMuted]}>
       <AppText variant="labelSm">{label}</AppText>
       <AppText variant="headlineMd" style={styles.phaseSummaryGrams}>{grams}g</AppText>
-      <AppText variant="bodyMd">{pours} pour{pours === 1 ? "" : "s"}</AppText>
+      <AppText variant="bodyMd">{tn(dict, "tools.phased.page.poursCount", pours)}</AppText>
     </Card>
   );
 }
 
-function PourRow({ pour, isLast }: { pour: PhasedPour; isLast: boolean }) {
+function PourRow({ dict, pour, isLast }: { dict: Dict; pour: PhasedPour; isLast: boolean }) {
   const isStrength = pour.phase === "strength";
   return (
     <View style={styles.pourRow}>
@@ -156,22 +200,34 @@ function PourRow({ pour, isLast }: { pour: PhasedPour; isLast: boolean }) {
       <View style={styles.pourBody}>
         <View style={styles.pourTopLine}>
           <AppText variant="bodyMd" style={styles.pourTimestamp}>{formatSeconds(pour.atSeconds)}</AppText>
-          <AppText variant="labelSm">Pour {pour.index}</AppText>
+          <AppText variant="labelSm">{t(dict, "tools.phased.page.pourLabel", { n: pour.index })}</AppText>
         </View>
         <View style={styles.pourAmountRow}>
           <AppText variant="headlineMd" style={styles.pourAmount}>+{pour.pourG}g</AppText>
-          <AppText variant="bodyMd" style={styles.pourCumulative}>→ {pour.cumulativeG}g total</AppText>
+          <AppText variant="bodyMd" style={styles.pourCumulative}>
+            {t(dict, "tools.phased.page.pourCumulative", { g: pour.cumulativeG })}
+          </AppText>
         </View>
       </View>
     </View>
   );
 }
 
-function StepperButton({ label, onPress, disabled }: { label: string; onPress: () => void; disabled?: boolean }) {
+function StepperButton({
+  label,
+  a11yLabel,
+  onPress,
+  disabled,
+}: {
+  label: string;
+  a11yLabel: string;
+  onPress: () => void;
+  disabled?: boolean;
+}) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label === "+" ? "Increase strength-phase pours" : "Decrease strength-phase pours"}
+      accessibilityLabel={a11yLabel}
       accessibilityState={{ disabled }}
       disabled={disabled}
       hitSlop={6}
@@ -184,7 +240,7 @@ function StepperButton({ label, onPress, disabled }: { label: string; onPress: (
 }
 
 export const phasedTool: ToolModule = {
-  meta: { id: "phased", title: "4:6 Method", blurb: "Tetsu Kasuya 4:6", icon: PhasedGlyph, comingSoon: true },
+  meta: { id: "phased", icon: PhasedGlyph },
   Screen: PhasedScreen,
 };
 

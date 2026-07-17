@@ -14,8 +14,11 @@ export const BLOOM_END_S = 45;
 export type PourStep = {
   // Elapsed seconds from timer start when this step's pour begins.
   atSeconds: number;
-  // Human label shown as the active instruction, e.g. "Bloom" / "Pour 1".
-  label: string;
+  // What kind of step this is — the UI layer resolves this (+ pourNumber) to a localized
+  // instruction label, e.g. "Bloom" / "Pour 1". Kept as an id here so this stays pure/locale-free.
+  kind: "bloom" | "pour";
+  // 1-based main-pour number. Present only when kind === "pour".
+  pourNumber?: number;
   // Cumulative water on the scale the brewer should reach by the END of this pour (grams).
   cumulativeTargetG: number;
 };
@@ -89,12 +92,13 @@ export function buildPourSchedule(input: PourScheduleInput): PourSchedule {
   const perPour = mainWater / mainPours;
 
   const steps: PourStep[] = [
-    { atSeconds: 0, label: "Bloom", cumulativeTargetG: roundG(bloomWater) },
+    { atSeconds: 0, kind: "bloom", cumulativeTargetG: roundG(bloomWater) },
   ];
   for (let k = 1; k <= mainPours; k++) {
     steps.push({
       atSeconds: bloomTimeS + (k - 1) * pourIntervalS,
-      label: mainPours === 1 ? "Pour" : `Pour ${k}`,
+      kind: "pour",
+      pourNumber: k,
       // Cumulative target after bloom + k main pours. The last pour lands exactly on
       // totalWater by construction (bloomWater + perPour × mainPours = totalWater), so we
       // pin k === mainPours to the rounded total and avoid float drift on the finish target.

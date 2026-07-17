@@ -13,6 +13,7 @@ import { HankenGrotesk_500Medium } from "@expo-google-fonts/hanken-grotesk/500Me
 import { HankenGrotesk_600SemiBold } from "@expo-google-fonts/hanken-grotesk/600SemiBold";
 import { HankenGrotesk_700Bold } from "@expo-google-fonts/hanken-grotesk/700Bold";
 import { RootNavigator } from "./src/navigation/RootNavigator";
+import { LocaleProvider } from "./src/i18n/LocaleProvider";
 import { QvacProvider } from "./src/qvac/QvacProvider";
 import { AppModalProvider } from "./src/components/ui";
 import { AiOnboardingModal } from "./src/components/AiOnboardingModal";
@@ -36,15 +37,17 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <QvacProvider>
-        <AppModalProvider>
-          <NavigationContainer>
-            <RootNavigator />
-            <StatusBar style="light" />
-          </NavigationContainer>
-          <AiOnboardingModal />
-        </AppModalProvider>
-      </QvacProvider>
+      <LocaleProvider>
+        <QvacProvider>
+          <AppModalProvider>
+            <NavigationContainer>
+              <RootNavigator />
+              <StatusBar style="light" />
+            </NavigationContainer>
+            <AiOnboardingModal />
+          </AppModalProvider>
+        </QvacProvider>
+      </LocaleProvider>
     </SafeAreaProvider>
   );
 }

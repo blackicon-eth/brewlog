@@ -1,6 +1,8 @@
 import type { Brew } from "../models/types";
 import { formatRatio } from "./ratio";
 import { methodSpec } from "./brewMethods";
+import { methodPromptLabel } from "./i18n/labels";
+import { dayLabel, type DayLabels } from "./brewedAt";
 
 const DAY_MS = 86_400_000;
 
@@ -12,7 +14,6 @@ export function formatSeconds(totalSeconds: number | null | undefined): string {
 }
 
 export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-export const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 
@@ -22,24 +23,16 @@ export function dayKey(ts: number): string {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
-// Ledger day header: "Today" / "Yesterday" / "Wed, 2 Jul" (year appended when it isn't
-// the current year, e.g. "Wed, 2 Jul 2025").
-export function formatDayHeader(ts: number, now: number = Date.now()): string {
-  const d = new Date(ts);
-  const n = new Date(now);
-  const diffDays = Math.round((startOfDay(n) - startOfDay(d)) / DAY_MS);
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  const base = `${WEEKDAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]}`;
-  return d.getFullYear() === n.getFullYear() ? base : `${base} ${d.getFullYear()}`;
-}
-
 export type BrewDaySection<T extends { brewedAt: number }> = { key: string; title: string; data: T[] };
 
 // Groups brews into per-day sections, preserving the input order (which the DB returns
-// newest-first) so both the sections and the rows within them read newest → oldest.
+// newest-first) so both the sections and the rows within them read newest → oldest. The
+// section title is rendered in the active locale via brewedAt.ts's `dayLabel` — `labels`
+// carries the caller's "Today"/"Yesterday" copy plus an Intl locale tag (see
+// `src/lib/i18n/labels.ts` brewedAtDayLabels), keeping this file itself dictionary-free.
 export function groupBrewsByDay<T extends { brewedAt: number }>(
   brews: T[],
+  labels: DayLabels,
   now: number = Date.now()
 ): BrewDaySection<T>[] {
   const sections: BrewDaySection<T>[] = [];
@@ -48,7 +41,7 @@ export function groupBrewsByDay<T extends { brewedAt: number }>(
     const key = dayKey(b.brewedAt);
     let section = byKey.get(key);
     if (!section) {
-      section = { key, title: formatDayHeader(b.brewedAt, now), data: [] };
+      section = { key, title: dayLabel(b.brewedAt, now, labels), data: [] };
       byKey.set(key, section);
       sections.push(section);
     }
@@ -80,7 +73,7 @@ export function daysOffRoast(roastDate: string | null | undefined, now: number =
 export function formatBrewLine(brew: Brew, index: number): string {
   const spec = methodSpec(brew.method);
   const out = brew.method === "espresso" ? " out" : "";
-  const parts: string[] = [`${index}) ${spec.label}`];
+  const parts: string[] = [`${index}) ${methodPromptLabel(spec.id)}`];
   parts.push(`${brew.doseG}g:${brew.waterG}g${out} (${formatRatio(brew.ratio)})`);
   if (brew.grind) parts.push(`grind ${brew.grind}`);
   if (brew.waterTempC != null) parts.push(`${brew.waterTempC}C`);
@@ -115,7 +108,7 @@ export function formatBrewDetail(brew: Brew): string {
 }
 
 // "today" for the same calendar day, else "Nd ago" — calendar-day difference (matching
-// formatDayHeader), not raw 24h chunks. Used in the chat ledger context lines.
+// groupBrewsByDay's bucketing), not raw 24h chunks. Used in the chat ledger context lines.
 export function formatDaysAgo(ts: number, now: number = Date.now()): string {
   const diffDays = Math.round((startOfDay(new Date(now)) - startOfDay(new Date(ts))) / DAY_MS);
   return diffDays <= 0 ? "today" : `${diffDays}d ago`;

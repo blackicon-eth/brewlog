@@ -4,12 +4,12 @@ import { polygonEdges, radarPoints, ringPoints, scanlineFill } from "../../lib/r
 import { colors, fonts, motion } from "../../design/tokens";
 
 export type TasteRadarProps = {
-  // Axis order is fixed: Acidity, Sweetness, Bitterness, Body, Clarity (1–5, null = unrated).
+  // Axis order is fixed: acidity, sweetness, bitterness, body, clarity (1–5, null = unrated).
   values: Array<number | null>;
+  // Display names for the axes, same order as `values` (localized by the caller).
+  labels: readonly string[];
   size?: number;
 };
-
-const AXES = ["Acidity", "Sweetness", "Bitterness", "Body", "Clarity"] as const;
 // The shape's wash: coffee-cherry ink at watercolor strength (tertiary #ab0b18).
 const FILL_INK = "rgba(171,11,24,0.10)";
 const MAX = 5;
@@ -44,7 +44,7 @@ function Line({ cx, cy, length, angleDeg, thickness, color }: {
 // quiet spokes, and the brew's own shape inked in coffee-cherry on top — the color the
 // ledger reserves for flavor. Unrated axes collapse to the center and dim their label.
 // One gentle settle-in on mount; nothing loops.
-export function TasteRadar({ values, size = 280 }: TasteRadarProps) {
+export function TasteRadar({ values, labels, size = 280 }: TasteRadarProps) {
   // The plot is a `size` square, but the component claims the full row width so the
   // side labels have air beyond the square instead of being clamped onto the rings.
   const [w, setW] = useState(size);
@@ -64,13 +64,13 @@ export function TasteRadar({ values, size = 280 }: TasteRadarProps) {
   const points = radarPoints(values, MAX, radius, cx, cy);
   const shape = polygonEdges(points);
   const fill = scanlineFill(points, 3);
-  const labelAnchors = ringPoints(AXES.length, 1, radius + 32, cx, cy);
+  const labelAnchors = ringPoints(labels.length, 1, radius + 32, cx, cy);
 
   return (
     <View style={{ width: "100%", height: size }} onLayout={onLayout}>
       {/* Graph paper: five ruled pentagons + a spoke to each vertex. */}
       {RINGS.map((f, r) =>
-        polygonEdges(ringPoints(AXES.length, f, radius, cx, cy)).map((e, i) => (
+        polygonEdges(ringPoints(labels.length, f, radius, cx, cy)).map((e, i) => (
           <Line
             key={`ring${r}-${i}`}
             {...e}
@@ -79,7 +79,7 @@ export function TasteRadar({ values, size = 280 }: TasteRadarProps) {
           />
         )),
       )}
-      {ringPoints(AXES.length, 1, radius, cx, cy).map((p, i) => (
+      {ringPoints(labels.length, 1, radius, cx, cy).map((p, i) => (
         <Line
           key={`spoke${i}`}
           cx={(cx + p.x) / 2}
@@ -136,9 +136,9 @@ export function TasteRadar({ values, size = 280 }: TasteRadarProps) {
             top: Math.min(Math.max(p.y - LABEL_H / 2, 0), size - LABEL_H),
           }]}
         >
-          <Text style={[styles.labelText, values[i] == null && styles.labelMuted]}>{AXES[i]}</Text>
+          <Text style={[styles.labelText, values[i] == null && styles.labelMuted]}>{labels[i]}</Text>
           <Text style={[styles.labelValue, values[i] == null && styles.labelMuted]}>
-            {values[i] == null ? "—" : values[i]}
+            {values[i] == null ? "-" : values[i]}
           </Text>
         </View>
       ))}

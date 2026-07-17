@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { AppText } from "./AppText";
 import { chunkPlainText } from "../../lib/markdownLite";
+import { useI18n } from "../../i18n/LocaleProvider";
 import { colors, fonts, radii, spacing } from "../../design/tokens";
 
 export type ReasoningDisclosureProps = {
@@ -20,12 +21,13 @@ const TraceChunk = React.memo(function TraceChunk({ text }: { text: string }) {
 // star; the thinking is a quiet inset note with a left rule, in muted italic.
 export const ReasoningDisclosure = React.memo(function ReasoningDisclosure({ text }: ReasoningDisclosureProps) {
   const [open, setOpen] = useState(false);
+  const { t } = useI18n();
   return (
     <View style={styles.wrap}>
       <Pressable onPress={() => setOpen((o) => !o)} hitSlop={6} style={styles.toggle}>
         <AppText variant="labelMd" style={styles.caret}>{open ? "▾" : "▸"}</AppText>
         <AppText variant="labelMd" style={styles.toggleText}>
-          {open ? "Hide reasoning" : "Show reasoning"}
+          {open ? t("advisor.hideReasoning") : t("advisor.showReasoning")}
         </AppText>
       </Pressable>
       {open ? (

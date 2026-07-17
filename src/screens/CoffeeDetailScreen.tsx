@@ -10,9 +10,12 @@ import { getCoffee } from "../db/coffees";
 import { listBrewsForCoffee } from "../db/brews";
 import { listPhotosForCoffee } from "../db/coffeePhotos";
 import type { Brew, Coffee, CoffeePhoto } from "../models/types";
-import { formatRatio } from "../lib/ratio";
-import { formatSeconds, formatBrewDate, formatBrewTime } from "../lib/brewFormat";
+import { formatSeconds } from "../lib/brewFormat";
+import { formatRatioLocale, formatBrewDateLocale, formatBrewTimeLocale } from "../lib/i18n/format";
 import { methodSpec, defaultPickerMethod } from "../lib/brewMethods";
+import { methodShortLabel } from "../lib/i18n/labels";
+import type { Dict } from "../lib/i18n/en";
+import { useI18n } from "../i18n/LocaleProvider";
 import { AppText, BrewLogRow, Fab, Chevron, ClockIcon, ArchiveIcon, BookIcon, PhotoViewer, useAppModal } from "../components/ui";
 import { colors, motion, radii, spacing, screenTopGap } from "../design/tokens";
 
@@ -23,9 +26,9 @@ type Rt = RouteProp<RootStackParamList, "CoffeeDetail">;
 const GRIND_MAX = 12;
 const truncate = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s);
 
-function brewMeta(b: Brew): string {
+function brewMeta(dict: Dict, b: Brew): string {
   return [
-    methodSpec(b.method).shortLabel,
+    methodShortLabel(dict, methodSpec(b.method).id),
     b.grind ? truncate(b.grind, GRIND_MAX) : null,
     b.waterTempC != null ? `${b.waterTempC}°C` : null,
     b.totalTimeS != null ? formatSeconds(b.totalTimeS) : null,
@@ -37,6 +40,7 @@ export function CoffeeDetailScreen() {
   const insets = useSafeAreaInsets();
   const { params } = useRoute<Rt>();
   const modal = useAppModal();
+  const { t, dict, locale } = useI18n();
   const [coffee, setCoffee] = useState<Coffee | null>(null);
   const [brews, setBrews] = useState<Brew[]>([]);
   const [photos, setPhotos] = useState<CoffeePhoto[]>([]);
@@ -51,15 +55,15 @@ export function CoffeeDetailScreen() {
         setBrews(await listBrewsForCoffee(db, params.coffeeId));
         setPhotos(await listPhotosForCoffee(db, params.coffeeId));
       } catch (e: any) {
-        modal.alert("Couldn't load coffee", String(e?.message ?? e));
+        modal.alert(t("coffeeDetail.loadErrorTitle"), String(e?.message ?? e));
       }
     })();
-  }, [params.coffeeId, modal]);
+  }, [params.coffeeId, modal, t]);
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const hasBrews = brews.length > 0;
   const tags = coffee
-    ? [coffee.process, coffee.roastLevel ? `${coffee.roastLevel} roast` : null, coffee.origin].filter(Boolean).join(" · ")
+    ? [coffee.process, coffee.roastLevel ? t("coffeeDetail.roastTag", { level: coffee.roastLevel }) : null, coffee.origin].filter(Boolean).join(" · ")
     : "";
 
   // "Recent" = most-recently brewed first (the DB's default order); "Top rated" = highest
@@ -99,7 +103,7 @@ export function CoffeeDetailScreen() {
             onPress={() => coffee && nav.navigate("CoffeeForm", { coffeeId: coffee.id })}
             style={styles.editBtn}
           >
-            <AppText variant="labelMd" style={styles.editText}>Edit</AppText>
+            <AppText variant="labelMd" style={styles.editText}>{t("common.edit")}</AppText>
           </Pressable>
         </View>
 
@@ -108,7 +112,7 @@ export function CoffeeDetailScreen() {
           {coffee?.archived ? (
             <View style={styles.archivedBadge}>
               <ArchiveIcon size={12} color={colors.onSurfaceVariant} thickness={1.4} />
-              <AppText variant="labelSm" style={styles.archivedText}>Archived</AppText>
+              <AppText variant="labelSm" style={styles.archivedText}>{t("coffeeDetail.archived")}</AppText>
             </View>
           ) : null}
         </View>
@@ -118,7 +122,7 @@ export function CoffeeDetailScreen() {
             onPress={() => nav.navigate("Recipe", { coffeeId: params.coffeeId, method: defaultPickerMethod(brews) })}
             style={styles.recipeBtn}
             accessibilityRole="button"
-            accessibilityLabel="Recipes"
+            accessibilityLabel={t("coffeeDetail.recipesA11y")}
           >
             <BookIcon size={26} thickness={1.4} color={colors.onSurfaceVariant} />
           </Pressable>
@@ -137,7 +141,7 @@ export function CoffeeDetailScreen() {
                 key={p.id}
                 onPress={() => setViewerUri(p.uri)}
                 accessibilityRole="imagebutton"
-                accessibilityLabel="View photo"
+                accessibilityLabel={t("coffeeDetail.viewPhotoA11y")}
               >
                 <Image source={{ uri: p.uri }} style={styles.photoThumb} resizeMode="cover" />
               </Pressable>
@@ -147,13 +151,13 @@ export function CoffeeDetailScreen() {
 
         {hasBrews ? (
           <View style={styles.historyRow}>
-            <AppText variant="labelMd">Brew history</AppText>
+            <AppText variant="labelMd">{t("coffeeDetail.brewHistory")}</AppText>
             <View style={styles.sortGroup}>
               <Pressable
                 onPress={() => setSort("recent")}
                 hitSlop={8}
                 accessibilityRole="button"
-                accessibilityLabel="Sort by most recent"
+                accessibilityLabel={t("coffeeDetail.sortRecentA11y")}
                 accessibilityState={{ selected: sort === "recent" }}
                 style={[styles.sortChip, sort === "recent" && styles.sortChipActive]}
               >
@@ -163,7 +167,7 @@ export function CoffeeDetailScreen() {
                 onPress={() => setSort("rating")}
                 hitSlop={8}
                 accessibilityRole="button"
-                accessibilityLabel="Sort by top rated"
+                accessibilityLabel={t("coffeeDetail.sortRatingA11y")}
                 accessibilityState={{ selected: sort === "rating" }}
                 style={[styles.sortChip, sort === "rating" && styles.sortChipActive]}
               >
@@ -189,18 +193,18 @@ export function CoffeeDetailScreen() {
           ItemSeparatorComponent={() => <View style={styles.hairline} />}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <AppText variant="headlineMd" style={styles.emptyTitle}>No brews logged yet</AppText>
+              <AppText variant="headlineMd" style={styles.emptyTitle}>{t("coffeeDetail.emptyTitle")}</AppText>
               <AppText variant="bodyMd" style={styles.emptyBody}>
-                Log your first pour to start dialing this coffee in.
+                {t("coffeeDetail.emptyBody")}
               </AppText>
             </View>
           }
           renderItem={({ item }) => (
             <BrewLogRow
-              date={`${formatBrewDate(item.brewedAt)} · ${formatBrewTime(item.brewedAt)}`}
+              date={`${formatBrewDateLocale(item.brewedAt, locale)} · ${formatBrewTimeLocale(item.brewedAt, locale)}`}
               recipe={`${item.doseG}g : ${item.waterG}g`}
-              ratio={formatRatio(item.ratio)}
-              meta={brewMeta(item)}
+              ratio={formatRatioLocale(item.ratio, locale)}
+              meta={brewMeta(dict, item)}
               rating={item.rating ?? null}
               onPress={() => nav.navigate("BrewDetail", { coffeeId: params.coffeeId, brewId: item.id })}
             />
@@ -209,7 +213,7 @@ export function CoffeeDetailScreen() {
       </Animated.View>
       {/* No new brews for a finished bag — its past brews still live in the ledger. */}
       {coffee && !coffee.archived ? (
-        <Fab label="Log brew" onPress={() => nav.navigate("BrewForm", { coffeeId: params.coffeeId })} />
+        <Fab label={t("coffeeDetail.logBrew")} onPress={() => nav.navigate("BrewForm", { coffeeId: params.coffeeId })} />
       ) : null}
 
       <PhotoViewer uri={viewerUri} onClose={() => setViewerUri(null)} />

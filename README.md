@@ -15,11 +15,13 @@ the best recipe per bean. Everything runs locally — no cloud, no account.
   coffee/brew forms, per-brew **Diagnose**, and a **Best recipe** per bean. A model
   picker in Settings offers Qwen3 0.6B–4B and Llama 3.2 1B; models too big for the
   device's RAM are disabled.
-- **Tools** — deterministic offline calculators: **Brew Ratio** and a guided **Brew
-  Timer** live today; Extraction Yield, 4:6 Method, and Coffee Compass are built but
-  gated behind "coming soon" cards.
+- **Tools** — deterministic offline calculators: **Brew Ratio**, a guided **Brew
+  Timer**, and the **4:6 Method** planner live today; Extraction Yield and Coffee
+  Compass are built but gated behind "coming soon" cards.
 - **Your data** — export the whole ledger (coffees, brews, photos, and recipes) to a
   versioned JSON file and import it back (validated, all-or-nothing replace).
+- **Two languages** — English and Italian, switchable live in Settings (first launch
+  follows the device locale). The assistant itself always speaks English.
 
 ## Requirements
 

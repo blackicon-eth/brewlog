@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -8,16 +8,16 @@ import type { RootStackParamList } from "../navigation/types";
 import { getDb } from "../db/database";
 import { listRecipes } from "../db/recipes";
 import type { Recipe } from "../models/types";
-import { formatRatio } from "../lib/ratio";
-import { METHODS, methodSpec, type BrewMethodId } from "../lib/brewMethods";
+import { formatRatioLocale } from "../lib/i18n/format";
+import { methodSpec, type BrewMethodId } from "../lib/brewMethods";
+import { methodLabel, methodWaterLabel, methodRatioNoun, methodOptions } from "../lib/i18n/labels";
+import { useI18n } from "../i18n/LocaleProvider";
 import { useQvac } from "../qvac/QvacProvider";
 import { AppText, PillButton, ChipSelect, Chevron, useAppModal } from "../components/ui";
 import { colors, fonts, spacing, screenTopGap } from "../design/tokens";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "Recipe">;
 type Rt = RouteProp<RootStackParamList, "Recipe">;
-
-const METHOD_OPTIONS = METHODS.map((m) => ({ label: m.label, value: m.id }));
 
 // One read-only spec line: label on the left, value pushed right (same ruled look as BrewDetail).
 function Field({ label, value }: { label: string; value: string }) {
@@ -35,6 +35,7 @@ export function RecipeScreen() {
   const { params } = useRoute<Rt>();
   const modal = useAppModal();
   const { aiEnabled } = useQvac();
+  const { dict, t, locale } = useI18n();
 
   const [method, setMethod] = useState<BrewMethodId>(params.method ?? "filter");
   // All of this coffee's pages, keyed by method — fetched once per focus so switching
@@ -43,6 +44,7 @@ export function RecipeScreen() {
   const [loaded, setLoaded] = useState(false);
 
   const spec = methodSpec(method);
+  const methodOptionsList = useMemo(() => methodOptions(dict), [dict]);
 
   // Reload the whole set on focus, so edits made on the edit screen show on return. This is
   // a stack screen, so focus events fire. Method switching reads from state, not the DB.
@@ -56,11 +58,11 @@ export function RecipeScreen() {
           setByMethod(Object.fromEntries(all.map((r) => [r.method, r])));
           setLoaded(true);
         } catch (e: any) {
-          if (alive) modal.alert("Couldn't load the recipe", String(e?.message ?? e));
+          if (alive) modal.alert(t("recipes.loadErrorTitle"), String(e?.message ?? e));
         }
       })();
       return () => { alive = false; };
-    }, [params.coffeeId, modal]),
+    }, [params.coffeeId, modal, t]),
   );
 
   const recipe = byMethod[method] ?? null;
@@ -71,10 +73,12 @@ export function RecipeScreen() {
   // appear here only when there isn't a complete pair to headline.
   const rows: [string, string][] = recipe
     ? ([
-        !bothAmounts && recipe.doseG != null ? ["Dose", `${recipe.doseG} g`] : null,
-        !bothAmounts && recipe.waterG != null ? [spec.waterLabel.replace(" (g)", ""), `${recipe.waterG} g`] : null,
-        recipe.grind ? ["Grind", recipe.grind] : null,
-        spec.showTemp && recipe.waterTempC != null ? ["Water temp", `${recipe.waterTempC} °C`] : null,
+        !bothAmounts && recipe.doseG != null ? [t("recipes.doseRowLabel"), `${recipe.doseG} g`] : null,
+        // methodWaterLabel is "Water (g)"/"Yield (g)" (IT: "Acqua (g)"/"Resa (g)") — stripping
+        // the trailing " (g)" works in both locales since the unit suffix format matches.
+        !bothAmounts && recipe.waterG != null ? [methodWaterLabel(dict, spec.id).replace(" (g)", ""), `${recipe.waterG} g`] : null,
+        recipe.grind ? [t("recipes.grindLabel"), recipe.grind] : null,
+        spec.showTemp && recipe.waterTempC != null ? [t("recipes.waterTempRowLabel"), `${recipe.waterTempC} °C`] : null,
       ].filter(Boolean) as [string, string][])
     : [];
 
@@ -93,13 +97,13 @@ export function RecipeScreen() {
               onPress={() => nav.navigate("RecipeEdit", { coffeeId: params.coffeeId, method })}
               style={styles.editBtn}
               accessibilityRole="button"
-              accessibilityLabel={exists ? "Edit recipe" : "Add recipe"}
+              accessibilityLabel={exists ? t("recipes.editA11y") : t("recipes.addA11y")}
             >
-              <AppText variant="labelMd" style={styles.editText}>{exists ? "Edit" : "Add"}</AppText>
+              <AppText variant="labelMd" style={styles.editText}>{exists ? t("common.edit") : t("common.add")}</AppText>
             </Pressable>
           ) : null}
         </View>
-        <AppText variant="headlineLg" style={styles.title}>Recipes</AppText>
+        <AppText variant="headlineLg" style={styles.title}>{t("recipes.title")}</AppText>
       </View>
 
       <ScrollView
@@ -108,8 +112,8 @@ export function RecipeScreen() {
       >
         <ChipSelect
           style={styles.methods}
-          label="Method"
-          options={METHOD_OPTIONS}
+          label={t("recipes.methodLabel")}
+          options={methodOptionsList}
           value={method}
           onChange={(v) => setMethod(v as BrewMethodId)}
           clearable={false}
@@ -121,7 +125,7 @@ export function RecipeScreen() {
             {bothAmounts ? (
               <View style={styles.hero}>
                 <AppText variant="headlineLg" style={styles.heroAmounts}>{`${recipe!.doseG}g : ${recipe!.waterG}g`}</AppText>
-                <AppText variant="labelMd" style={styles.heroCaption}>{`${formatRatio(recipe!.waterG! / recipe!.doseG!)} · ${spec.ratioNoun}`}</AppText>
+                <AppText variant="labelMd" style={styles.heroCaption}>{`${formatRatioLocale(recipe!.waterG! / recipe!.doseG!, locale)} · ${methodRatioNoun(dict, spec.id)}`}</AppText>
               </View>
             ) : null}
 
@@ -133,21 +137,23 @@ export function RecipeScreen() {
 
             {recipe!.notes ? (
               <View style={styles.section}>
-                <AppText variant="labelMd" style={styles.sectionTitle}>Notes</AppText>
+                <AppText variant="labelMd" style={styles.sectionTitle}>{t("recipes.notesLabel")}</AppText>
                 <AppText variant="bodyLg" style={styles.notes}>{recipe!.notes}</AppText>
               </View>
             ) : null}
 
             {/* A saved page with every field blank still has a "here" to stand on. */}
             {!bothAmounts && rows.length === 0 && !recipe!.notes ? (
-              <AppText variant="bodyMd" style={styles.blank}>This page is blank — tap Edit to fill it in.</AppText>
+              <AppText variant="bodyMd" style={styles.blank}>{t("recipes.blank")}</AppText>
             ) : null}
           </>
         ) : (
           <View style={styles.empty}>
-            <AppText variant="headlineMd" style={styles.emptyTitle}>No {spec.label.toLowerCase()} recipe yet</AppText>
+            <AppText variant="headlineMd" style={styles.emptyTitle}>
+              {t("recipes.emptyTitle", { method: methodLabel(dict, spec.id).toLowerCase() })}
+            </AppText>
             <AppText variant="bodyMd" style={styles.emptyBody}>
-              Tap Add to keep the dose, grind, and notes you settle on for this method.
+              {t("recipes.emptyBody")}
             </AppText>
           </View>
         )}
@@ -155,9 +161,9 @@ export function RecipeScreen() {
         {aiEnabled ? (
           <View style={styles.actions}>
             <PillButton
-              label="✦  Suggest with AI"
+              label={"✦  " + t("recipes.suggestWithAi")}
               variant="neutral"
-              onPress={() => nav.navigate("AdvisorResult", { kind: "bestRecipe", coffeeId: params.coffeeId, title: "Best recipe", method })}
+              onPress={() => nav.navigate("AdvisorResult", { kind: "bestRecipe", coffeeId: params.coffeeId, title: t("advisor.bestRecipeTitle"), method })}
             />
           </View>
         ) : null}

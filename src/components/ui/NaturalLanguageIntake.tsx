@@ -5,6 +5,7 @@ import { PillButton } from "./PillButton";
 import { Chevron } from "./Chevron";
 import { useQvac } from "../../qvac/QvacProvider";
 import type { ChatMessage } from "../../qvac/advisor";
+import { useI18n } from "../../i18n/LocaleProvider";
 import { colors, fonts, radii, spacing } from "../../design/tokens";
 
 export type NaturalLanguageIntakeProps<T> = {
@@ -22,6 +23,7 @@ export function NaturalLanguageIntake<T>({
   kicker, placeholder, buildPrompt, parse, onParsed, onManual,
 }: NaturalLanguageIntakeProps<T>) {
   const { status, prepare, runAdvice, aiEnabled } = useQvac();
+  const { t, dict } = useI18n();
   const [text, setText] = useState("");
   const [phase, setPhase] = useState<"idle" | "preparing" | "running" | "error">("idle");
   const [notice, setNotice] = useState("");
@@ -48,13 +50,13 @@ export function NaturalLanguageIntake<T>({
         if (canceled.current) return;
         const parsed = parse(buf.current);
         if (parsed && typeof parsed === "object" && Object.keys(parsed as Record<string, unknown>).length === 0) {
-          setNotice("Couldn't read that — try again, or enter manually.");
+          setNotice(dict.chat.intake.parseFailedNotice);
           setPhase("error");
         } else {
           onParsed(parsed);
         }
       })
-      .catch(() => { if (!canceled.current) { setNotice("Couldn't reach the advisor. Tap \"Enter manually\" below."); setPhase("error"); } })
+      .catch(() => { if (!canceled.current) { setNotice(dict.chat.intake.unreachableNotice); setPhase("error"); } })
       .finally(() => { running.current = false; });
   }
 
@@ -111,7 +113,7 @@ export function NaturalLanguageIntake<T>({
         <View style={styles.busyRow}>
           <ActivityIndicator color={colors.primary} />
           <AppText variant="bodyMd" style={styles.busyText}>
-            {phase === "preparing" ? "Preparing advisor…" : "Reading your description…"}
+            {phase === "preparing" ? dict.chat.intake.preparing : dict.chat.intake.reading}
           </AppText>
         </View>
       ) : null}
@@ -122,15 +124,15 @@ export function NaturalLanguageIntake<T>({
 
       <View style={styles.actions}>
         {busy ? (
-          <PillButton label="Stop" variant="danger" onPress={onStop} />
+          <PillButton label={t("chat.intake.stop")} variant="danger" onPress={onStop} />
         ) : (
-          <PillButton label="Autofill with AI" onPress={onAutofill} />
+          <PillButton label={t("chat.intake.autofill")} onPress={onAutofill} />
         )}
       </View>
 
       {!busy ? (
         <Pressable onPress={onManual} hitSlop={8} style={styles.manualBtn}>
-          <AppText variant="labelMd" style={styles.manual}>Enter manually</AppText>
+          <AppText variant="labelMd" style={styles.manual}>{t("chat.intake.enterManually")}</AppText>
           <Chevron direction="right" size={7} thickness={2} color={colors.onSurfaceVariant} />
         </Pressable>
       ) : null}

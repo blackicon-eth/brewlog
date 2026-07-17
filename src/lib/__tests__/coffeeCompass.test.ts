@@ -15,7 +15,6 @@ describe("axis classification", () => {
     expect(v.exAxis).toBe("ideal");
     expect(v.strAxis).toBe("ideal");
     expect(v.ideal).toBe(true);
-    expect(v.title).toBe("Dialed in");
   });
 
   it("treats the target-band boundaries as inclusive (ideal)", () => {
@@ -46,28 +45,33 @@ describe("axis classification", () => {
   });
 });
 
+// Verdict copy (title/advice per cell) now lives in the dictionary, resolved via
+// `compassCellText` in src/lib/i18n/labels.ts — see src/lib/i18n/__tests__/labels.test.ts
+// for coverage that the text itself is right. This lib only needs to classify correctly.
 describe("combined verdict cells", () => {
-  it("under + weak → sour & watery, fix mentions grind finer and more coffee", () => {
+  it("under + weak → not ideal", () => {
     const v = classify(15, 1.1);
-    expect(v.title).toBe("Sour & watery");
-    expect(v.advice.toLowerCase()).toContain("finer");
-    expect(v.advice.toLowerCase()).toContain("more coffee");
+    expect(v.exAxis).toBe("under");
+    expect(v.strAxis).toBe("weak");
     expect(v.ideal).toBe(false);
   });
 
-  it("over + strong → bitter & heavy, fix mentions grind coarser and cut coffee", () => {
+  it("over + strong → not ideal", () => {
     const v = classify(24, 1.45);
-    expect(v.title).toBe("Bitter & heavy");
-    expect(v.advice.toLowerCase()).toContain("coarser");
-    expect(v.advice.toLowerCase()).toContain("cut coffee");
+    expect(v.exAxis).toBe("over");
+    expect(v.strAxis).toBe("strong");
+    expect(v.ideal).toBe(false);
   });
 
-  it("covers all nine cells with distinct titles", () => {
+  it("covers all nine distinct (exAxis, strAxis) cells", () => {
     const eys = [15, 20, 24];
     const tdss = [1.1, 1.25, 1.45];
-    const titles = new Set<string>();
-    for (const ey of eys) for (const tds of tdss) titles.add(classify(ey, tds).title);
-    expect(titles.size).toBe(9);
+    const cells = new Set<string>();
+    for (const ey of eys) for (const tds of tdss) {
+      const v = classify(ey, tds);
+      cells.add(`${v.exAxis}-${v.strAxis}`);
+    }
+    expect(cells.size).toBe(9);
   });
 });
 

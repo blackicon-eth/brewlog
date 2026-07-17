@@ -19,7 +19,8 @@ describe("buildPourSchedule", () => {
       expect(schedule.bloomWater).toBe(60);
       const bloom = schedule.steps[0];
       expect(bloom.atSeconds).toBe(0);
-      expect(bloom.label).toBe("Bloom");
+      expect(bloom.kind).toBe("bloom");
+      expect(bloom.pourNumber).toBeUndefined();
       expect(bloom.cumulativeTargetG).toBe(60);
     });
 
@@ -42,7 +43,8 @@ describe("buildPourSchedule", () => {
 
     it("produces one step per pour plus the bloom", () => {
       expect(schedule.steps).toHaveLength(3); // bloom + 2 pours
-      expect(schedule.steps.map((s) => s.label)).toEqual(["Bloom", "Pour 1", "Pour 2"]);
+      expect(schedule.steps.map((s) => s.kind)).toEqual(["bloom", "pour", "pour"]);
+      expect(schedule.steps.map((s) => s.pourNumber)).toEqual([undefined, 1, 2]);
     });
 
     it("has a monotonically increasing cumulative target", () => {
@@ -81,9 +83,10 @@ describe("buildPourSchedule", () => {
       mainPours: 1,
       pourIntervalS: 45,
     });
-    it("is bloom + one pour, labelled 'Pour'", () => {
+    it("is bloom + one pour", () => {
       expect(schedule.steps).toHaveLength(2);
-      expect(schedule.steps[1].label).toBe("Pour");
+      expect(schedule.steps[1].kind).toBe("pour");
+      expect(schedule.steps[1].pourNumber).toBe(1);
     });
     it("pours straight to the total after the bloom", () => {
       expect(schedule.steps[0].cumulativeTargetG).toBe(30); // 15 × 2

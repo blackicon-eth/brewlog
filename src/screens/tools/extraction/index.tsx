@@ -5,7 +5,7 @@ import { ToolPage } from "../ToolPage";
 import { usePersistedState } from "../../../hooks/usePersistedState";
 import type { ToolModule } from "../types";
 import { colors, fonts, radii, shadows, spacing } from "../../../design/tokens";
-import { formatRatio } from "../../../lib/ratio";
+import { formatRatioLocale, formatNumberLocale } from "../../../lib/i18n/format";
 import {
   extractionYield,
   estimateBeverageG,
@@ -17,6 +17,10 @@ import {
   EY_IDEAL_MAX,
   type EyBand,
 } from "../../../lib/extraction";
+import { useI18n } from "../../../i18n/LocaleProvider";
+import { t } from "../../../lib/i18n/t";
+import { toolTitle, extractionBandText } from "../../../lib/i18n/labels";
+import type { Dict } from "../../../lib/i18n/en";
 import { ExtractionGlyph } from "./ExtractionGlyph";
 
 // How the beverage weight is known: measured on a scale (exact) vs estimated from the water
@@ -24,18 +28,20 @@ import { ExtractionGlyph } from "./ExtractionGlyph";
 // only to derive beverage weight, never straight into EY (that shortcut is refuted).
 type BevSource = "measured" | "estimate";
 
-const BEV_OPTIONS: { key: BevSource; label: string }[] = [
-  { key: "measured", label: "Weighed cup" },
-  { key: "estimate", label: "Estimate" },
-];
+function bevOptions(dict: Dict): { key: BevSource; label: string }[] {
+  return [
+    { key: "measured", label: t(dict, "tools.extraction.page.weighedCup") },
+    { key: "estimate", label: t(dict, "tools.extraction.page.estimateOption") },
+  ];
+}
 
-// Per-band presentation: the hero number's color, the verdict chip's tone, and its copy.
-// In-band reads calm action-blue; out-of-band reads coffee-cherry (the app's alert accent).
-const BANDS: Record<EyBand, { tint: string; verdict: string; note: string }> = {
-  under: { tint: colors.tertiary, verdict: "Under-extracted", note: "Sour · under-developed. Grind finer or extend contact." },
-  ideal: { tint: colors.primary, verdict: "Balanced", note: "Sweet spot. Clarity and sweetness in balance." },
-  over: { tint: colors.tertiary, verdict: "Over-extracted", note: "Bitter · drying. Grind coarser or shorten contact." },
-};
+// Per-band presentation: the hero number's color (in-band reads calm action-blue,
+// out-of-band reads coffee-cherry), plus the verdict/note copy resolved from the dictionary.
+const BAND_TINTS: Record<EyBand, string> = { under: colors.tertiary, ideal: colors.primary, over: colors.tertiary };
+
+function bandFace(dict: Dict, b: EyBand): { tint: string; verdict: string; note: string } {
+  return { tint: BAND_TINTS[b], ...extractionBandText(dict, b) };
+}
 
 // Parses a decimal-pad string to a finite positive number, else 0 — guards the NaN a stray
 // "." or empty field would otherwise leak into every readout while typing.
@@ -49,6 +55,8 @@ function toNumber(text: string): number {
 // extraction-yield %: the hero number, color-banded and captioned with a taste verdict, over
 // a strip of the derived numbers (strength, ratio, dissolved solids, water retained).
 function ExtractionScreen() {
+  const { dict, locale } = useI18n();
+  const BEV_OPTIONS = bevOptions(dict);
   const [bevSource, setBevSource] = usePersistedState<BevSource>("tool:extraction:bevSource", "measured");
   const [doseText, setDoseText] = usePersistedState("tool:extraction:dose", "18");
   const [tdsText, setTdsText] = usePersistedState("tool:extraction:tds", "1.35");
@@ -73,7 +81,7 @@ function ExtractionScreen() {
 
   const ready = ey > 0;
   const b = ready ? band(ey) : "ideal";
-  const face = BANDS[b];
+  const face = bandFace(dict, b);
 
   // Derived readouts for the metrics strip. Ratio only makes sense when water is known
   // (both modes can have it), retained water only when both water and beverage are present.
@@ -90,9 +98,9 @@ function ExtractionScreen() {
     : 0;
 
   return (
-    <ToolPage title="Extraction Yield" subtitle="Refractometer → extraction %">
+    <ToolPage title={toolTitle(dict, "extraction")} subtitle={t(dict, "tools.extraction.page.subtitle")}>
       {/* Beverage-weight source */}
-      <AppText variant="labelMd" style={styles.sectionLabel}>Cup weight</AppText>
+      <AppText variant="labelMd" style={styles.sectionLabel}>{t(dict, "tools.extraction.page.cupWeightLabel")}</AppText>
       <View style={styles.segment}>
         {BEV_OPTIONS.map((opt) => {
           const active = bevSource === opt.key;
@@ -119,13 +127,13 @@ function ExtractionScreen() {
             <ExtractionGlyph size={26} color={face.tint} />
           </View>
           <AppText variant="labelSm" style={styles.heroLabel}>
-            {estimated ? "Extraction · est." : "Extraction yield"}
+            {estimated ? t(dict, "tools.extraction.page.extractionEst") : t(dict, "tools.extraction.page.extractionYieldLabel")}
           </AppText>
         </View>
 
         <View style={styles.heroValueRow}>
           <AppText style={[styles.heroValue, { color: ready ? face.tint : colors.outline }]}>
-            {ready ? ey.toFixed(1) : "—"}
+            {ready ? formatNumberLocale(ey, locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : "-"}
           </AppText>
           <AppText style={[styles.heroUnit, { color: ready ? face.tint : colors.outline }]}>%</AppText>
         </View>
@@ -133,7 +141,7 @@ function ExtractionScreen() {
         {/* Verdict chip */}
         <View style={[styles.verdictChip, { backgroundColor: ready ? face.tint : colors.surfaceContainer }]}>
           <AppText variant="labelSm" style={[styles.verdictText, { color: ready ? colors.onPrimary : colors.secondary }]}>
-            {ready ? face.verdict : "Enter a reading"}
+            {ready ? face.verdict : t(dict, "tools.extraction.page.enterReading")}
           </AppText>
         </View>
 
@@ -156,9 +164,11 @@ function ExtractionScreen() {
             ) : null}
           </View>
           <View style={styles.meterScale}>
-            <AppText variant="labelSm" style={styles.meterTick}>14</AppText>
-            <AppText variant="labelSm" style={styles.meterTickIdeal}>18–22 ideal</AppText>
-            <AppText variant="labelSm" style={styles.meterTick}>26</AppText>
+            <AppText variant="labelSm" style={styles.meterTick}>{METER_MIN}</AppText>
+            <AppText variant="labelSm" style={styles.meterTickIdeal}>
+              {t(dict, "tools.extraction.page.meterIdealLabel", { min: EY_IDEAL_MIN, max: EY_IDEAL_MAX })}
+            </AppText>
+            <AppText variant="labelSm" style={styles.meterTick}>{METER_MAX}</AppText>
           </View>
         </View>
       </View>
@@ -167,17 +177,23 @@ function ExtractionScreen() {
         <View style={styles.estBanner}>
           <View style={styles.estDot} />
           <AppText variant="bodyMd" style={styles.estText}>
-            Approximate — beverage weight estimated as water − dose × {DEFAULT_LRR.toFixed(1)} g/g absorbed
-            {beverage > 0 ? ` ≈ ${beverage.toFixed(0)} g in the cup.` : "."} Weigh the cup for an exact yield.
+            {beverage > 0
+              ? t(dict, "tools.extraction.page.approxBannerWithCup", {
+                  lrr: formatNumberLocale(DEFAULT_LRR, locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+                  g: beverage.toFixed(0),
+                })
+              : t(dict, "tools.extraction.page.approxBannerNoCup", {
+                  lrr: formatNumberLocale(DEFAULT_LRR, locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+                })}
           </AppText>
         </View>
       ) : null}
 
       {/* Inputs */}
-      <AppText variant="labelMd" style={[styles.sectionLabel, styles.inputsLabel]}>Measurements</AppText>
+      <AppText variant="labelMd" style={[styles.sectionLabel, styles.inputsLabel]}>{t(dict, "tools.extraction.page.measurementsLabel")}</AppText>
 
       <TextField
-        label="Dose (dry coffee)"
+        label={t(dict, "tools.extraction.page.doseFieldLabel")}
         value={doseText}
         onChangeText={setDoseText}
         placeholder="18"
@@ -186,7 +202,7 @@ function ExtractionScreen() {
       />
 
       <TextField
-        label="TDS % (refractometer)"
+        label={t(dict, "tools.extraction.page.tdsFieldLabel")}
         value={tdsText}
         onChangeText={setTdsText}
         placeholder="1.35"
@@ -196,7 +212,7 @@ function ExtractionScreen() {
 
       {estimated ? (
         <TextField
-          label="Water poured"
+          label={t(dict, "tools.extraction.page.waterPouredLabel")}
           value={waterText}
           onChangeText={setWaterText}
           placeholder="300"
@@ -206,7 +222,7 @@ function ExtractionScreen() {
       ) : (
         <>
           <TextField
-            label="Beverage weight (in the cup)"
+            label={t(dict, "tools.extraction.page.beverageWeightFieldLabel")}
             value={beverageText}
             onChangeText={setBeverageText}
             placeholder="264"
@@ -214,7 +230,7 @@ function ExtractionScreen() {
             keyboardType="decimal-pad"
           />
           <TextField
-            label="Water poured (optional — for ratio)"
+            label={t(dict, "tools.extraction.page.waterPouredOptionalLabel")}
             value={waterText}
             onChangeText={setWaterText}
             placeholder="300"
@@ -224,16 +240,22 @@ function ExtractionScreen() {
       )}
 
       {/* Derived metrics */}
-      <AppText variant="labelMd" style={[styles.sectionLabel, styles.inputsLabel]}>Derived</AppText>
+      <AppText variant="labelMd" style={[styles.sectionLabel, styles.inputsLabel]}>{t(dict, "tools.extraction.page.derivedLabel")}</AppText>
       <View style={styles.metricsCard}>
-        <MetricRow label="Strength (TDS)" value={tds > 0 ? `${tds.toFixed(2)} %` : "—"} />
-        <MetricRow label="Dissolved solids" value={solids > 0 ? `${solids.toFixed(2)} g` : "—"} />
-        <MetricRow label="Brew ratio" value={ratio > 0 ? formatRatio(ratio) : "—"} />
         <MetricRow
-          label={estimated ? "Beverage (est.)" : "Beverage weight"}
-          value={beverage > 0 ? `${beverage.toFixed(0)} g` : "—"}
+          label={t(dict, "tools.extraction.page.strengthTdsLabel")}
+          value={tds > 0 ? `${formatNumberLocale(tds, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %` : "-"}
         />
-        <MetricRow label="Water retained" value={retained > 0 ? `${retained.toFixed(0)} g` : "—"} last />
+        <MetricRow
+          label={t(dict, "tools.extraction.page.dissolvedSolidsLabel")}
+          value={solids > 0 ? `${formatNumberLocale(solids, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} g` : "-"}
+        />
+        <MetricRow label={t(dict, "tools.extraction.page.brewRatioLabel")} value={ratio > 0 ? formatRatioLocale(ratio, locale) : "-"} />
+        <MetricRow
+          label={estimated ? t(dict, "tools.extraction.page.beverageEstLabel") : t(dict, "tools.extraction.page.beverageWeightRowLabel")}
+          value={beverage > 0 ? `${beverage.toFixed(0)} g` : "-"}
+        />
+        <MetricRow label={t(dict, "tools.extraction.page.waterRetainedLabel")} value={retained > 0 ? `${retained.toFixed(0)} g` : "-"} last />
       </View>
     </ToolPage>
   );
@@ -251,7 +273,7 @@ function MetricRow({ label, value, last }: { label: string; value: string; last?
 }
 
 export const extractionTool: ToolModule = {
-  meta: { id: "extraction", title: "Extraction Yield", blurb: "TDS → extraction yield", icon: ExtractionGlyph, comingSoon: true },
+  meta: { id: "extraction", icon: ExtractionGlyph, comingSoon: true },
   Screen: ExtractionScreen,
 };
 

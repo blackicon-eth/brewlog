@@ -8,7 +8,9 @@ import type { RootStackParamList } from "../navigation/types";
 import { getDb } from "../db/database";
 import { getRecipe, upsertRecipe, deleteRecipe } from "../db/recipes";
 import { methodSpec } from "../lib/brewMethods";
-import { formatRatio } from "../lib/ratio";
+import { methodLabel, methodWaterLabel, methodDosePlaceholder, methodWaterPlaceholder } from "../lib/i18n/labels";
+import { useI18n } from "../i18n/LocaleProvider";
+import { formatRatioLocale } from "../lib/i18n/format";
 import { parseRecipeNumber, normalizeRecipeText } from "../lib/recipe";
 import { AppText, TextField, PillButton, Chevron, useAppModal } from "../components/ui";
 import { colors, spacing, screenTopGap } from "../design/tokens";
@@ -21,9 +23,11 @@ export function RecipeEditScreen() {
   const insets = useSafeAreaInsets();
   const { params } = useRoute<Rt>();
   const modal = useAppModal();
+  const { dict, t, locale } = useI18n();
 
   const method = params.method;
   const spec = methodSpec(method);
+  const label = methodLabel(dict, spec.id);
 
   const [exists, setExists] = useState(false);
   const [dose, setDose] = useState("");
@@ -46,15 +50,15 @@ export function RecipeEditScreen() {
         setTemp(r?.waterTempC != null ? String(r.waterTempC) : "");
         setNotes(r?.notes ?? "");
       } catch (e: any) {
-        if (alive) modal.alert("Couldn't load the recipe", String(e?.message ?? e));
+        if (alive) modal.alert(t("recipes.loadErrorTitle"), String(e?.message ?? e));
       }
     })();
     return () => { alive = false; };
-  }, [params.coffeeId, method, modal]);
+  }, [params.coffeeId, method, modal, t]);
 
   const doseN = parseRecipeNumber(dose);
   const waterN = parseRecipeNumber(water);
-  const ratioText = doseN != null && waterN != null && doseN > 0 && waterN > 0 ? formatRatio(waterN / doseN) : "—";
+  const ratioText = doseN != null && waterN != null && doseN > 0 && waterN > 0 ? formatRatioLocale(waterN / doseN, locale) : "-";
 
   const onSave = useCallback(async () => {
     try {
@@ -70,15 +74,15 @@ export function RecipeEditScreen() {
       });
       nav.goBack();
     } catch (e: any) {
-      modal.alert("Couldn't save the recipe", String(e?.message ?? e));
+      modal.alert(t("recipes.saveErrorTitle"), String(e?.message ?? e));
     }
-  }, [params.coffeeId, method, dose, water, grind, temp, notes, nav, modal]);
+  }, [params.coffeeId, method, dose, water, grind, temp, notes, nav, modal, t]);
 
   const onDelete = useCallback(async () => {
     const yes = await modal.confirm({
-      title: "Delete this recipe?",
-      message: `Your ${spec.label} recipe for this coffee will be removed.`,
-      confirmLabel: "Delete",
+      title: t("recipes.deleteConfirmTitle"),
+      message: t("recipes.deleteConfirmMessage", { method: label }),
+      confirmLabel: t("common.delete"),
       destructive: true,
     });
     if (!yes) return;
@@ -86,9 +90,9 @@ export function RecipeEditScreen() {
       await deleteRecipe(await getDb(), params.coffeeId, method);
       nav.goBack();
     } catch (e: any) {
-      modal.alert("Couldn't delete the recipe", String(e?.message ?? e));
+      modal.alert(t("recipes.deleteErrorTitle"), String(e?.message ?? e));
     }
-  }, [params.coffeeId, method, spec.label, nav, modal]);
+  }, [params.coffeeId, method, label, nav, modal, t]);
 
   return (
     // Whole screen inside the KAV (behavior "height" on Android, matching CoffeeForm/BrewForm)
@@ -104,25 +108,25 @@ export function RecipeEditScreen() {
         <Pressable onPress={() => nav.goBack()} hitSlop={10} style={styles.backBtn}>
           <Chevron direction="left" size={12} thickness={2.5} color={colors.onSurface} />
         </Pressable>
-        <AppText variant="headlineLg" style={styles.title}>{spec.label} recipe</AppText>
+        <AppText variant="headlineLg" style={styles.title}>{t("recipes.editorTitle", { method: label })}</AppText>
 
         <View style={styles.row}>
-          <TextField label="Dose (g)" value={dose} onChangeText={setDose} keyboardType="decimal-pad" placeholder={spec.dosePlaceholder} style={styles.col} />
-          <TextField label={spec.waterLabel} value={water} onChangeText={setWater} keyboardType="decimal-pad" placeholder={spec.waterPlaceholder} style={styles.col} />
+          <TextField label={t("recipes.doseFieldLabel")} value={dose} onChangeText={setDose} keyboardType="decimal-pad" placeholder={methodDosePlaceholder(spec.id)} style={styles.col} />
+          <TextField label={methodWaterLabel(dict, spec.id)} value={water} onChangeText={setWater} keyboardType="decimal-pad" placeholder={methodWaterPlaceholder(spec.id)} style={styles.col} />
         </View>
-        <AppText variant="labelMd" style={styles.ratio}>Ratio · {ratioText}</AppText>
+        <AppText variant="labelMd" style={styles.ratio}>{t("recipes.ratioLabel", { ratio: ratioText })}</AppText>
 
-        <TextField label="Grind" value={grind} onChangeText={setGrind} placeholder="medium-fine / 18 clicks" autoCapitalize="none" />
+        <TextField label={t("recipes.grindLabel")} value={grind} onChangeText={setGrind} placeholder={t("recipes.grindPlaceholder")} autoCapitalize="none" />
         {spec.showTemp ? (
-          <TextField label="Water temp (°C)" value={temp} onChangeText={setTemp} keyboardType="decimal-pad" placeholder="94" />
+          <TextField label={t("recipes.waterTempFieldLabel")} value={temp} onChangeText={setTemp} keyboardType="decimal-pad" placeholder="94" />
         ) : null}
-        <TextField label="Notes" value={notes} onChangeText={setNotes} placeholder="Pour cadence, taste, tweaks to try next time…" multiline />
+        <TextField label={t("recipes.notesLabel")} value={notes} onChangeText={setNotes} placeholder={t("recipes.notesPlaceholder")} multiline />
 
         <View style={styles.actions}>
-          <PillButton label="Save recipe" onPress={onSave} />
+          <PillButton label={t("recipes.saveRecipe")} onPress={onSave} />
           {exists ? (
             <Pressable onPress={onDelete} hitSlop={8} style={styles.deleteBtn}>
-              <AppText variant="labelMd" style={styles.deleteText}>Delete recipe</AppText>
+              <AppText variant="labelMd" style={styles.deleteText}>{t("recipes.deleteRecipe")}</AppText>
             </Pressable>
           ) : null}
         </View>

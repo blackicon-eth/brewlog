@@ -3,6 +3,7 @@ import { Animated, Easing, Image, Modal, Pressable, ScrollView, StyleSheet, Text
 import { AppText } from "./AppText";
 import { PillButton } from "./PillButton";
 import { useQvac } from "../../qvac/QvacProvider";
+import { useI18n } from "../../i18n/LocaleProvider";
 import { colors, fonts, motion, radii, spacing } from "../../design/tokens";
 
 // The advisor's badge — a little cupping bowl on the masthead. The assistant's state is
@@ -22,21 +23,22 @@ const POUR_BLUE = "#a3beea";
 
 export function AdvisorBadge() {
   const { status, progress, aiEnabled, retry } = useQvac();
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
 
   const state: BadgeState = !aiEnabled ? "off" : status;
   const a11y =
-    state === "off" ? "Assistant off" :
-      state === "downloading" ? `Assistant downloading, ${progress} percent` :
-        state === "loading" ? `Assistant loading, ${progress} percent` :
-          state === "ready" ? "Assistant ready" :
-            state === "error" ? "Assistant unavailable" : "Assistant resting";
+    state === "off" ? t("home.advisor.a11y.off") :
+      state === "downloading" ? t("home.advisor.a11y.downloading", { progress }) :
+        state === "loading" ? t("home.advisor.a11y.loading", { progress }) :
+          state === "ready" ? t("home.advisor.a11y.ready") :
+            state === "error" ? t("home.advisor.a11y.error") : t("home.advisor.a11y.idle");
 
   return (
     <>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${a11y}. Opens the badge legend.`}
+        accessibilityLabel={t("home.advisor.a11y.hint", { state: a11y })}
         hitSlop={10}
         onPress={() => setOpen(true)}
         style={({ pressed }) => pressed && styles.pressed}
@@ -149,14 +151,12 @@ function CrossSeal() {
 
 // ── The legend card ─────────────────────────────────────────────────────────────
 
-const LEGEND: { key: BadgeState; label: string; line: string; progress: number }[] = [
-  { key: "off", label: "Off", line: "Turned off — flip it on in Settings, or wherever it's offered.", progress: 0 },
-  { key: "idle", label: "Resting", line: "On, but not warmed up yet. It wakes when first needed.", progress: 0 },
-  { key: "downloading", label: "Downloading", line: "Fetching the model — the bowl fills as it arrives.", progress: 55 },
-  { key: "loading", label: "Warming up", line: "Pouring the model into memory. Moments away.", progress: 82 },
-  { key: "ready", label: "Ready", line: "Brim-full and listening. Ask away.", progress: 100 },
-  { key: "error", label: "Trouble", line: "The model couldn't load — check the connection and retry.", progress: 0 },
-];
+// Fixed illustration progress per state — the dictionary carries only the label/line copy
+// (looked up per-locale inside StatesModal), keyed by the same BadgeState union.
+const LEGEND_ORDER: BadgeState[] = ["off", "idle", "downloading", "loading", "ready", "error"];
+const LEGEND_PROGRESS: Record<BadgeState, number> = {
+  off: 0, idle: 0, downloading: 55, loading: 82, ready: 100, error: 0,
+};
 
 function StatesModal({ open, onClose, current, onRetry }: {
   open: boolean;
@@ -164,6 +164,15 @@ function StatesModal({ open, onClose, current, onRetry }: {
   current: BadgeState;
   onRetry: () => void;
 }) {
+  const { t, dict } = useI18n();
+  // Indexed straight off the dictionary (not the `t` dot-path lookup) so each BadgeState
+  // key resolves its {label, line} leaf with full type safety.
+  const legend = LEGEND_ORDER.map((key) => ({
+    key,
+    label: dict.home.advisor.legend[key].label,
+    line: dict.home.advisor.legend[key].line,
+    progress: LEGEND_PROGRESS[key],
+  }));
   // Card entrance/exit in the AppModal dialect; `shown` keeps the Modal mounted
   // through the exit animation.
   const anim = useRef(new Animated.Value(0)).current;
@@ -192,20 +201,20 @@ function StatesModal({ open, onClose, current, onRetry }: {
     <Modal transparent visible statusBarTranslucent animationType="none" onRequestClose={onClose}>
       <View style={styles.root}>
         <Animated.View style={[styles.backdrop, { opacity: anim }]}>
-          <Pressable style={StyleSheet.absoluteFill} accessibilityLabel="Close badge legend" onPress={onClose} />
+          <Pressable style={StyleSheet.absoluteFill} accessibilityLabel={t("home.advisor.closeLegend")} onPress={onClose} />
         </Animated.View>
 
         <Animated.View style={[styles.card, cardStyle]} accessibilityViewIsModal>
           <View style={styles.headerRow}>
             <Image source={require("../../../assets/logo-bean.png")} style={styles.headerMark} />
-            <AppText variant="labelSm" style={styles.headerKicker}>On-device assistant</AppText>
+            <AppText variant="labelSm" style={styles.headerKicker}>{t("home.advisor.kicker")}</AppText>
             <View style={styles.headerRule} />
           </View>
-          <AppText variant="headlineMd" style={styles.title}>Reading the badge</AppText>
+          <AppText variant="headlineMd" style={styles.title}>{t("home.advisor.title")}</AppText>
 
           {/* The legend can outgrow small screens — it scrolls inside the card. */}
           <ScrollView style={styles.rowsScroll} contentContainerStyle={styles.rows} showsVerticalScrollIndicator={false}>
-            {LEGEND.map((row) => {
+            {legend.map((row) => {
               const now = row.key === current;
               // Legend bowls are fixed illustrations — only the "Now" highlight tracks
               // the advisor's real state.
@@ -215,7 +224,7 @@ function StatesModal({ open, onClose, current, onRetry }: {
                   <View style={styles.rowText}>
                     <View style={styles.rowTitleLine}>
                       <AppText variant="labelMd" style={styles.rowLabel}>{row.label}</AppText>
-                      {now ? <AppText variant="labelSm" style={styles.nowTag}>Now</AppText> : null}
+                      {now ? <AppText variant="labelSm" style={styles.nowTag}>{t("home.advisor.now")}</AppText> : null}
                     </View>
                     <AppText variant="bodyMd" style={styles.rowLine}>{row.line}</AppText>
                   </View>
@@ -225,9 +234,9 @@ function StatesModal({ open, onClose, current, onRetry }: {
           </ScrollView>
 
           {current === "error" ? (
-            <PillButton label="Try again" variant="primary" onPress={() => { onRetry(); onClose(); }} />
+            <PillButton label={t("common.tryAgain")} variant="primary" onPress={() => { onRetry(); onClose(); }} />
           ) : (
-            <PillButton label="Got it" variant="neutral" onPress={onClose} />
+            <PillButton label={t("common.gotIt")} variant="neutral" onPress={onClose} />
           )}
         </Animated.View>
       </View>

@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { AppText, Chevron } from "../../components/ui";
 import { colors, spacing, screenTopGap } from "../../design/tokens";
+import { useI18n } from "../../i18n/LocaleProvider";
 
 export type ToolPageProps = {
   // Serif page title (EB Garamond). The masthead sets a safe lineHeight so descenders aren't clipped.
@@ -23,13 +24,14 @@ export type ToolPageProps = {
 export function ToolPage({ title, subtitle, scroll = true, children }: ToolPageProps) {
   const nav = useNavigation();
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
 
   return (
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === "ios" ? "padding" : "height"}>
       <StatusBar style="dark" />
       <View style={[styles.masthead, { paddingTop: insets.top + screenTopGap }]}>
         <View style={styles.topBar}>
-          <Pressable onPress={() => nav.goBack()} hitSlop={10} style={styles.backBtn} accessibilityRole="button" accessibilityLabel="Back">
+          <Pressable onPress={() => nav.goBack()} hitSlop={10} style={styles.backBtn} accessibilityRole="button" accessibilityLabel={t("common.back")}>
             <Chevron direction="left" size={12} thickness={2.5} color={colors.onSurface} />
           </Pressable>
           <AppText variant="headlineLg" style={styles.title} numberOfLines={1}>{title}</AppText>

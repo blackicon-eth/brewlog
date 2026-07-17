@@ -8,6 +8,8 @@ import type { RootStackParamList } from "../navigation/types";
 import { AppText, ToolCard } from "../components/ui";
 import { TOOLS } from "./tools/registry";
 import { colors, spacing, screenTopGap } from "../design/tokens";
+import { useI18n } from "../i18n/LocaleProvider";
+import { toolTitle, toolBlurb } from "../lib/i18n/labels";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "Main">;
 
@@ -16,14 +18,15 @@ type Nav = NativeStackNavigationProp<RootStackParamList, "Main">;
 export function ToolsScreen() {
   const nav = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
+  const { t, dict } = useI18n();
 
   return (
     <View style={styles.screen}>
       <StatusBar style="dark" />
 
       <View style={[styles.masthead, { paddingTop: insets.top + screenTopGap }]}>
-        <AppText variant="headlineLg" style={styles.title}>Tools</AppText>
-        <AppText variant="labelMd" style={styles.subtitle}>The brewing bench</AppText>
+        <AppText variant="headlineLg" style={styles.title}>{t("tools.shelfTitle")}</AppText>
+        <AppText variant="labelMd" style={styles.subtitle}>{t("tools.shelfSubtitle")}</AppText>
       </View>
 
       <ScrollView
@@ -31,14 +34,14 @@ export function ToolsScreen() {
         contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + 24 }]}
         showsVerticalScrollIndicator={false}
       >
-        {TOOLS.map((t) => (
-          <View key={t.meta.id} style={styles.cell}>
+        {TOOLS.map((tool) => (
+          <View key={tool.meta.id} style={styles.cell}>
             <ToolCard
-              title={t.meta.title}
-              blurb={t.meta.blurb}
-              icon={t.meta.icon}
-              comingSoon={t.meta.comingSoon}
-              onPress={() => nav.navigate("Tool", { toolId: t.meta.id })}
+              title={toolTitle(dict, tool.meta.id)}
+              blurb={toolBlurb(dict, tool.meta.id)}
+              icon={tool.meta.icon}
+              comingSoon={tool.meta.comingSoon}
+              onPress={() => nav.navigate("Tool", { toolId: tool.meta.id })}
             />
           </View>
         ))}

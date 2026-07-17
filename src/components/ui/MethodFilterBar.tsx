@@ -2,6 +2,8 @@ import React, { useMemo } from "react";
 import { Pressable, ScrollView, StyleSheet, type ViewStyle } from "react-native";
 import { AppText } from "./AppText";
 import { METHODS, type MethodFilter } from "../../lib/brewMethods";
+import { methodShortLabel } from "../../lib/i18n/labels";
+import { useI18n } from "../../i18n/LocaleProvider";
 import { colors, fonts, radii, spacing } from "../../design/tokens";
 
 export type MethodFilterBarProps = {
@@ -17,9 +19,10 @@ type Chip = { value: MethodFilter; label: string };
 // back to the unfiltered ledger. Same pill vocabulary as ChipSelect, but content-width and
 // scrollable (an overflow past the phone width swipes) so it reads as a filter bar.
 export function MethodFilterBar({ value, onChange, style }: MethodFilterBarProps) {
+  const { dict } = useI18n();
   const chips = useMemo<Chip[]>(
-    () => [{ value: "all", label: "All" }, ...METHODS.map((m) => ({ value: m.id, label: m.shortLabel }))],
-    [],
+    () => [{ value: "all", label: "All" }, ...METHODS.map((m) => ({ value: m.id, label: methodShortLabel(dict, m.id) }))],
+    [dict],
   );
 
   return (

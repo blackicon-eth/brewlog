@@ -3,6 +3,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { AppText } from "./ui";
 import type { Coffee } from "../models/types";
 import { colors, fonts, spacing } from "../design/tokens";
+import { useI18n } from "../i18n/LocaleProvider";
 
 // Which coffee is this brew for? Opened by the Brews-tab "+" when the shelf holds more
 // than one coffee; tapping a row is the whole interaction — it selects and moves on to
@@ -13,15 +14,16 @@ export function CoffeePickerModal({ visible, coffees, onCancel, onSelect }: {
   onCancel: () => void;
   onSelect: (coffeeId: string) => void;
 }) {
+  const { t } = useI18n();
   return (
     <Modal transparent visible={visible} statusBarTranslucent animationType="fade" onRequestClose={onCancel}>
       <View style={styles.backdrop}>
-        <Pressable style={StyleSheet.absoluteFill} accessibilityLabel="Close coffee picker" onPress={onCancel} />
+        <Pressable style={StyleSheet.absoluteFill} accessibilityLabel={t("coffeePicker.closeA11y")} onPress={onCancel} />
         <View style={styles.card}>
-          <AppText variant="labelSm" style={styles.kicker}>Log brew</AppText>
-          <AppText variant="headlineMd" style={styles.title}>Which coffee?</AppText>
+          <AppText variant="labelSm" style={styles.kicker}>{t("coffeePicker.kicker")}</AppText>
+          <AppText variant="headlineMd" style={styles.title}>{t("coffeePicker.title")}</AppText>
           <AppText variant="bodyMd" style={styles.blurb}>
-            Pick the coffee you brewed — its log opens ready to fill in.
+            {t("coffeePicker.blurb")}
           </AppText>
 
           {/* Scrolls once the shelf outgrows the card; a short list just sits still. */}
@@ -45,7 +47,7 @@ export function CoffeePickerModal({ visible, coffees, onCancel, onSelect }: {
           </ScrollView>
 
           <Pressable onPress={onCancel} hitSlop={8} style={styles.cancelBtn} accessibilityRole="button">
-            <AppText variant="labelMd" style={styles.cancelText}>Cancel</AppText>
+            <AppText variant="labelMd" style={styles.cancelText}>{t("common.cancel")}</AppText>
           </Pressable>
         </View>
       </View>
