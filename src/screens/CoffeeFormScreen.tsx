@@ -326,7 +326,7 @@ export function CoffeeFormScreen() {
             </View>
 
             <AppText variant="labelSm" style={styles.section}>Notes</AppText>
-            <TextField label="Tasting notes" value={notes} onChangeText={setNotes} multiline placeholder="blackcurrant, floral, juicy" />
+            <TextField value={notes} onChangeText={setNotes} multiline placeholder="blackcurrant, floral, juicy" />
 
             <View style={styles.actions}>
               <PillButton label={editingId ? "Save changes" : "Save coffee"} onPress={onSave} />

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Modal, Pressable, StyleSheet, View } from "react-native";
+import { KeyboardAvoidingView, Modal, Pressable, StyleSheet, View } from "react-native";
 import { AppText, ChipSelect, PillButton, TextField } from "./ui";
 import {
   clampTimePart, composeBrewedAt, dayOptions, pad2, startOfDayTs, type DayOption,
@@ -55,7 +55,10 @@ export function BrewedAtModal({ visible, value, onCancel, onSet }: {
 
   return (
     <Modal transparent visible={visible} statusBarTranslucent animationType="fade" onRequestClose={onCancel}>
-      <View style={styles.backdrop}>
+      {/* "padding", not the app's usual Android "height": a statusBarTranslucent modal window
+          is exempt from adjustResize, so the window never shrinks and "height" would measure
+          nothing — padding tracks the keyboard directly and lifts the centered card. */}
+      <KeyboardAvoidingView style={styles.backdrop} behavior="padding">
         <Pressable style={StyleSheet.absoluteFill} accessibilityLabel="Close brewed picker" onPress={onCancel} />
         <View style={styles.card}>
           <AppText variant="labelSm" style={styles.kicker}>Brew log</AppText>
@@ -94,7 +97,7 @@ export function BrewedAtModal({ visible, value, onCancel, onSet }: {
             <PillButton label="Set" style={styles.flex1} onPress={onConfirm} />
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

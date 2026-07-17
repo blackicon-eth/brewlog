@@ -4,7 +4,7 @@ import { AppText } from "./AppText";
 import { colors, fonts, radii, spacing } from "../../design/tokens";
 
 export type TextFieldProps = {
-  label: string;
+  label?: string; // omit when a section header already names the field
   value: string;
   onChangeText: (t: string) => void;
   placeholder?: string;
@@ -25,10 +25,12 @@ export function TextField({
   const [focused, setFocused] = useState(false);
   return (
     <View style={[styles.wrap, style]}>
-      <View style={styles.labelRow}>
-        <AppText variant="labelMd">{label}</AppText>
-        {required ? <View style={styles.dot} /> : null}
-      </View>
+      {label != null ? (
+        <View style={styles.labelRow}>
+          <AppText variant="labelMd">{label}</AppText>
+          {required ? <View style={styles.dot} /> : null}
+        </View>
+      ) : null}
       <TextInput
         style={[styles.input, multiline && styles.multiline, focused && styles.inputFocused]}
         value={value}

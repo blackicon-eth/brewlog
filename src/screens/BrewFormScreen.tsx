@@ -280,7 +280,7 @@ export function BrewFormScreen() {
             </Pressable>
 
             <SectionHeader>Notes</SectionHeader>
-            <TextField label="Tasting notes" value={notes} onChangeText={setNotes} multiline placeholder="bitter finish, muted acidity" />
+            <TextField value={notes} onChangeText={setNotes} multiline placeholder="bitter finish, muted acidity" />
 
             <View style={styles.actions}>
               <PillButton label={editingId ? "Save changes" : "Save brew"} onPress={onSave} />

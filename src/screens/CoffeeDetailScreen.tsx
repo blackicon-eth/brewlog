@@ -120,7 +120,7 @@ export function CoffeeDetailScreen() {
             accessibilityRole="button"
             accessibilityLabel="Recipes"
           >
-            <BookIcon size={20} thickness={1.7} color={colors.primary} />
+            <BookIcon size={26} thickness={1.4} color={colors.onSurfaceVariant} />
           </Pressable>
         </View>
         {tags ? <AppText variant="labelMd" style={styles.tags}>{tags}</AppText> : null}
@@ -239,8 +239,9 @@ const styles = StyleSheet.create({
   // flexShrink so a long name wraps instead of shoving the button off-screen; extra line
   // height so EB Garamond's descenders (the "g" tail) aren't clipped on Android.
   title: { flexShrink: 1, lineHeight: 48 },
-  // Quiet cream disc with a hairline ring — a tappable "recipe book" affordance, no elevation
-  // (Fabric flickers elevation on restyle; the app uses borders instead).
+  // Quiet ringed disc in the Edit-pill's language (hairline ring, muted espresso ink) —
+  // a tappable "recipe book" affordance, no elevation (Fabric flickers elevation on
+  // restyle; the app uses borders instead).
   recipeBtn: {
     width: 44, height: 44, borderRadius: radii.full,
     alignItems: "center", justifyContent: "center",

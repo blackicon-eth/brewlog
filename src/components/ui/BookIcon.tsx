@@ -8,9 +8,9 @@ export type BookIconProps = {
   thickness?: number;
 };
 
-// Hand-drawn closed journal (outlined cover + a binding spine + one title line) — a
-// zero-dep "recipe book" glyph in the same View-based style as Clock/Archive. Portrait,
-// centred in a square box so it drops cleanly into a circular button.
+// Hand-drawn closed journal (outlined cover with a solid-filled binding side + one title
+// line) — a zero-dep "recipe book" glyph in the same View-based style as Clock/Archive.
+// Portrait, centred in a square box so it drops cleanly into a circular button.
 export function BookIcon({ size = 18, color = colors.onSurface, thickness = 1.6 }: BookIconProps) {
   const w = size * 0.72; // cover width (a touch narrower than tall)
   const h = size * 0.88; // cover height
@@ -35,9 +35,18 @@ export function BookIcon({ size = 18, color = colors.onSurface, thickness = 1.6 
           borderRadius: 2.5,
         }}
       />
-      {/* binding spine */}
+      {/* binding — the book's side, filled solid up to the spine line */}
       <View
-        style={{ position: "absolute", left: spineLeft, top, width: thickness, height: h, backgroundColor: color }}
+        style={{
+          position: "absolute",
+          left,
+          top,
+          width: spineLeft - left + thickness,
+          height: h,
+          backgroundColor: color,
+          borderTopLeftRadius: 2.5,
+          borderBottomLeftRadius: 2.5,
+        }}
       />
       {/* title line on the cover */}
       <View
