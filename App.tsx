@@ -16,7 +16,7 @@ import { RootNavigator } from "./src/navigation/RootNavigator";
 import { LocaleProvider } from "./src/i18n/LocaleProvider";
 import { QvacProvider } from "./src/qvac/QvacProvider";
 import { AppModalProvider } from "./src/components/ui";
-import { AiOnboardingModal } from "./src/components/AiOnboardingModal";
+import { WelcomeCarousel } from "./src/components/WelcomeCarousel";
 import { colors } from "./src/design/tokens";
 
 export default function App() {
@@ -44,7 +44,8 @@ export default function App() {
               <RootNavigator />
               <StatusBar style="light" />
             </NavigationContainer>
-            <AiOnboardingModal />
+            {/* First-launch frontispiece — overlays the mounted app exactly once. */}
+            <WelcomeCarousel />
           </AppModalProvider>
         </QvacProvider>
       </LocaleProvider>

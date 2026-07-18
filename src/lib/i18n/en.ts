@@ -554,37 +554,41 @@ export const en = {
       unreachableNotice: 'Couldn\'t reach the advisor. Tap "Enter manually" below.',
     },
   },
-  onboarding: {
-    welcome: {
+  welcome: {
+    next: "Next",
+    cover: {
       kicker: "The brew ledger",
-      title: "Welcome to Brewlog!",
-      body: "A quiet place to keep track of your coffee and your brews:",
-      featureLog: "Log your coffees and every brew of your favorite beans",
-      featureRecipes: "Dial recipes in with the bench tools",
-      featureAssistant: "Get advice from a private, on-device AI assistant",
-      continue: "Continue",
+      body: "Your coffees, brews and recipes, kept quietly in one place. No account, no cloud.",
+      swipe: "Swipe to look around",
     },
-    assistant: {
-      kicker: "On-device assistant",
-      title: "Add the assistant?",
-      body: "It can diagnose brews, suggest recipes and chat about technique. A model that runs entirely on your phone, privately.",
+    home: {
+      title: "A shelf for your beans",
+      body: "Every coffee you own, with photos, roast notes and its brewing history at a glance.",
+    },
+    brews: {
+      title: "The ledger itself",
+      body: "Each brew recorded with dose, water, time and taste. Filter by method, look back, compare.",
+    },
+    chat: {
+      title: "An AI assistant, kept on the device",
+      body: "Ask about your coffees and past brews. The AI runs entirely on the device and reads only your ledger. No cloud, no third parties, nothing ever leaves.",
+    },
+    tools: {
+      title: "The brewing bench",
+      body: "Ratios, a guided timer, the 4:6 method, extraction yield and the Coffee Compass. Deterministic, offline, always at hand.",
+    },
+    settings: {
+      title: "Yours to set",
+      body: "Language, the assistant and your data: export the whole ledger to a file and bring it back whenever you like.",
+    },
+    closing: {
+      title: "Bring the assistant along?",
+      body: "It can diagnose brews, suggest recipes and chat about technique. Private, entirely on the device.",
       suggestedLabel: "Suggested for this device",
       suggestedValue: "{name} · {size} one-time download",
       optionalNote: "This is optional. You can turn the assistant on any time in Settings.",
-      download: "Download and turn it on",
-      later: "Maybe later",
-    },
-    busy: {
-      titleReady: "The assistant is in",
-      titleLoading: "Brewing up the assistant",
-      statusReady: "All set. The assistant is ready.",
-      statusLoading: "Loading {progress}%",
-      statusDownloading: "Downloading {progress}%",
-      statusDownloadFailed: "The download failed. Check your connection.",
-      tryAgain: "Try again",
-      later: "Maybe later",
-      done: "Done",
-      keepBrewing: "Keep brewing, it'll finish itself",
+      enable: "Download and turn it on",
+      without: "Begin without it",
     },
   },
   recipes: {

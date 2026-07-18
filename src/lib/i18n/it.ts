@@ -564,37 +564,41 @@ export const it = {
       unreachableNotice: 'Impossibile raggiungere l\'assistente. Tocca "Inserisci manualmente" qui sotto.',
     },
   },
-  onboarding: {
-    welcome: {
+  welcome: {
+    next: "Avanti",
+    cover: {
       kicker: "Il registro del caffè",
-      title: "Benvenuto in Brewlog!",
-      body: "Un posto tranquillo per tenere traccia dei tuoi caffè e delle tue estrazioni:",
-      featureLog: "Registra i tuoi caffè e ogni estrazione delle tue miscele preferite",
-      featureRecipes: "Metti a punto le ricette con gli strumenti da banco",
-      featureAssistant: "Ricevi consigli da un assistente AI privato, sul dispositivo",
-      continue: "Continua",
+      body: "I tuoi caffè, le estrazioni e le ricette, custoditi in un unico posto. Niente account, niente cloud.",
+      swipe: "Scorri per dare un'occhiata",
     },
-    assistant: {
-      kicker: "Assistente sul dispositivo",
-      title: "Aggiungere l'assistente?",
-      body: "Può diagnosticare le estrazioni, suggerire ricette e parlare di tecnica. Un modello che gira interamente sul tuo telefono, in privato.",
+    home: {
+      title: "Uno scaffale per i tuoi caffè",
+      body: "Ogni caffè con le sue foto, le note di tostatura e la storia delle estrazioni a colpo d'occhio.",
+    },
+    brews: {
+      title: "Il registro vero e proprio",
+      body: "Ogni estrazione annotata con dose, acqua, tempo e gusto. Filtra per metodo, riguarda, confronta.",
+    },
+    chat: {
+      title: "Un assistente AI, tutto sul dispositivo",
+      body: "Chiedi dei tuoi caffè e delle estrazioni passate. L'AI gira interamente sul dispositivo e legge solo il tuo registro. Niente cloud, niente terze parti, nulla esce mai.",
+    },
+    tools: {
+      title: "Il banco strumenti",
+      body: "Rapporti, il timer guidato, il metodo 4:6, la resa di estrazione e il Coffee Compass. Deterministici, offline, sempre a portata.",
+    },
+    settings: {
+      title: "Tutto a modo tuo",
+      body: "Lingua, assistente e i tuoi dati: esporta l'intero registro in un file e riportalo quando vuoi.",
+    },
+    closing: {
+      title: "Porti con te l'assistente?",
+      body: "Può diagnosticare le estrazioni, suggerire ricette e parlare di tecnica. In privato, interamente sul dispositivo.",
       suggestedLabel: "Suggerito per questo dispositivo",
       suggestedValue: "{name} · {size}, download una tantum",
       optionalNote: "È facoltativo. Puoi attivare l'assistente in qualsiasi momento nelle Impostazioni.",
-      download: "Scarica e attiva",
-      later: "Magari più tardi",
-    },
-    busy: {
-      titleReady: "L'assistente è pronto",
-      titleLoading: "Preparazione dell'assistente in corso",
-      statusReady: "Tutto pronto. L'assistente è attivo.",
-      statusLoading: "Caricamento {progress}%",
-      statusDownloading: "Download {progress}%",
-      statusDownloadFailed: "Il download non è riuscito. Controlla la connessione.",
-      tryAgain: "Riprova",
-      later: "Magari più tardi",
-      done: "Fatto",
-      keepBrewing: "Continua in sottofondo, finirà da solo",
+      enable: "Scarica e attiva",
+      without: "Inizia senza",
     },
   },
   recipes: {
