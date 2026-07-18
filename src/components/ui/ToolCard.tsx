@@ -58,8 +58,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceLowest,
     borderRadius: radii.md,
     padding: 16,
-    minHeight: 168,
-    justifyContent: "space-between",
+    // Floor set to the tallest natural card (two-line serif title + three-line blurb in
+    // Italian), so a card alone on the last row matches its neighbors' height.
+    minHeight: 220,
     ...shadows.card,
   },
   pressed: { opacity: 0.96, transform: [{ scale: 0.98 }] },
@@ -77,7 +78,8 @@ const styles = StyleSheet.create({
   blurb: { marginTop: 4 },
 
   // Inner wrapper carries the halo/text layout so the coming-soon tag can overlay the card.
-  contentWrap: { flex: 1, justifyContent: "space-between" },
+  // Top-flow: icon, title, and blurb hang from the card's top even when a row-mate is taller.
+  contentWrap: { flex: 1 },
 
   // Coming-soon treatment
   dimmed: { opacity: 0.18 },
