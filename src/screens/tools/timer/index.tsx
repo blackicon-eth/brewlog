@@ -153,10 +153,10 @@ function TimerScreen() {
         style={
           viewFading
             ? {
-                flex: 1,
-                opacity: viewAnim,
-                transform: [{ translateY: viewAnim.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }],
-              }
+              flex: 1,
+              opacity: viewAnim,
+              transform: [{ translateY: viewAnim.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }],
+            }
             : { flex: 1 }
         }
       >
@@ -221,101 +221,100 @@ function SetupView(p: SetupProps) {
   return (
     <View style={styles.setupWrap}>
       <ScrollView style={styles.setupScroll} contentContainerStyle={styles.setupScrollContent} showsVerticalScrollIndicator={false}>
-      {/* Steppers — bloom amount and main pours share one row; the increment/decrement
+        {/* Steppers — bloom amount and main pours share one row; the increment/decrement
           bounds also keep the bloom a strict prefix of the total (lib requirement). */}
-      <AppText variant="labelMd" style={styles.sectionLabel}>{t(dict, "tools.timer.page.dialItIn")}</AppText>
-      <View style={styles.stepperRow}>
-        <View style={styles.stepperHalf}>
-          <Stepper
-            label={t(dict, "tools.timer.page.bloomAmountLabel")}
-            display={`${p.bloomG} g`}
-            canDecrement={p.bloomG > BLOOM_G.min}
-            canIncrement={p.bloomG < BLOOM_G.max && p.bloomG + BLOOM_G.step < p.totalG}
-            onDecrement={() => p.setBloomG(clamp(p.bloomG - BLOOM_G.step, BLOOM_G.min, BLOOM_G.max))}
-            onIncrement={() => p.setBloomG(clamp(p.bloomG + BLOOM_G.step, BLOOM_G.min, BLOOM_G.max))}
-          />
+        <View style={styles.stepperRow}>
+          <View style={styles.stepperHalf}>
+            <Stepper
+              label={t(dict, "tools.timer.page.bloomAmountLabel")}
+              display={`${p.bloomG} g`}
+              canDecrement={p.bloomG > BLOOM_G.min}
+              canIncrement={p.bloomG < BLOOM_G.max && p.bloomG + BLOOM_G.step < p.totalG}
+              onDecrement={() => p.setBloomG(clamp(p.bloomG - BLOOM_G.step, BLOOM_G.min, BLOOM_G.max))}
+              onIncrement={() => p.setBloomG(clamp(p.bloomG + BLOOM_G.step, BLOOM_G.min, BLOOM_G.max))}
+            />
+          </View>
+          <View style={styles.stepperHalf}>
+            <Stepper
+              label={t(dict, "tools.timer.page.bloomTimeLabel")}
+              display={`${p.bloomTimeS} s`}
+              canDecrement={p.bloomTimeS > BLOOM_T.min}
+              canIncrement={p.bloomTimeS < BLOOM_T.max}
+              onDecrement={() => p.setBloomTimeS(clamp(p.bloomTimeS - BLOOM_T.step, BLOOM_T.min, BLOOM_T.max))}
+              onIncrement={() => p.setBloomTimeS(clamp(p.bloomTimeS + BLOOM_T.step, BLOOM_T.min, BLOOM_T.max))}
+            />
+          </View>
         </View>
-        <View style={styles.stepperHalf}>
-          <Stepper
-            label={t(dict, "tools.timer.page.bloomTimeLabel")}
-            display={`${p.bloomTimeS} s`}
-            canDecrement={p.bloomTimeS > BLOOM_T.min}
-            canIncrement={p.bloomTimeS < BLOOM_T.max}
-            onDecrement={() => p.setBloomTimeS(clamp(p.bloomTimeS - BLOOM_T.step, BLOOM_T.min, BLOOM_T.max))}
-            onIncrement={() => p.setBloomTimeS(clamp(p.bloomTimeS + BLOOM_T.step, BLOOM_T.min, BLOOM_T.max))}
-          />
+        <View style={styles.stepperRow}>
+          <View style={styles.stepperHalf}>
+            <Stepper
+              label={t(dict, "tools.timer.page.mainPoursLabel")}
+              hint={t(dict, "tools.timer.page.mainPoursHint", { g: p.schedule.perPour ? Math.round(p.schedule.mainWater / p.mainPours) : 0 })}
+              display={`${p.mainPours}`}
+              canDecrement={p.mainPours > POURS.min}
+              canIncrement={p.mainPours < POURS.max}
+              onDecrement={() => p.setMainPours(clamp(p.mainPours - POURS.step, POURS.min, POURS.max))}
+              onIncrement={() => p.setMainPours(clamp(p.mainPours + POURS.step, POURS.min, POURS.max))}
+            />
+          </View>
+          <View style={styles.stepperHalf}>
+            <Stepper
+              label={t(dict, "tools.timer.page.pourIntervalLabel")}
+              display={`${p.pourIntervalS} s`}
+              canDecrement={p.pourIntervalS > INTERVAL.min}
+              canIncrement={p.pourIntervalS < INTERVAL.max}
+              onDecrement={() => p.setPourIntervalS(clamp(p.pourIntervalS - INTERVAL.step, INTERVAL.min, INTERVAL.max))}
+              onIncrement={() => p.setPourIntervalS(clamp(p.pourIntervalS + INTERVAL.step, INTERVAL.min, INTERVAL.max))}
+            />
+          </View>
         </View>
-      </View>
-      <View style={styles.stepperRow}>
-        <View style={styles.stepperHalf}>
-          <Stepper
-            label={t(dict, "tools.timer.page.mainPoursLabel")}
-            hint={t(dict, "tools.timer.page.mainPoursHint", { g: p.schedule.perPour ? Math.round(p.schedule.mainWater / p.mainPours) : 0 })}
-            display={`${p.mainPours}`}
-            canDecrement={p.mainPours > POURS.min}
-            canIncrement={p.mainPours < POURS.max}
-            onDecrement={() => p.setMainPours(clamp(p.mainPours - POURS.step, POURS.min, POURS.max))}
-            onIncrement={() => p.setMainPours(clamp(p.mainPours + POURS.step, POURS.min, POURS.max))}
-          />
-        </View>
-        <View style={styles.stepperHalf}>
-          <Stepper
-            label={t(dict, "tools.timer.page.pourIntervalLabel")}
-            display={`${p.pourIntervalS} s`}
-            canDecrement={p.pourIntervalS > INTERVAL.min}
-            canIncrement={p.pourIntervalS < INTERVAL.max}
-            onDecrement={() => p.setPourIntervalS(clamp(p.pourIntervalS - INTERVAL.step, INTERVAL.min, INTERVAL.max))}
-            onIncrement={() => p.setPourIntervalS(clamp(p.pourIntervalS + INTERVAL.step, INTERVAL.min, INTERVAL.max))}
-          />
-        </View>
-      </View>
-      <Stepper
-        label={t(dict, "tools.timer.page.totalWaterLabel")}
-        display={`${p.totalG} g`}
-        canDecrement={p.totalG > TOTAL.min && p.totalG - TOTAL.step > p.bloomG}
-        canIncrement={p.totalG < TOTAL.max}
-        onDecrement={() => p.setTotalG(clamp(p.totalG - TOTAL.step, TOTAL.min, TOTAL.max))}
-        onIncrement={() => p.setTotalG(clamp(p.totalG + TOTAL.step, TOTAL.min, TOTAL.max))}
-      />
+        <Stepper
+          label={t(dict, "tools.timer.page.totalWaterLabel")}
+          display={`${p.totalG} g`}
+          canDecrement={p.totalG > TOTAL.min && p.totalG - TOTAL.step > p.bloomG}
+          canIncrement={p.totalG < TOTAL.max}
+          onDecrement={() => p.setTotalG(clamp(p.totalG - TOTAL.step, TOTAL.min, TOTAL.max))}
+          onIncrement={() => p.setTotalG(clamp(p.totalG + TOTAL.step, TOTAL.min, TOTAL.max))}
+        />
 
-      {/* Recipe summary card — the schedule the steppers above drive. */}
-      <View style={styles.summary}>
-        <View style={styles.summaryHead}>
-          <View style={styles.summaryGlyph}>
-            <TimerGlyph size={24} color={colors.primary} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <AppText variant="labelSm" style={styles.summaryKicker}>{t(dict, "tools.timer.page.pourPlanKicker")}</AppText>
-            <AppText variant="headlineMd" style={styles.summaryTitle}>
-              {t(dict, "tools.timer.page.totalGrams", { g: p.schedule.totalWater })}
-            </AppText>
-          </View>
-          <View style={styles.summaryRatio}>
-            <AppText variant="labelSm" style={styles.summaryRatioLabel}>{t(dict, "tools.timer.page.stepBloom")}</AppText>
-            <AppText variant="bodyLg" style={styles.summaryRatioValue}>{p.schedule.bloomWater} g</AppText>
-          </View>
-        </View>
-
-        <View style={styles.stepList}>
-          {p.schedule.steps.map((step, i) => (
-            <View key={i} style={styles.stepRow}>
-              <View style={styles.stepTime}>
-                <AppText variant="labelMd" style={styles.stepTimeText}>{formatSeconds(step.atSeconds)}</AppText>
-              </View>
-              <AppText variant="bodyLg" style={styles.stepLabel}>{stepLabel(dict, step, p.mainPours)}</AppText>
-              <View style={styles.stepTargetWrap}>
-                <AppText style={styles.stepTarget}>{step.cumulativeTargetG}</AppText>
-                <AppText variant="labelSm" style={styles.stepTargetUnit}>g</AppText>
-              </View>
+        {/* Recipe summary card — the schedule the steppers above drive. */}
+        <View style={styles.summary}>
+          <View style={styles.summaryHead}>
+            <View style={styles.summaryGlyph}>
+              <TimerGlyph size={24} color={colors.primary} />
             </View>
-          ))}
-          <View style={styles.finishRow}>
-            <AppText variant="labelSm" style={styles.finishText}>
-              {t(dict, "tools.timer.page.finishHint", { time: formatSeconds(finishRounded(p.finishS)) })}
-            </AppText>
+            <View style={{ flex: 1 }}>
+              <AppText variant="labelSm" style={styles.summaryKicker}>{t(dict, "tools.timer.page.pourPlanKicker")}</AppText>
+              <AppText variant="headlineMd" style={styles.summaryTitle}>
+                {t(dict, "tools.timer.page.totalGrams", { g: p.schedule.totalWater })}
+              </AppText>
+            </View>
+            <View style={styles.summaryRatio}>
+              <AppText variant="labelSm" style={styles.summaryRatioLabel}>{t(dict, "tools.timer.page.stepBloom")}</AppText>
+              <AppText variant="bodyLg" style={styles.summaryRatioValue}>{p.schedule.bloomWater} g</AppText>
+            </View>
+          </View>
+
+          <View style={styles.stepList}>
+            {p.schedule.steps.map((step, i) => (
+              <View key={i} style={styles.stepRow}>
+                <View style={styles.stepTime}>
+                  <AppText variant="labelMd" style={styles.stepTimeText}>{formatSeconds(step.atSeconds)}</AppText>
+                </View>
+                <AppText variant="bodyLg" style={styles.stepLabel}>{stepLabel(dict, step, p.mainPours)}</AppText>
+                <View style={styles.stepTargetWrap}>
+                  <AppText style={styles.stepTarget}>{step.cumulativeTargetG}</AppText>
+                  <AppText variant="labelSm" style={styles.stepTargetUnit}>g</AppText>
+                </View>
+              </View>
+            ))}
+            <View style={styles.finishRow}>
+              <AppText variant="labelSm" style={styles.finishText}>
+                {t(dict, "tools.timer.page.finishHint", { time: formatSeconds(finishRounded(p.finishS)) })}
+              </AppText>
+            </View>
           </View>
         </View>
-      </View>
       </ScrollView>
 
       {/* Big arm-the-timer control — pinned below the scroll area */}

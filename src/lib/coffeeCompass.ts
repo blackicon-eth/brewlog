@@ -14,10 +14,11 @@ export const TARGET = {
 } as const;
 
 // Default plot ranges — a comfortable window around the target box so the box reads
-// as an inset rectangle, not the whole chart. Callers may pass their own.
+// as an inset rectangle, not the whole chart. Both axes center on the target's midpoint
+// (EY 20, TDS 1.25) so the box sits dead-center of the plot. Callers may pass their own.
 export const DEFAULT_RANGES = {
-  ey: { min: 12, max: 28 },
-  tds: { min: 1.0, max: 1.6 },
+  ey: { min: 14, max: 26 },
+  tds: { min: 1.0, max: 1.5 },
 } as const;
 
 // A sensible in-box starting point (dead-centre of the target box).

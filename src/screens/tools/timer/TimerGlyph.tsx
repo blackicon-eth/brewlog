@@ -11,7 +11,9 @@ export function TimerGlyph({ size = 24, color }: TabIconProps) {
   const dial = size * 0.74; // diameter of the face
   const inner = dial - thickness * 2;
   const center = inner / 2;
-  const hand = inner * 0.4;
+  const hand = inner * 0.4 - 1; // minute hand, a px shy of the dial
+  const hourHand = inner * 0.26; // shorter hour hand, swept up-left
+  const handW = Math.max(1, thickness * 0.65); // hands draw finer than the dial's ring
   const crownW = size * 0.14;
 
   return (
@@ -23,19 +25,33 @@ export function TimerGlyph({ size = 24, color }: TabIconProps) {
         <View style={{ width: inner, height: inner }}>
           {/* Hub */}
           <View style={{ position: "absolute", width: thickness * 1.4, height: thickness * 1.4, borderRadius: thickness, backgroundColor: color, top: center - thickness * 0.7, left: center - thickness * 0.7 }} />
-          {/* Hand — a bar pinned at the hub then rotated toward the upper-right. Rotating a
-              centred, upward hand by 42° sweeps its far tip out; matches the existing glyphs'
-              plain rotate idiom (no transformOrigin, which older RN style-typing balks at). */}
+          {/* Hand — a bar standing on the hub, swept 42° toward the upper-right. The
+              translate/rotate/translate sandwich moves the pivot from the bar's middle to
+              its bottom end, so the hand rotates around the hub with no tail poking out
+              the far side (no transformOrigin, which older RN style-typing balks at). */}
           <View
             style={{
               position: "absolute",
-              width: thickness,
+              width: handW,
               height: hand,
-              borderRadius: thickness,
+              borderRadius: handW,
               backgroundColor: color,
-              top: center - hand + hand / 2,
-              left: center - thickness / 2,
-              transform: [{ translateY: -hand / 2 }, { rotate: "42deg" }, { translateY: hand / 2 }],
+              top: center - hand,
+              left: center - handW / 2,
+              transform: [{ translateY: hand / 2 }, { rotate: "42deg" }, { translateY: -hand / 2 }],
+            }}
+          />
+          {/* Hour hand — shorter, swept up-left, same bottom-end pivot on the hub */}
+          <View
+            style={{
+              position: "absolute",
+              width: handW,
+              height: hourHand,
+              borderRadius: handW,
+              backgroundColor: color,
+              top: center - hourHand,
+              left: center - handW / 2,
+              transform: [{ translateY: hourHand / 2 }, { rotate: "-48deg" }, { translateY: -hourHand / 2 }],
             }}
           />
         </View>

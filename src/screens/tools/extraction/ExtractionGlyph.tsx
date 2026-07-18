@@ -2,33 +2,20 @@ import React from "react";
 import { StyleSheet, View } from "react-native";
 import type { TabIconProps } from "../../../components/ui";
 
-// Extraction Yield glyph — a refractometer sample well: a small graduated vial with a
-// liquid line partway up (the dissolved-solids reading) and a light beam angling off the
-// top (the prism refracting light through the drop). Reads as "measuring what dissolved,"
-// specific to a TDS→EY tool and distinct from the grid's generic FlaskIcon and the balance
-// scale used by the ratio tool.
+// Extraction Yield glyph — a graduated test tube: liquid partway up (the dissolved-solids
+// reading) with two graduation ticks on the glass above it. Everything stays inside the
+// tube's silhouette — nothing protrudes. Reads as "measuring what dissolved," specific to
+// a TDS→EY tool and distinct from the grid's generic FlaskIcon and the ratio tool's scale.
 export function ExtractionGlyph({ size = 24, color }: TabIconProps) {
-  const vialW = size * 0.42;
-  const vialH = size * 0.66;
+  const vialW = size * 0.5;
+  const vialH = size * 0.78;
   const stroke = Math.max(1.5, size * 0.075);
   const fillH = vialH * 0.42; // liquid sits a little under half — the "reading"
+  const tickW = vialW * 0.3;
 
   return (
     <View style={[styles.box, { width: size, height: size }]}>
-      {/* Refracted beam — a short bar angling up-right off the vial mouth */}
-      <View
-        style={{
-          position: "absolute",
-          top: size * 0.14,
-          right: size * 0.12,
-          width: size * 0.34,
-          height: stroke,
-          borderRadius: stroke,
-          backgroundColor: color,
-          transform: [{ rotate: "-32deg" }],
-        }}
-      />
-      {/* Graduated vial — open-topped rounded cup */}
+      {/* Graduated test tube — open-topped, round-bottomed */}
       <View
         style={{
           width: vialW,
@@ -40,9 +27,23 @@ export function ExtractionGlyph({ size = 24, color }: TabIconProps) {
           borderBottomRightRadius: vialW * 0.5,
           justifyContent: "flex-end",
           overflow: "hidden",
-          marginTop: size * 0.1,
         }}
       >
+        {/* Graduation ticks on the glass, right wall inward */}
+        {[0.16, 0.36].map((f) => (
+          <View
+            key={f}
+            style={{
+              position: "absolute",
+              top: vialH * f,
+              right: 0,
+              width: tickW,
+              height: stroke * 0.9,
+              borderRadius: stroke,
+              backgroundColor: color,
+            }}
+          />
+        ))}
         {/* Liquid fill — the dissolved-solids level */}
         <View style={{ height: fillH, backgroundColor: color, opacity: 0.9 }} />
       </View>

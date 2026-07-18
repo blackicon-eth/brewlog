@@ -177,7 +177,6 @@ export const it = {
         solveRatio: "Rapporto",
         heroSolved: "{label} · calcolato",
         enterValues: "Inserisci i valori sopra",
-        knownValuesLabel: "Valori noti",
         doseFieldLabel: "Dose (g)",
         waterFieldLabel: "Acqua (g)",
         ratioFieldLabel: "Rapporto (la X in 1:X)",
@@ -188,19 +187,18 @@ export const it = {
       title: "Timer di estrazione",
       blurb: "Schema di versamento guidato",
       page: {
-        dialItIn: "Metti a punto",
         bloomAmountLabel: "Acqua di bloom (g)",
         bloomTimeLabel: "Tempo di bloom",
-        mainPoursLabel: "Versate principali",
+        mainPoursLabel: "Versate",
         mainPoursHint: "≈{g} g",
-        pourIntervalLabel: "Intervallo versate",
+        pourIntervalLabel: "Intervallo vers.",
         totalWaterLabel: "Acqua totale (g)",
-        pourPlanKicker: "Il piano delle versate",
+        pourPlanKicker: "Schema finale",
         totalGrams: "{g} g totali",
         stepBloom: "Bloom",
-        stepPourSingle: "Versate",
+        stepPourSingle: "Versata",
         stepPourN: "Versata {n}",
-        finishHint: "L'estrazione finisce di solito verso ~{time}. È la tua macinatura a impostare il ritmo.",
+        finishHint: "L'estrazione finisce di solito verso ~{time}. La macinatura è la discriminante principale.",
         startTimerA11y: "Avvia timer",
         startBrewing: "Inizia l'estrazione",
         brewing: "In corso",
@@ -222,35 +220,27 @@ export const it = {
       blurb: "Dal TDS alla resa di estrazione",
       page: {
         subtitle: "Dal rifrattometro alla resa %",
-        cupWeightLabel: "Peso in tazza",
-        weighedCup: "Tazza pesata",
-        estimateOption: "Stima",
-        extractionEst: "Resa · stimata",
-        extractionYieldLabel: "Resa di estrazione",
         enterReading: "Inserisci una lettura",
         bands: {
-          under: { verdict: "Sotto-estratto", note: "Acido · poco sviluppato. Macina più fine o allunga il contatto." },
+          under: {
+            verdict: "Sotto-estratto",
+            note: "Acido · poco sviluppato.\nMacina più fine o allunga il tempo di contatto.",
+          },
           ideal: { verdict: "Equilibrato", note: "Punto ideale. Chiarezza e dolcezza in equilibrio." },
           over: { verdict: "Sovra-estratto", note: "Amaro · asciutto. Macina più grosso o accorcia il contatto." },
         },
         meterIdealLabel: "{min}–{max} ideale",
-        approxBannerWithCup:
-          "Approssimato, peso della bevanda stimato come acqua − dose × {lrr} g/g assorbiti ≈ {g} g in tazza. Pesa la tazza per una resa esatta.",
-        approxBannerNoCup:
-          "Approssimato, peso della bevanda stimato come acqua − dose × {lrr} g/g assorbiti. Pesa la tazza per una resa esatta.",
-        measurementsLabel: "Misurazioni",
-        doseFieldLabel: "Dose (caffè secco)",
-        tdsFieldLabel: "TDS % (rifrattometro)",
-        waterPouredLabel: "Acqua versata",
-        beverageWeightFieldLabel: "Peso della bevanda (in tazza)",
-        waterPouredOptionalLabel: "Acqua versata (opzionale, per il rapporto)",
+        doseFieldLabel: "Dose (g)",
+        tdsFieldLabel: "TDS %",
+        beverageWeightFieldLabel: "Peso in tazza (g)",
+        waterPouredOptionalLabel: "Acqua (opzionale)",
         derivedLabel: "Valori derivati",
         strengthTdsLabel: "Intensità (TDS)",
         dissolvedSolidsLabel: "Solidi disciolti",
         brewRatioLabel: "Rapporto di estrazione",
-        beverageEstLabel: "Bevanda (stimata)",
         beverageWeightRowLabel: "Peso della bevanda",
         waterRetainedLabel: "Acqua trattenuta",
+        openCompass: "Vedi sul Coffee Compass",
       },
     },
     phased: {
@@ -295,45 +285,43 @@ export const it = {
         legendExtractionWord: "estrazione",
         legendPart2: ". La sposti con macinatura, tempo e agitazione. Alto–basso è l'",
         legendStrengthWord: "intensità",
-        legendPart3:
-          ". La sposti con il rapporto caffè-acqua. Resta dentro il riquadro (EY {eyMin}–{eyMax}%, TDS {tdsMin}–{tdsMax}%) e sei nella zona della delizia.",
+        legendPart3: ". La sposti con il rapporto caffè-acqua.\nResta dentro il riquadro e sei nella zona dell'ottimo.",
         cells: {
           under: {
             weak: {
               title: "Acido e acquoso",
               advice:
-                "Sotto-estratto e leggero. Macina più fine (o allunga l'estrazione) E usa più caffè per un rapporto più stretto.",
+                "Sotto-estratto e leggero. Macina più fine (o allunga l'estrazione) e usa più caffè per un rapporto più intenso.",
             },
             ideal: {
               title: "Acido e pungente",
               advice:
-                "Buona intensità ma sotto-estratto. Macina più fine, allunga l'estrazione o aggiungi agitazione per sciogliere di più.",
+                "Buona intensità ma sotto-estratto. Macina più fine, allunga l'estrazione o aggiungi agitazione per sciogliere più composti.",
             },
             strong: {
               title: "Acido e pesante",
               advice:
-                "Sotto-estratto ma troppo concentrato. Macina più fine per estrarre di più E riduci il caffè per un rapporto più ampio.",
+                "Sotto-estratto ma troppo concentrato. Macina più fine per estrarre di più e riduci il caffè per avere meno composti disciolti.",
             },
           },
           ideal: {
             weak: {
               title: "Equilibrato ma leggero",
-              advice: "L'estrazione è a punto. Usa solo più caffè (un rapporto più stretto) per dare corpo.",
+              advice: "L'estrazione è a punto. Usa solo più caffè per dare più corpo.",
             },
             ideal: {
-              title: "A punto",
-              advice: "Proprio nella zona della delizia, estrazione e intensità equilibrate. Riprepara esattamente così.",
+              title: "Dritto al punto",
+              advice: "Proprio nella zona dell'ottimo: estrazione e intensità equilibrate. Ripreparalo esattamente così.",
             },
             strong: {
               title: "Equilibrato ma pesante",
-              advice: "L'estrazione è a punto. Usa solo meno caffè (un rapporto più ampio) per alleggerire la tazza.",
+              advice: "L'estrazione è a punto, ma usa meno caffè per alleggerire un po' la tazza.",
             },
           },
           over: {
             weak: {
               title: "Amaro e leggero",
-              advice:
-                "Sovra-estratto e acquoso. Macina più grosso (o accorcia l'estrazione) E usa più caffè per dare corpo.",
+              advice: "Sovra-estratto e acquoso. Macina più grosso o accorcia l'estrazione, e usa più caffè per dare corpo.",
             },
             ideal: {
               title: "Amaro e asciutto",
@@ -342,7 +330,7 @@ export const it = {
             strong: {
               title: "Amaro e pesante",
               advice:
-                "Sovra-estratto e troppo concentrato. Macina più grosso per estrarre meno E riduci il caffè per un rapporto più ampio.",
+                "Sovra-estratto e troppo concentrato. Macina più grosso per estrarre meno e riduci il caffè per disciogliere meno composti.",
             },
           },
         },

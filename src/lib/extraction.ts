@@ -11,13 +11,8 @@
 // Worked check: 36 g beverage × 10% / 18 g dose = 20% EY.
 //
 // NOTE — the refuted shortcut `EY = TDS% × waterG / doseG` is deliberately NOT implemented.
-// Water weight overstates the liquid in the cup (grounds retain ~2 g/g), so it can only be
-// used to ESTIMATE beverage weight (see estimateBeverageG), and any EY derived that way is
-// flagged approximate by the caller.
-
-// Grams of water retained per gram of dry coffee (liquid-retention ratio). ~2.0 is the
-// widely-cited rule of thumb for filter/pour-over beds; exposed so callers can override.
-export const DEFAULT_LRR = 2.0;
+// Water weight overstates the liquid in the cup (grounds retain ~2 g/g of water), so the
+// beverage must be weighed on a scale — anyone with a refractometer has one.
 
 // Ideal extraction-yield band (percent). Below is under-extracted (sour), above is
 // over-extracted (bitter), between is the balanced/sweet target.
@@ -49,18 +44,6 @@ export function extractionYield({
   const tds = positive(tdsPct);
   if (dose === 0 || beverage === 0 || tds === 0) return 0;
   return Math.round(((beverage * tds) / dose) * 10) / 10;
-}
-
-// Estimate the beverage weight when it wasn't measured on a scale: total water in minus the
-// water the spent grounds hold back (dose × LRR). Flagged approximate by the caller — an
-// EY built on this is only as good as the LRR guess. Returns 0 if the estimate goes non-
-// positive (e.g. more grounds than water can wet).
-export function estimateBeverageG(waterG: number, doseG: number, lrr: number = DEFAULT_LRR): number {
-  const water = positive(waterG);
-  const dose = positive(doseG);
-  if (water === 0 || dose === 0) return 0;
-  const beverage = water - dose * lrr;
-  return beverage > 0 ? Math.round(beverage * 10) / 10 : 0;
 }
 
 // Classify an EY% into its taste band. The boundaries are inclusive of the ideal band:

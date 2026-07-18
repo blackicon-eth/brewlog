@@ -86,9 +86,9 @@ function RatioScreen() {
     ? formatRatioLocale(heroValue, locale)
     : heroValue > 0
       ? formatNumberLocale(heroValue, locale, {
-          minimumFractionDigits: solveFor === "dose" ? 1 : 0,
-          maximumFractionDigits: solveFor === "dose" ? 1 : 0,
-        })
+        minimumFractionDigits: solveFor === "dose" ? 1 : 0,
+        maximumFractionDigits: solveFor === "dose" ? 1 : 0,
+      })
       : "-";
 
   const recipeReady = dose > 0 && water > 0 && ratio > 0;
@@ -157,7 +157,6 @@ function RatioScreen() {
       </View>
 
       {/* Inputs — whichever two are not being solved. Dose and water share one row. */}
-      <AppText variant="labelMd" style={styles.sectionLabel}>{t(dict, "tools.ratio.page.knownValuesLabel")}</AppText>
       <View style={styles.fieldRow}>
         <View style={styles.fieldHalf}>
           <RatioField

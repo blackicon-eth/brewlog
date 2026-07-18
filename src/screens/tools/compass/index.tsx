@@ -14,15 +14,21 @@ import {
   TARGET,
 } from "../../../lib/coffeeCompass";
 import { useI18n } from "../../../i18n/LocaleProvider";
+import { formatNumberLocale } from "../../../lib/i18n/format";
 import { t } from "../../../lib/i18n/t";
 import { toolTitle, compassCellText } from "../../../lib/i18n/labels";
 import { CompassRoseIcon } from "./CompassRoseIcon";
 
 const RANGES = DEFAULT_RANGES;
 
+// Persisted-input keys, exported so other tools (the Extraction Yield page) can hand a
+// reading to the compass by writing them before navigating here.
+export const COMPASS_EY_KEY = "tool:compass:ey";
+export const COMPASS_TDS_KEY = "tool:compass:tds";
+
 // EY tick marks (x axis) and TDS tick marks (y axis) spanning the plot range.
-const EY_TICKS = [12, 16, 20, 24, 28];
-const TDS_TICKS = [1.6, 1.4, 1.2, 1.0]; // top → bottom (strength decreases downward)
+const EY_TICKS = [14, 17, 20, 23, 26];
+const TDS_TICKS = [1.4, 1.3, 1.2, 1.1]; // top → bottom (strength decreases downward)
 
 // Parse a user-typed number, tolerating a trailing "." mid-typing and stray "%".
 function parseNum(raw: string): number | null {
@@ -33,11 +39,12 @@ function parseNum(raw: string): number | null {
 }
 
 function CompassScreen() {
-  const { dict } = useI18n();
-  const [eyText, setEyText] = usePersistedState("tool:compass:ey", String(DEFAULT_POINT.ey));
-  const [tdsText, setTdsText] = usePersistedState("tool:compass:tds", String(DEFAULT_POINT.tds));
+  const { dict, locale } = useI18n();
+  const [eyText, setEyText] = usePersistedState(COMPASS_EY_KEY, String(DEFAULT_POINT.ey));
+  const [tdsText, setTdsText] = usePersistedState(COMPASS_TDS_KEY, String(DEFAULT_POINT.tds));
   // Measured inner-plot size, so the dot maps precisely on any device (S23 included).
-  const [plot, setPlot] = useState(0);
+  // Width and height differ now that the plot is a landscape rectangle.
+  const [plot, setPlot] = useState({ w: 0, h: 0 });
 
   const ey = parseNum(eyText);
   const tds = parseNum(tdsText);
@@ -58,18 +65,52 @@ function CompassScreen() {
     <ToolPage title={toolTitle(dict, "compass")} subtitle={t(dict, "tools.compass.page.subtitle")}>
       {/* ── The chart: the crafted centrepiece ─────────────────────────────── */}
       <View style={styles.chartBlock}>
-        {/* Y-axis caption, rotated up the left edge. */}
+        {/* Y-axis caption, written vertically up the left edge. The text's unrotated box
+            is laid out plot-height wide and centered on the plot's midpoint, then rotated
+            in place, so it reads bottom-to-top exactly along the plot. Needs the measured
+            plot height, hence the conditional render. */}
         <View style={styles.yAxisLabel} pointerEvents="none">
-          <AppText variant="labelSm" style={styles.axisCaption}>
-            {t(dict, "tools.compass.page.strengthAxisCaption")}
-          </AppText>
+          {plot.h > 0 && (
+            <AppText
+              variant="labelSm"
+              numberOfLines={1}
+              style={[
+                styles.axisCaption,
+                styles.yCaption,
+                {
+                  width: plot.h,
+                  left: Y_CAPTION_W / 2 - plot.h / 2,
+                  top: plot.h / 2 - 7,
+                },
+              ]}
+            >
+              {t(dict, "tools.compass.page.strengthAxisCaption")}
+            </AppText>
+          )}
+        </View>
+
+        {/* Y-axis tick numbers, each centered on its gridline. */}
+        <View style={styles.yTicks} pointerEvents="none">
+          {plot.h > 0 &&
+            TDS_TICKS.map((tick) => {
+              const f = 1 - (tick - RANGES.tds.min) / (RANGES.tds.max - RANGES.tds.min);
+              return (
+                <AppText
+                  key={`yt${tick}`}
+                  variant="labelSm"
+                  style={[styles.tickText, styles.yTickText, { top: f * plot.h - 7 }]}
+                >
+                  {formatNumberLocale(tick, locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                </AppText>
+              );
+            })}
         </View>
 
         <View style={styles.chartRight}>
           {/* Plot square. onLayout feeds the measured size to the dot math. */}
           <View
             style={styles.plot}
-            onLayout={(e) => setPlot(e.nativeEvent.layout.width)}
+            onLayout={(e) => setPlot({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
           >
             {/* Grid ticks — hairline guides at each tick fraction. */}
             {EY_TICKS.map((tick) => {
@@ -100,14 +141,14 @@ function CompassScreen() {
             </View>
 
             {/* Plotted reading — a ringed compass marker, positioned from the measured plot. */}
-            {dot && plot > 0 && (
+            {dot && plot.w > 0 && (
               <View
                 pointerEvents="none"
                 style={[
                   styles.dotWrap,
                   {
-                    left: dot.x * plot - DOT / 2,
-                    top: dot.y * plot - DOT / 2,
+                    left: dot.x * plot.w - DOT / 2,
+                    top: dot.y * plot.h - DOT / 2,
                   },
                 ]}
               >
@@ -202,12 +243,14 @@ function CompassScreen() {
 const DOT = 26; // plotted marker diameter
 
 export const compassTool: ToolModule = {
-  meta: { id: "compass", icon: CompassRoseIcon, comingSoon: true },
+  meta: { id: "compass", icon: CompassRoseIcon },
   Screen: CompassScreen,
 };
 
-// Left gutter reserved for the rotated Y caption so the plot stays a clean square.
-const Y_GUTTER = 22;
+// Left gutter beside the plot: a narrow column for the vertical caption, then one for
+// the numeric TDS tick labels.
+const Y_CAPTION_W = 16;
+const Y_TICKS_W = 30;
 
 const styles = StyleSheet.create({
   chartBlock: {
@@ -216,18 +259,30 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   yAxisLabel: {
-    width: Y_GUTTER,
-    alignItems: "center",
-    justifyContent: "center",
+    width: Y_CAPTION_W,
+  },
+  yCaption: {
+    position: "absolute",
+    textAlign: "center",
+    transform: [{ rotate: "-90deg" }],
+  },
+  yTicks: {
+    width: Y_TICKS_W,
+  },
+  yTickText: {
+    position: "absolute",
+    right: 6,
+    lineHeight: 14,
   },
   axisCaption: {
     color: colors.secondary,
   },
   chartRight: { flex: 1 },
 
-  // The plot: a bordered near-square instrument panel on the warm surfaceLow canvas.
+  // The plot: a bordered landscape instrument panel on the warm surfaceLow canvas.
+  // 4:3 keeps the chart readable while leaving more page for inputs and the verdict.
   plot: {
-    aspectRatio: 1,
+    aspectRatio: 4 / 3,
     backgroundColor: colors.surfaceLow,
     borderWidth: 1.5,
     borderColor: colors.onSurface,

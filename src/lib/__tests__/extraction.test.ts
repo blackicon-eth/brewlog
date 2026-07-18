@@ -1,10 +1,8 @@
 import {
   extractionYield,
-  estimateBeverageG,
   band,
   dissolvedSolidsG,
   waterRetainedG,
-  DEFAULT_LRR,
   EY_IDEAL_MIN,
   EY_IDEAL_MAX,
 } from "../extraction";
@@ -52,36 +50,6 @@ describe("extractionYield", () => {
 
   it("returns 0 for NaN inputs", () => {
     expect(extractionYield({ doseG: NaN, beverageG: 36, tdsPct: 10 })).toBe(0);
-  });
-});
-
-describe("estimateBeverageG", () => {
-  it("subtracts water retained by grounds at the default LRR (~2 g/g)", () => {
-    // 300 g water - 18 g × 2.0 = 264 g estimated beverage
-    expect(estimateBeverageG(300, 18)).toBe(264);
-    expect(DEFAULT_LRR).toBe(2.0);
-  });
-
-  it("accepts a custom LRR", () => {
-    // 300 - 18 × 2.5 = 255
-    expect(estimateBeverageG(300, 18, 2.5)).toBe(255);
-  });
-
-  it("feeds a plausible EY when chained into extractionYield", () => {
-    const bev = estimateBeverageG(300, 18); // 264
-    const ey = extractionYield({ doseG: 18, beverageG: bev, tdsPct: 1.35 });
-    expect(bev).toBe(264);
-    expect(ey).toBe(19.8); // 264 × 1.35 / 18 = 19.8
-  });
-
-  it("returns 0 when grounds would absorb all the water", () => {
-    // 30 g water, 20 g dose × 2.0 = 40 g absorbed -> negative -> clamp to 0
-    expect(estimateBeverageG(30, 20)).toBe(0);
-  });
-
-  it("guards missing inputs -> 0", () => {
-    expect(estimateBeverageG(0, 18)).toBe(0);
-    expect(estimateBeverageG(300, 0)).toBe(0);
   });
 });
 

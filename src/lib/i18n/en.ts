@@ -125,23 +125,35 @@ export const en = {
   },
   methods: {
     filter: {
-      label: "Filter", shortLabel: "Filter",
-      waterLabel: "Water (g)", timeLabel: "Total (s)", timeDetailLabel: "Total time",
+      label: "Filter",
+      shortLabel: "Filter",
+      waterLabel: "Water (g)",
+      timeLabel: "Total (s)",
+      timeDetailLabel: "Total time",
       ratioNoun: "dose to water",
     },
     french_press: {
-      label: "French Press", shortLabel: "Press",
-      waterLabel: "Water (g)", timeLabel: "Steep (s)", timeDetailLabel: "Steep time",
+      label: "French Press",
+      shortLabel: "Press",
+      waterLabel: "Water (g)",
+      timeLabel: "Steep (s)",
+      timeDetailLabel: "Steep time",
       ratioNoun: "dose to water",
     },
     moka: {
-      label: "Moka", shortLabel: "Moka",
-      waterLabel: "Water (g)", timeLabel: "Total (s)", timeDetailLabel: "Total time",
+      label: "Moka",
+      shortLabel: "Moka",
+      waterLabel: "Water (g)",
+      timeLabel: "Total (s)",
+      timeDetailLabel: "Total time",
       ratioNoun: "dose to water",
     },
     espresso: {
-      label: "Espresso", shortLabel: "Espresso",
-      waterLabel: "Yield (g)", timeLabel: "Shot (s)", timeDetailLabel: "Shot time",
+      label: "Espresso",
+      shortLabel: "Espresso",
+      waterLabel: "Yield (g)",
+      timeLabel: "Shot (s)",
+      timeDetailLabel: "Shot time",
       ratioNoun: "dose to yield",
     },
   },
@@ -161,7 +173,6 @@ export const en = {
         solveRatio: "Ratio",
         heroSolved: "{label} · solved",
         enterValues: "Enter values above",
-        knownValuesLabel: "Known values",
         doseFieldLabel: "Dose (g)",
         waterFieldLabel: "Water (g)",
         ratioFieldLabel: "Ratio (the X in 1:X)",
@@ -172,7 +183,6 @@ export const en = {
       title: "Brew Timer",
       blurb: "Guided pour schedule",
       page: {
-        dialItIn: "Dial it in",
         bloomAmountLabel: "Bloom amount (g)",
         bloomTimeLabel: "Bloom time",
         mainPoursLabel: "Main pours",
@@ -206,11 +216,6 @@ export const en = {
       blurb: "TDS → extraction yield",
       page: {
         subtitle: "Refractometer → extraction %",
-        cupWeightLabel: "Cup weight",
-        weighedCup: "Weighed cup",
-        estimateOption: "Estimate",
-        extractionEst: "Extraction · est.",
-        extractionYieldLabel: "Extraction yield",
         enterReading: "Enter a reading",
         bands: {
           under: { verdict: "Under-extracted", note: "Sour · under-developed. Grind finer or extend contact." },
@@ -218,23 +223,17 @@ export const en = {
           over: { verdict: "Over-extracted", note: "Bitter · drying. Grind coarser or shorten contact." },
         },
         meterIdealLabel: "{min}–{max} ideal",
-        approxBannerWithCup:
-          "Approximate, beverage weight estimated as water − dose × {lrr} g/g absorbed ≈ {g} g in the cup. Weigh the cup for an exact yield.",
-        approxBannerNoCup:
-          "Approximate, beverage weight estimated as water − dose × {lrr} g/g absorbed. Weigh the cup for an exact yield.",
-        measurementsLabel: "Measurements",
-        doseFieldLabel: "Dose (dry coffee)",
-        tdsFieldLabel: "TDS % (refractometer)",
-        waterPouredLabel: "Water poured",
-        beverageWeightFieldLabel: "Beverage weight (in the cup)",
-        waterPouredOptionalLabel: "Water poured (optional, for ratio)",
+        doseFieldLabel: "Dose (g)",
+        tdsFieldLabel: "TDS %",
+        beverageWeightFieldLabel: "Cup weight (g)",
+        waterPouredOptionalLabel: "Water (optional)",
         derivedLabel: "Derived",
         strengthTdsLabel: "Strength (TDS)",
         dissolvedSolidsLabel: "Dissolved solids",
         brewRatioLabel: "Brew ratio",
-        beverageEstLabel: "Beverage (est.)",
         beverageWeightRowLabel: "Beverage weight",
         waterRetainedLabel: "Water retained",
+        openCompass: "See it on the Coffee Compass",
       },
     },
     phased: {
@@ -280,7 +279,7 @@ export const en = {
         legendPart2: ". Move it with grind, time and agitation. Up–down is ",
         legendStrengthWord: "strength",
         legendPart3:
-          ". Move it with your coffee-to-water ratio. Land inside the box (EY {eyMin}–{eyMax}%, TDS {tdsMin}–{tdsMax}%) and you're in the zone of deliciousness.",
+          ". Move it with your coffee-to-water ratio.\nLand inside the box and you're in the zone of deliciousness.",
         cells: {
           under: {
             weak: {
@@ -303,7 +302,8 @@ export const en = {
             },
             ideal: {
               title: "Dialed in",
-              advice: "Right in the zone of deliciousness, balanced extraction and strength. Brew it again exactly like this.",
+              advice:
+                "Right in the zone of deliciousness, balanced extraction and strength. Brew it again exactly like this.",
             },
             strong: {
               title: "Balanced but heavy",
@@ -313,7 +313,8 @@ export const en = {
           over: {
             weak: {
               title: "Bitter & thin",
-              advice: "Over-extracted and watery. Grind coarser (or shorten the brew) AND use more coffee to firm up the body.",
+              advice:
+                "Over-extracted and watery. Grind coarser (or shorten the brew) AND use more coffee to firm up the body.",
             },
             ideal: {
               title: "Bitter & dry",
@@ -370,8 +371,7 @@ export const en = {
     saveNew: "Save coffee",
     saveEdit: "Save changes",
     intakeKicker: "Describe this coffee",
-    intakePlaceholder:
-      "Sey Coffee, Kenya Nyeri AA, washed, light roast, roasted 2026-06-10. Blackcurrant and floral.",
+    intakePlaceholder: "Sey Coffee, Kenya Nyeri AA, washed, light roast, roasted 2026-06-10. Blackcurrant and floral.",
     addPhotoModalTitle: "Add a photo",
     takePhoto: "Take photo",
     chooseFromGallery: "Choose from gallery",
