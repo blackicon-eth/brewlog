@@ -9,6 +9,7 @@ export { MarkdownText, type MarkdownTextProps } from "./MarkdownText";
 export { AdvisorBadge } from "./AdvisorBadge";
 export { Fab, type FabProps } from "./Fab";
 export { TextField, type TextFieldProps } from "./TextField";
+export { SelectField, type SelectFieldProps, type SelectOption } from "./SelectField";
 export { PillButton, type PillButtonProps } from "./PillButton";
 export { ChipSelect, type ChipSelectProps, type ChipOption } from "./ChipSelect";
 export { SegmentedTabs, type SegmentedTab, type SegmentedTabsProps } from "./SegmentedTabs";

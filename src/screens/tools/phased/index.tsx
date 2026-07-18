@@ -1,24 +1,22 @@
 import React, { useMemo, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
-import { AppText, Card, ChipSelect, TextField } from "../../../components/ui";
+import { AppText, Card, SelectField, TextField } from "../../../components/ui";
 import { colors, fonts, radii, spacing } from "../../../design/tokens";
 import { ToolPage } from "../ToolPage";
 import { usePersistedState } from "../../../hooks/usePersistedState";
 import type { ToolModule } from "../types";
 import { formatSeconds } from "../../../lib/brewFormat";
-import { formatRatioLocale } from "../../../lib/i18n/format";
 import {
   buildFortySix,
-  DEFAULT_DOSE_G,
   DEFAULT_PHASE60_POURS,
-  DEFAULT_RATIO,
+  DEFAULT_WATER_G,
   MAX_PHASE60_POURS,
   MIN_PHASE60_POURS,
   type FirstPourBias,
   type PhasedPour,
 } from "../../../lib/fortySix";
 import { useI18n } from "../../../i18n/LocaleProvider";
-import { t, tn } from "../../../lib/i18n/t";
+import { t } from "../../../lib/i18n/t";
 import { toolTitle } from "../../../lib/i18n/labels";
 import type { Dict } from "../../../lib/i18n/en";
 import { PhasedGlyph } from "./PhasedGlyph";
@@ -38,19 +36,18 @@ function phaseLabel(dict: Dict, phase: PhasedPour["phase"]): string {
 }
 
 function PhasedScreen() {
-  const { dict, locale } = useI18n();
+  const { dict } = useI18n();
   const BIAS_OPTIONS = biasOptions(dict);
-  const [doseText, setDoseText] = usePersistedState("tool:phased:dose", String(DEFAULT_DOSE_G));
-  const [ratioText, setRatioText] = usePersistedState("tool:phased:ratio", String(DEFAULT_RATIO));
+  const [waterText, setWaterText] = usePersistedState("tool:phased:water", String(DEFAULT_WATER_G));
   const [phase60Pours, setPhase60Pours] = usePersistedState("tool:phased:phase60Pours", DEFAULT_PHASE60_POURS);
-  const [bias, setBias] = usePersistedState<FirstPourBias>("tool:phased:bias", "balanced");
+  // Deliberately not persisted: every visit starts from the classic balanced first pour.
+  const [bias, setBias] = useState<FirstPourBias>("balanced");
 
-  const doseG = parseFloat(doseText.replace(",", "."));
-  const ratio = parseFloat(ratioText.replace(",", "."));
+  const totalWaterG = parseFloat(waterText.replace(",", "."));
 
   const recipe = useMemo(
-    () => buildFortySix({ doseG, ratio, phase60Pours, firstPourBias: bias }),
-    [doseG, ratio, phase60Pours, bias]
+    () => buildFortySix({ totalWaterG, phase60Pours, firstPourBias: bias }),
+    [totalWaterG, phase60Pours, bias]
   );
 
   const valid = recipe.pours.length > 0;
@@ -59,22 +56,22 @@ function PhasedScreen() {
 
   return (
     <ToolPage title={toolTitle(dict, "phased")} subtitle={t(dict, "tools.phased.page.subtitle")}>
-      {/* Inputs -------------------------------------------------------------------- */}
+      {/* Inputs — the whole schedule derives from total water alone; the first-pour bias
+          shares the row as its closed-choice sibling. -------------------------------- */}
       <View style={styles.inputsRow}>
         <TextField
-          label={t(dict, "tools.phased.page.doseLabel")}
-          value={doseText}
-          onChangeText={setDoseText}
-          placeholder="20"
+          label={t(dict, "tools.phased.page.totalWaterLabel")}
+          value={waterText}
+          onChangeText={setWaterText}
+          placeholder="300"
           keyboardType="decimal-pad"
           style={styles.inputHalf}
         />
-        <TextField
-          label={t(dict, "tools.phased.page.ratioLabel")}
-          value={ratioText}
-          onChangeText={setRatioText}
-          placeholder="15"
-          keyboardType="decimal-pad"
+        <SelectField
+          label={t(dict, "tools.phased.page.firstPourLabel")}
+          options={BIAS_OPTIONS}
+          value={bias}
+          onChange={setBias}
           style={styles.inputHalf}
         />
       </View>
@@ -83,7 +80,7 @@ function PhasedScreen() {
         <AppText variant="labelMd">{t(dict, "tools.phased.page.strengthPhasePoursLabel")}</AppText>
         <View style={styles.stepperRow}>
           <StepperButton
-            label="–"
+            label="−"
             a11yLabel={t(dict, "tools.phased.page.decreasePoursA11y")}
             disabled={!canDecrease}
             onPress={() => setPhase60Pours((n) => Math.max(MIN_PHASE60_POURS, n - 1))}
@@ -107,33 +104,12 @@ function PhasedScreen() {
         </View>
       </View>
 
-      <ChipSelect
-        label={t(dict, "tools.phased.page.firstPourLabel")}
-        options={BIAS_OPTIONS}
-        value={bias}
-        onChange={(v) => setBias((v || "balanced") as FirstPourBias)}
-        clearable={false}
-      />
-
       {!valid ? (
         <Card style={styles.errorCard}>
           <AppText variant="bodyMd">{t(dict, "tools.phased.page.enterRecipeError")}</AppText>
         </Card>
       ) : (
         <>
-          {/* Totals ------------------------------------------------------------------ */}
-          <View style={styles.totalsRow}>
-            <TotalStat label={t(dict, "tools.phased.page.totalWaterStatLabel")} value={`${recipe.totalWaterG}g`} />
-            <TotalStat label={t(dict, "tools.phased.page.ratioStatLabel")} value={formatRatioLocale(recipe.ratio, locale)} />
-            <TotalStat label={t(dict, "tools.phased.page.brewTimeStatLabel")} value={`~${formatSeconds(recipe.totalSeconds)}`} />
-          </View>
-
-          {/* Phase summary ------------------------------------------------------------ */}
-          <View style={styles.phaseSummaryRow}>
-            <PhaseSummary dict={dict} label={phaseLabel(dict, "taste")} grams={recipe.phase40G} pours={2} muted />
-            <PhaseSummary dict={dict} label={phaseLabel(dict, "strength")} grams={recipe.phase60G} pours={recipe.phase60Pours} />
-          </View>
-
           {/* Pour list — the centerpiece ------------------------------------------------ */}
           <AppText variant="labelSm" style={styles.pourListKicker}>{t(dict, "tools.phased.page.pourSequenceKicker")}</AppText>
           <View style={styles.timeline}>
@@ -155,37 +131,6 @@ function PhasedScreen() {
         </>
       )}
     </ToolPage>
-  );
-}
-
-function TotalStat({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.totalStat}>
-      <AppText variant="labelSm">{label}</AppText>
-      <AppText variant="headlineMd" style={styles.totalStatValue}>{value}</AppText>
-    </View>
-  );
-}
-
-function PhaseSummary({
-  dict,
-  label,
-  grams,
-  pours,
-  muted,
-}: {
-  dict: Dict;
-  label: string;
-  grams: number;
-  pours: number;
-  muted?: boolean;
-}) {
-  return (
-    <Card style={[styles.phaseSummaryCard, muted && styles.phaseSummaryCardMuted]}>
-      <AppText variant="labelSm">{label}</AppText>
-      <AppText variant="headlineMd" style={styles.phaseSummaryGrams}>{grams}g</AppText>
-      <AppText variant="bodyMd">{tn(dict, "tools.phased.page.poursCount", pours)}</AppText>
-    </Card>
   );
 }
 
@@ -234,7 +179,7 @@ function StepperButton({
       onPress={onPress}
       style={({ pressed }) => [styles.stepperBtn, disabled && styles.stepperBtnDisabled, pressed && !disabled && styles.stepperBtnPressed]}
     >
-      <AppText variant="headlineMd" style={[styles.stepperBtnText, disabled && styles.stepperBtnTextDisabled]}>{label}</AppText>
+      <AppText style={[styles.stepperBtnText, disabled && styles.stepperBtnTextDisabled]}>{label}</AppText>
     </Pressable>
   );
 }
@@ -262,7 +207,9 @@ const styles = StyleSheet.create({
   },
   stepperBtnDisabled: { opacity: 0.4 },
   stepperBtnPressed: { opacity: 0.85, transform: [{ scale: 0.97 }] },
-  stepperBtnText: { color: colors.primary, lineHeight: 26, includeFontPadding: false },
+  // Sans + true minus (−), same recipe as the timer's Stepper: EB Garamond's serif
+  // glyphs sit below optical center in a fixed square.
+  stepperBtnText: { fontFamily: fonts.sansSemiBold, fontSize: 20, lineHeight: 22, color: colors.primary, includeFontPadding: false },
   stepperBtnTextDisabled: { color: colors.outline },
   stepperValueBox: { width: 40, alignItems: "center" },
   stepperValue: { lineHeight: 34, includeFontPadding: false },
@@ -270,25 +217,7 @@ const styles = StyleSheet.create({
 
   errorCard: { marginTop: 8 },
 
-  totalsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    backgroundColor: colors.surfaceContainer,
-    borderRadius: radii.md,
-    paddingVertical: 16,
-    paddingHorizontal: 14,
-    marginTop: 4,
-    marginBottom: spacing.stack,
-  },
-  totalStat: { alignItems: "flex-start", gap: 4 },
-  totalStatValue: { lineHeight: 28, includeFontPadding: false },
-
-  phaseSummaryRow: { flexDirection: "row", gap: spacing.gutter, marginBottom: spacing.section },
-  phaseSummaryCard: { flex: 1, gap: 4, borderWidth: 1.5, borderColor: colors.tertiary },
-  phaseSummaryCardMuted: { borderColor: colors.outlineVariant },
-  phaseSummaryGrams: { lineHeight: 28, includeFontPadding: false, marginTop: 2 },
-
-  pourListKicker: { marginBottom: 12 },
+  pourListKicker: { marginTop: 4, marginBottom: 12 },
 
   timeline: { paddingBottom: 8 },
   pourRow: { flexDirection: "row", gap: 14 },
@@ -300,6 +229,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.outlineVariant,
     borderWidth: 2,
     borderColor: colors.background,
+    // Centers the dot on the timestamp's 22px line box ((22 - 14) / 2).
+    marginTop: 4,
   },
   pourDotStrength: { backgroundColor: colors.tertiary },
   pourLine: { flex: 1, width: 2, backgroundColor: colors.outlineVariant, marginVertical: 2 },
@@ -307,7 +238,8 @@ const styles = StyleSheet.create({
   pourTopLine: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 },
   pourTimestamp: { fontFamily: fonts.sansSemiBold, color: colors.onSurface },
   pourAmountRow: { flexDirection: "row", alignItems: "baseline", gap: 8 },
-  pourAmount: { lineHeight: 28, includeFontPadding: false },
+  // EB Garamond's "g" tail needs the full 34 line box on Android or it clips.
+  pourAmount: { lineHeight: 34, includeFontPadding: false },
   pourCumulative: {},
 
   phaseDivider: { color: colors.outline, marginBottom: 10, marginTop: 2 },

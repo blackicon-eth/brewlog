@@ -7,20 +7,28 @@ import { BrewsScreen } from "./BrewsScreen";
 import { ChatScreen } from "./ChatScreen";
 import { ToolsScreen } from "./ToolsScreen";
 import { SettingsScreen } from "./SettingsScreen";
+import { useI18n } from "../i18n/LocaleProvider";
 
 // The app's top-level shell: five tabs behind a hand-built bottom bar. Detail/form/advisor
 // screens push over this from the root stack (covering the bar), so nested navigation still
 // flows through the stack — `useNavigation()` inside a tab reaches the same navigator.
-const TABS: (TabItem & { render: () => React.ReactNode })[] = [
-  { key: "home", label: "Home", icon: HomeIcon, render: () => <CoffeesScreen /> },
-  { key: "brews", label: "Brews", icon: DropIcon, render: () => <BrewsScreen /> },
-  { key: "chat", label: "Chat", icon: SparkGlyph, render: () => <ChatScreen /> },
-  { key: "tools", label: "Tools", icon: FlaskIcon, render: () => <ToolsScreen /> },
-  { key: "settings", label: "Settings", icon: GearIcon, render: () => <SettingsScreen /> },
+// Labels resolve per render (tabs.*) so the bar follows a live locale switch.
+const TABS: (Omit<TabItem, "label"> & { render: () => React.ReactNode })[] = [
+  { key: "home", icon: HomeIcon, render: () => <CoffeesScreen /> },
+  { key: "brews", icon: DropIcon, render: () => <BrewsScreen /> },
+  { key: "chat", icon: SparkGlyph, render: () => <ChatScreen /> },
+  { key: "tools", icon: FlaskIcon, render: () => <ToolsScreen /> },
+  { key: "settings", icon: GearIcon, render: () => <SettingsScreen /> },
 ];
 
 export function MainTabs() {
+  const { t } = useI18n();
   const [activeKey, setActiveKey] = useState("home");
+  const items: TabItem[] = TABS.map(({ key, icon }) => ({
+    key,
+    icon,
+    label: t(`tabs.${key}` as "tabs.home"),
+  }));
 
   // Directional slide on tab change. `dir` is set in the tap handler (before the re-render)
   // so the interpolation below reads a fresh value; +1 slides in from the right (moving to a
@@ -69,7 +77,7 @@ export function MainTabs() {
           );
         })}
       </View>
-      <TabBar items={TABS} activeKey={activeKey} onSelect={select} />
+      <TabBar items={items} activeKey={activeKey} onSelect={select} />
     </View>
   );
 }

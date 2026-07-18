@@ -1,19 +1,21 @@
 // --- 4:6 Method (Tetsu Kasuya) Phased Recipe Builder --------------------------------------
-// Generates an adjustable staged pour list for Tetsu Kasuya's 4:6 method. Total brew water
-// splits into two phases: the first 40% (2 pours) tunes acidity/sweetness ("Taste"), the
-// final 60% (N pours, evenly split) tunes strength/body ("Strength"). Fewer phase-60 pours
-// yields a stronger cup; more pours, a lighter one. Pours land roughly every 45s.
+// Generates an adjustable staged pour list for Tetsu Kasuya's 4:6 method. The schedule
+// depends only on total brew water, which splits into two phases: the first 40% (2 pours)
+// tunes acidity/sweetness ("Taste"), the final 60% (N pours, evenly split) tunes
+// strength/body ("Strength"). More phase-60 pours yields a stronger cup; fewer pours, a
+// lighter one. Pours land roughly every 45s.
 
 export const PHASE40_SHARE = 0.4;
 export const PHASE60_SHARE = 0.6;
 export const POUR_INTERVAL_S = 45;
 
-export const MIN_PHASE60_POURS = 2;
+export const MIN_PHASE60_POURS = 1;
 export const MAX_PHASE60_POURS = 4;
 export const DEFAULT_PHASE60_POURS = 3;
 
-export const DEFAULT_DOSE_G = 20;
-export const DEFAULT_RATIO = 15;
+// Kasuya's canonical brew: 300g water (20g dose at 1:15 — the dose is the drinker's
+// business; the pour schedule only needs the water).
+export const DEFAULT_WATER_G = 300;
 
 // The "first pour smaller -> sweeter, larger -> brighter" knob from the original 4:6 write-up:
 // it biases how the 40% phase splits across its 2 pours while keeping their sum fixed.
@@ -35,15 +37,12 @@ export type PhasedPour = {
 };
 
 export type FortySixInput = {
-  doseG: number;
-  ratio: number;
-  phase60Pours?: number; // N, default 3, clamped to [2, 4]
+  totalWaterG: number;
+  phase60Pours?: number; // N, default 3, clamped to [1, 4]
   firstPourBias?: FirstPourBias; // default "balanced"
 };
 
 export type FortySixRecipe = {
-  doseG: number;
-  ratio: number;
   totalWaterG: number;
   phase40G: number;
   phase60G: number;
@@ -52,7 +51,7 @@ export type FortySixRecipe = {
   totalSeconds: number;
 };
 
-// Soft-clamp phase-60 pour count into the supported [2, 4] range.
+// Soft-clamp phase-60 pour count into the supported [1, 4] range.
 export function clampPhase60Pours(n: number): number {
   const rounded = Math.round(n);
   return Math.min(MAX_PHASE60_POURS, Math.max(MIN_PHASE60_POURS, rounded));
@@ -69,16 +68,16 @@ function splitEven(totalG: number, count: number): number[] {
   return amounts;
 }
 
-// Build the full staged pour list for a 4:6 recipe. Guards invalid input (doseG <= 0 or
-// ratio <= 0) by returning an empty pour list with zeroed totals rather than NaN pours.
-export function buildFortySix({ doseG, ratio, phase60Pours = DEFAULT_PHASE60_POURS, firstPourBias = "balanced" }: FortySixInput): FortySixRecipe {
+// Build the full staged pour list for a 4:6 recipe. Guards invalid input (totalWaterG <= 0
+// or NaN) by returning an empty pour list with zeroed totals rather than NaN pours.
+export function buildFortySix({ totalWaterG: rawWaterG, phase60Pours = DEFAULT_PHASE60_POURS, firstPourBias = "balanced" }: FortySixInput): FortySixRecipe {
   const n = clampPhase60Pours(phase60Pours);
 
-  if (!doseG || doseG <= 0 || !ratio || ratio <= 0) {
-    return { doseG, ratio, totalWaterG: 0, phase40G: 0, phase60G: 0, phase60Pours: n, pours: [], totalSeconds: 0 };
+  if (!rawWaterG || rawWaterG <= 0) {
+    return { totalWaterG: 0, phase40G: 0, phase60G: 0, phase60Pours: n, pours: [], totalSeconds: 0 };
   }
 
-  const totalWaterG = Math.round(doseG * ratio);
+  const totalWaterG = Math.round(rawWaterG);
   const phase40G = Math.round(totalWaterG * PHASE40_SHARE);
   const phase60G = totalWaterG - phase40G; // exact complement, avoids a rounding gap
 
@@ -105,5 +104,5 @@ export function buildFortySix({ doseG, ratio, phase60Pours = DEFAULT_PHASE60_POU
 
   const totalSeconds = (amounts.length - 1) * POUR_INTERVAL_S;
 
-  return { doseG, ratio, totalWaterG, phase40G, phase60G, phase60Pours: n, pours, totalSeconds };
+  return { totalWaterG, phase40G, phase60G, phase60Pours: n, pours, totalSeconds };
 }
