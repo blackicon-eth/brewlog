@@ -62,7 +62,7 @@ Covers the tool math (ratio, extraction yield, 4:6, pour schedules, coffee compa
 brew formatting, the SQLite data layer including coffee photos and per-method recipes
 (in-memory `better-sqlite3` behind the same `Db` interface), the ledger file
 format/validation and the import transaction, the prompt builders, and the assistant's
-model lifecycle. 330 tests across 25 suites; `npx tsc --noEmit` is clean.
+model lifecycle. 357 tests across 27 suites; `npx tsc --noEmit` is clean.
 
 ## Android setup from scratch
 
@@ -157,6 +157,8 @@ The advisor**. Once ready, chat, Diagnose, and Best recipe stream token-by-token
 
 ## Manual on-device checklist
 
+- [ ] A fresh install opens the welcome carousel exactly once; both closing choices land
+      in the app, and later launches skip straight to it.
 - [ ] App launches to the Home ledger; all five tabs (Home, Brews, Chat, Tools, Settings)
       switch instantly with no flicker.
 - [ ] Add / edit / delete a coffee.
@@ -175,7 +177,8 @@ The advisor**. Once ready, chat, Diagnose, and Best recipe stream token-by-token
 - [ ] Settings: toggling the assistant off unloads the model (the file stays cached);
       switching model downloads the new one immediately.
 - [ ] Tools: Brew Ratio solves the third value from any two; Brew Timer walks a pour
-      schedule; tool inputs survive an app restart.
+      schedule; 4:6 builds a plan from water alone; Extraction Yield turns a TDS reading
+      into EY % and hands it to the Coffee Compass; tool inputs survive an app restart.
 - [ ] Export ledger writes `brewlog-ledger-YYYY-MM-DD.json` into the folder you picked
       once (remembered afterwards).
 - [ ] Import ledger validates the file, warns before replacing a non-empty ledger, and

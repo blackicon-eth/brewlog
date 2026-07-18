@@ -27,6 +27,9 @@ npx expo start                             # Metro only (debug builds load JS fr
 
 Dev loop on the device: JS/TS edits hot-reload through Metro (Fast Refresh) — do **not**
 force-stop/relaunch the app to see UI changes. Check Metro with `curl localhost:8081/status`.
+Exception: Metro's file watcher misses **newly created directories** (e.g. adding an assets
+folder) — the app then red-screens with `UnableToResolveError` until Metro is restarted
+(`npx expo start --clear`).
 README.md has the full toolchain setup (JDK 17 tarball, headless Android SDK) and a
 troubleshooting table for the known QVAC/bare-kit build failures.
 
@@ -76,6 +79,11 @@ SQL) in the core; screens should only wire hooks to components.
 - **EB Garamond descenders clip on Android** (g/y tails). Headline text over ~2 words needs
   `lineHeight` bumped (34 for `headlineMd`, 48 for `headlineLg`) and
   `includeFontPadding: false`.
+- **Centered custom-font text can silently drop its last word.** An intrinsically-sized
+  `Text` (centered, no explicit width) is measured narrower than the serif renders, and the
+  overflow is clipped, not wrapped. Give such text `alignSelf: "stretch"` (plus
+  `textAlign: "center"`) so wrapping is computed against the container width — see the
+  caption styles in `src/components/WelcomeCarousel.tsx`.
 - **Fabric flickers elevation shadows and native-driver opacity on restyle.** Surfaces that
   restyle frequently use hairline borders instead of elevation; small fades in
   re-render-heavy trees use the JS animation driver.
@@ -104,4 +112,6 @@ hardcode copy in a screen. `it.ts` is `satisfies Dict`, so a missing key fails
 `src/lib/i18n/labels.ts` helpers; locale-aware dates/numbers via `src/lib/i18n/format.ts`
 (legacy `formatRatio`/`formatBrewDate` stay English for filenames + prompts). Italian
 voice: the ledger is the **"registro"**, the AI is **"l'assistente"**. **The assistant
-itself stays English** — nothing under `src/qvac` is ever localized.
+itself stays English** — nothing under `src/qvac` is ever localized. The one-time welcome
+carousel (`src/components/WelcomeCarousel.tsx`) shows per-locale device screenshots from
+`assets/welcome/<locale>/` — adding a language means capturing a new plate set too.
