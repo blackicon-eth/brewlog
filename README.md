@@ -149,8 +149,9 @@ npx expo run:android   # first native build takes several minutes
 
 ### 6. First launch
 
-The app opens on the Home ledger with a two-step welcome card: a short overview, then an
-optional offer to enable the assistant (model download progress shows in the card).
+The app opens on a one-time welcome carousel: a cover, a plate for each of the five tabs
+(bundled device screenshots, English and Italian), and a closing offer to enable the
+assistant (the download then continues in the background; the Chat tab shows progress).
 Decline and Brewlog is a plain journal — enable the assistant any time in **Settings →
 The advisor**. Once ready, chat, Diagnose, and Best recipe stream token-by-token.
 
