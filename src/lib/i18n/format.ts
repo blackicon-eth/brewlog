@@ -25,6 +25,20 @@ export function formatBrewDateLocale(ts: number, locale: Locale): string {
   return `${d.getDate()} ${month}`;
 }
 
+// "10 Jun 2026" (EN) / "10 giu 2026" (IT) — the roast-date tag on the coffee page.
+// Parsed by hand (YYYY-MM-DD → local Date) rather than Date.parse, which reads an ISO
+// date-only string as UTC midnight and would shift the day in negative-offset timezones.
+// The form field is free text, so a malformed value falls back to the raw string.
+export function formatRoastDateLocale(iso: string, locale: Locale): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso.trim());
+  if (!m) return iso.trim();
+  const y = Number(m[1]), mo = Number(m[2]), day = Number(m[3]);
+  const d = new Date(y, mo - 1, day);
+  if (d.getFullYear() !== y || d.getMonth() !== mo - 1 || d.getDate() !== day) return iso.trim();
+  const month = new Intl.DateTimeFormat(intlLocaleTag(locale), { month: "short" }).format(d);
+  return `${day} ${month} ${y}`;
+}
+
 // 24-hour time, e.g. "14:30" — matches the legacy formatBrewTime's zero-padded HH:mm in
 // both locales (Italy also reads the clock in 24h).
 export function formatBrewTimeLocale(ts: number, locale: Locale): string {

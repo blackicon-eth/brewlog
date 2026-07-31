@@ -21,6 +21,19 @@ export function RatingChip({ value, size = "md", style, ...props }: RatingChipPr
   );
 }
 
+// The same pill in a disabled palette for a coffee with no ratings yet — the star stays
+// so it reads as the rating slot, the dash says "nothing recorded". Same fixed height as
+// the rated chip, so shelf cards measure identically either way.
+export function UnratedChip({ size = "md", style, ...props }: Omit<RatingChipProps, "value">) {
+  const s = SIZES[size];
+  return (
+    <View {...props} style={[styles.chip, styles.chipDisabled, s.chip, style]}>
+      <Text style={[styles.star, styles.inkDisabled, s.star]}>★</Text>
+      <Text style={[styles.text, styles.inkDisabled, s.text]}>–</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   chip: {
     flexDirection: "row",
@@ -28,8 +41,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceContainerHigh,
     borderRadius: radii.full,
   },
+  chipDisabled: { backgroundColor: colors.surfaceContainer },
   star: { color: colors.tertiary, marginTop: -1 },
   text: { color: colors.tertiary, fontFamily: fonts.sansBold },
+  inkDisabled: { color: colors.outline },
 });
 
 // Fixed heights (not vertical padding) so the chip measures the same regardless of font

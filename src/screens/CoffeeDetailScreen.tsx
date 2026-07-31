@@ -11,7 +11,7 @@ import { listBrewsForCoffee } from "../db/brews";
 import { listPhotosForCoffee } from "../db/coffeePhotos";
 import type { Brew, Coffee, CoffeePhoto } from "../models/types";
 import { formatSeconds } from "../lib/brewFormat";
-import { formatRatioLocale, formatBrewDateLocale, formatBrewTimeLocale } from "../lib/i18n/format";
+import { formatRatioLocale, formatBrewDateLocale, formatBrewTimeLocale, formatRoastDateLocale } from "../lib/i18n/format";
 import { methodSpec, defaultPickerMethod } from "../lib/brewMethods";
 import { methodShortLabel } from "../lib/i18n/labels";
 import type { Dict } from "../lib/i18n/en";
@@ -63,7 +63,12 @@ export function CoffeeDetailScreen() {
 
   const hasBrews = brews.length > 0;
   const tags = coffee
-    ? [coffee.process, coffee.roastLevel ? t("coffeeDetail.roastTag", { level: coffee.roastLevel }) : null, coffee.origin].filter(Boolean).join(" · ")
+    ? [
+        coffee.process,
+        coffee.roastLevel ? t("coffeeDetail.roastTag", { level: coffee.roastLevel }) : null,
+        coffee.origin,
+        coffee.roastDate ? formatRoastDateLocale(coffee.roastDate, locale) : null,
+      ].filter(Boolean).join(" · ")
     : "";
 
   // "Recent" = most-recently brewed first (the DB's default order); "Top rated" = highest
@@ -77,6 +82,13 @@ export function CoffeeDetailScreen() {
     }
     return arr;
   }, [brews, sort]);
+
+  // Clone = a new-coffee form prefilled from this bag (everything but the roast date,
+  // photos shared by reference). Nothing is persisted unless the user saves.
+  function onClone() {
+    if (!coffee) return;
+    nav.navigate("CoffeeForm", { cloneFrom: coffee.id });
+  }
 
   // --- sort-change animation (self-contained; safe to remove) ---
   // A quick fade + rise on the list each time the sort flips.
@@ -211,9 +223,15 @@ export function CoffeeDetailScreen() {
           )}
         />
       </Animated.View>
-      {/* No new brews for a finished bag — its past brews still live in the ledger. */}
-      {coffee && !coffee.archived ? (
-        <Fab label={t("coffeeDetail.logBrew")} onPress={() => nav.navigate("BrewForm", { coffeeId: params.coffeeId })} />
+      {/* No new brews for a finished bag — its past brews still live in the ledger.
+          In its place, a Clone action: a new bag of the same bean (recipes and photo
+          references carried over), opened straight away for its fresh roast date. */}
+      {coffee ? (
+        coffee.archived ? (
+          <Fab label={t("coffeeDetail.clone")} onPress={onClone} />
+        ) : (
+          <Fab label={t("coffeeDetail.logBrew")} onPress={() => nav.navigate("BrewForm", { coffeeId: params.coffeeId })} />
+        )
       ) : null}
 
       <PhotoViewer uri={viewerUri} onClose={() => setViewerUri(null)} />

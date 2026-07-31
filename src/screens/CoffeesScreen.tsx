@@ -151,6 +151,7 @@ export function CoffeesScreen() {
             name={item.name}
             brewCount={item.brewCount}
             avg={item.avg}
+            roastDate={item.roastDate}
             photoUri={item.coverPhotoUri}
             onPress={() => nav.navigate("CoffeeDetail", { coffeeId: item.id })}
           />

@@ -4,7 +4,7 @@ import type { BrewMethodId } from "../lib/brewMethods";
 export type RootStackParamList = {
   Main: undefined;
   Tool: { toolId: ToolId };
-  CoffeeForm: { coffeeId?: string };
+  CoffeeForm: { coffeeId?: string; cloneFrom?: string };
   CoffeeDetail: { coffeeId: string };
   BrewDetail: { coffeeId: string; brewId: string };
   BrewForm: { coffeeId: string; brewId?: string };

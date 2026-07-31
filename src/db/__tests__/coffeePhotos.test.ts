@@ -6,6 +6,7 @@ import {
   listAllPhotos,
   deleteCoffeePhoto,
   updateCoffeePhotoPosition,
+  countPhotosByUri,
 } from "../coffeePhotos";
 import type { Coffee, CoffeePhoto } from "../../models/types";
 
@@ -62,4 +63,29 @@ it("updates a photo's position and reorders the list", async () => {
   await updateCoffeePhotoPosition(db, "a", 2);
   const list = await listPhotosForCoffee(db, "c1");
   expect(list.map((p) => p.id)).toEqual(["b", "a"]);
+});
+
+describe("countPhotosByUri", () => {
+  it("counts rows sharing a URI across coffees, zero when none", async () => {
+    const db = await makeTestDb();
+    await createCoffee(db, coffee("c1"));
+    await createCoffee(db, coffee("c2"));
+    await createCoffeePhoto(db, photo({ id: "p1", coffeeId: "c1", uri: "file:///shared.jpg" }));
+    await createCoffeePhoto(db, photo({ id: "p2", coffeeId: "c2", uri: "file:///shared.jpg" }));
+    await createCoffeePhoto(db, photo({ id: "p3", coffeeId: "c1", uri: "file:///only-c1.jpg" }));
+    expect(await countPhotosByUri(db, "file:///shared.jpg")).toBe(2);
+    expect(await countPhotosByUri(db, "file:///only-c1.jpg")).toBe(1);
+    expect(await countPhotosByUri(db, "file:///missing.jpg")).toBe(0);
+  });
+
+  it("drops when one of two sharing coffees is deleted", async () => {
+    const db = await makeTestDb();
+    const { deleteCoffee } = await import("../coffees");
+    await createCoffee(db, coffee("c1"));
+    await createCoffee(db, coffee("c2"));
+    await createCoffeePhoto(db, photo({ id: "p1", coffeeId: "c1", uri: "file:///shared.jpg" }));
+    await createCoffeePhoto(db, photo({ id: "p2", coffeeId: "c2", uri: "file:///shared.jpg" }));
+    await deleteCoffee(db, "c1");
+    expect(await countPhotosByUri(db, "file:///shared.jpg")).toBe(1);
+  });
 });

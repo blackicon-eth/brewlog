@@ -7,7 +7,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/types";
 import { getDb } from "../db/database";
 import { getCoffee, createCoffee, updateCoffee, deleteCoffee, setCoffeeArchived } from "../db/coffees";
-import { listPhotosForCoffee, createCoffeePhoto, deleteCoffeePhoto, updateCoffeePhotoPosition } from "../db/coffeePhotos";
+import { listPhotosForCoffee, createCoffeePhoto, deleteCoffeePhoto, updateCoffeePhotoPosition, countPhotosByUri } from "../db/coffeePhotos";
 import * as photoStore from "../media/photoStore";
 import { makeId } from "../lib/ids";
 import { AppText, TextField, PillButton, NaturalLanguageIntake, Chevron, TrashIcon, ArchiveIcon, useAppModal } from "../components/ui";
@@ -27,10 +27,13 @@ export function CoffeeFormScreen() {
   const { aiEnabled } = useQvac();
   const { t } = useI18n();
   const editingId = params?.coffeeId;
+  // Clone mode: the form behaves as "new coffee" but opens prefilled from a source bag
+  // (everything but the roast date; photos referenced, not copied).
+  const cloneFromId = params?.cloneFrom;
   // The freeform intake box only exists when the assistant is on — with it off, a new
   // log must open straight on the manual form (the intake renders null and would leave
-  // the page empty forever).
-  const [revealed, setRevealed] = useState(!!editingId || !aiEnabled);
+  // the page empty forever). A clone is also prefilled, so it skips the intake too.
+  const [revealed, setRevealed] = useState(!!editingId || !!cloneFromId || !aiEnabled);
 
   const [roaster, setRoaster] = useState("");
   const [name, setName] = useState("");
@@ -45,18 +48,21 @@ export function CoffeeFormScreen() {
   // Stable coffee id, generated once — so gallery photos file under a known id even
   // before a brand-new coffee is first saved.
   const coffeeIdRef = useRef(editingId ?? makeId());
-  const [photos, setPhotos] = useState<{ id: string; uri: string; persisted: boolean }[]>([]);
+  // `shared` marks a clone's photo: the row id is fresh (generated at prefill) but the
+  // file belongs to the source coffee — never delete it from this form.
+  const [photos, setPhotos] = useState<{ id: string; uri: string; persisted: boolean; shared?: boolean }[]>([]);
   const removedRef = useRef<{ id: string; uri: string }[]>([]);
   const savedRef = useRef(false);
   const photosRef = useRef(photos);
   const pickingRef = useRef(false);
 
   useEffect(() => {
-    if (!editingId) return;
+    const sourceId = editingId ?? cloneFromId;
+    if (!sourceId) return;
     (async () => {
       try {
         const db = await getDb();
-        const c = await getCoffee(db, editingId);
+        const c = await getCoffee(db, sourceId);
         if (!c) {
           modal.alert(t("coffeeForm.openErrorTitle"), t("coffeeForm.openErrorBody"));
           nav.goBack();
@@ -64,15 +70,22 @@ export function CoffeeFormScreen() {
         }
         setRoaster(c.roaster); setName(c.name); setOrigin(c.origin ?? "");
         setProcess(c.process ?? ""); setRoastLevel(c.roastLevel ?? "");
-        setRoastDate(c.roastDate ?? ""); setNotes(c.notes ?? "");
-        setArchived(!!c.archived); setCreatedAt(c.createdAt);
-        setPhotos((await listPhotosForCoffee(db, editingId)).map((p) => ({ id: p.id, uri: p.uri, persisted: true })));
+        setNotes(c.notes ?? "");
+        if (editingId) {
+          setRoastDate(c.roastDate ?? "");
+          setArchived(!!c.archived); setCreatedAt(c.createdAt);
+          setPhotos((await listPhotosForCoffee(db, sourceId)).map((p) => ({ id: p.id, uri: p.uri, persisted: true })));
+        } else {
+          // Clone: the roast date stays blank — that's what makes the bag a new lot.
+          // Photos are re-referenced (fresh row ids, same files), not copied.
+          setPhotos((await listPhotosForCoffee(db, sourceId)).map((p) => ({ id: makeId(), uri: p.uri, persisted: false, shared: true })));
+        }
       } catch (e: any) {
         modal.alert(t("coffeeForm.openErrorTitle"), String(e?.message ?? e));
         nav.goBack();
       }
     })();
-  }, [editingId]);
+  }, [editingId, cloneFromId]);
 
   // Keep a ref mirror of photos so the unmount-only cleanup below can read the latest
   // value without re-running (and re-deleting in-use files) on every photos change.
@@ -80,11 +93,12 @@ export function CoffeeFormScreen() {
 
   // Cleanup for photos that were picked but never saved (form abandoned): the file was
   // written to disk on pick, so it must be reclaimed if the coffee row never lands.
+  // Shared (clone) photos are skipped — their files belong to the source coffee.
   // Deps: [] — this must only fire at true unmount, not on every photos change, or a
   // just-picked (not-yet-persisted) photo gets deleted the moment a second one is added.
   useEffect(() => () => {
     if (savedRef.current) return;
-    for (const p of photosRef.current) if (!p.persisted) photoStore.deletePhotoFile(p.uri);
+    for (const p of photosRef.current) if (!p.persisted && !p.shared) photoStore.deletePhotoFile(p.uri);
   }, []);
 
   async function onAddPhoto() {
@@ -123,8 +137,10 @@ export function CoffeeFormScreen() {
     setPhotos((prev) => {
       const target = prev.find((p) => p.id === photoId);
       if (!target) return prev;
+      // Persisted rows are deleted on save (files ref-counted then); fresh picks lose
+      // their file now; shared clone photos just leave the list — the file isn't ours.
       if (target.persisted) removedRef.current.push({ id: target.id, uri: target.uri });
-      else photoStore.deletePhotoFile(target.uri);
+      else if (!target.shared) photoStore.deletePhotoFile(target.uri);
       return prev.filter((p) => p.id !== photoId);
     });
   }
@@ -172,9 +188,12 @@ export function CoffeeFormScreen() {
 
       // Files are only reclaimed after the transaction commits — deleting them earlier
       // (or leaving savedRef true before commit) would leave orphaned files or a
-      // disabled unmount cleanup if the writes above rolled back.
+      // disabled unmount cleanup if the writes above rolled back. And only when no row
+      // still points at the file — a clone's rows share the same URIs.
       savedRef.current = true;
-      for (const r of removedRef.current) photoStore.deletePhotoFile(r.uri);
+      for (const r of removedRef.current) {
+        if ((await countPhotosByUri(db, r.uri)) === 0) photoStore.deletePhotoFile(r.uri);
+      }
 
       nav.goBack();
     } catch (e: any) {
@@ -195,7 +214,11 @@ export function CoffeeFormScreen() {
       const db = await getDb();
       const existing = await listPhotosForCoffee(db, editingId);
       await deleteCoffee(db, editingId);
-      for (const p of existing) photoStore.deletePhotoFile(p.uri);
+      // The delete cascaded this coffee's photo rows; a file goes only when no other
+      // coffee (a clone) still references it.
+      for (const p of existing) {
+        if ((await countPhotosByUri(db, p.uri)) === 0) photoStore.deletePhotoFile(p.uri);
+      }
       nav.navigate("Main");
     } catch (e: any) {
       modal.alert(t("coffeeForm.deleteErrorTitle"), String(e?.message ?? e));

@@ -1,8 +1,9 @@
 import React from "react";
 import { Image, Pressable, StyleSheet, View } from "react-native";
 import { AppText } from "./AppText";
-import { RatingChip, RATING_CHIP_HEIGHT } from "./RatingChip";
+import { RatingChip, UnratedChip, RATING_CHIP_HEIGHT } from "./RatingChip";
 import { useI18n } from "../../i18n/LocaleProvider";
+import { formatRoastDateLocale } from "../../lib/i18n/format";
 import { colors, radii, spacing } from "../../design/tokens";
 
 export type CoffeeCardProps = {
@@ -10,6 +11,8 @@ export type CoffeeCardProps = {
   name: string;
   brewCount: number;
   avg: number | null;
+  /** ISO "YYYY-MM-DD" — shown as a small quiet date beside the brew count when present. */
+  roastDate?: string | null;
   /** Position-0 photo for this coffee, if any. Null/absent renders a quiet placeholder tile
    *  (same footprint) so the shelf doesn't jump between photographed and un-photographed bags. */
   photoUri?: string | null;
@@ -58,8 +61,8 @@ function CoverThumb({ photoUri }: { photoUri?: string | null }) {
 // makes the shadow flicker (the Fabric gotcha). A ruled border restyles cleanly and reads
 // right at home in the ledger aesthetic — the cover tile follows the same rule (border,
 // no shadow), so it can't reintroduce the flicker either.
-export function CoffeeCard({ roaster, name, brewCount, avg, photoUri, onPress }: CoffeeCardProps) {
-  const { t, tn } = useI18n();
+export function CoffeeCard({ roaster, name, brewCount, avg, roastDate, photoUri, onPress }: CoffeeCardProps) {
+  const { tn, locale } = useI18n();
   return (
     <Pressable
       onPress={onPress}
@@ -74,13 +77,20 @@ export function CoffeeCard({ roaster, name, brewCount, avg, photoUri, onPress }:
       </View>
       <View style={styles.divider} />
       <View style={styles.meta}>
-        <AppText variant="labelMd">
-          {tn("common.brewCount", brewCount)}
-        </AppText>
+        <View style={styles.metaLeft}>
+          <AppText variant="labelMd" style={styles.metaText}>
+            {tn("common.brewCount", brewCount)}
+          </AppText>
+          {roastDate ? (
+            <AppText variant="labelSm" style={[styles.metaText, styles.roastDate]}>
+              {"· "}{formatRoastDateLocale(roastDate, locale)}
+            </AppText>
+          ) : null}
+        </View>
         {avg != null ? (
           <RatingChip value={avg} />
         ) : (
-          <AppText variant="labelMd" style={styles.unrated}>{t("common.unrated")}</AppText>
+          <UnratedChip />
         )}
       </View>
     </Pressable>
@@ -107,7 +117,13 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     minHeight: RATING_CHIP_HEIGHT.md,
   },
-  unrated: { color: colors.outline },
+  metaLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+  // The label variants are wide-tracked kicker styles (1.2/1.4); tightened here since
+  // this row reads as prose, not as a heading.
+  metaText: { letterSpacing: 0.5 },
+  // The dot separator echoes the ledger's " · " idiom; muted ink keeps it quieter than
+  // the brew count it sits beside.
+  roastDate: { color: colors.outline },
 
   // Cover tile — fixed square, hairline border, no elevation (Fabric flicker rule above).
   cover: {

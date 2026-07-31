@@ -35,7 +35,7 @@ const styles = StyleSheet.create({
   fab: {
     position: "absolute",
     right: spacing.container,
-    bottom: 28,
+    bottom: 40,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
   fabRound: {
     position: "absolute",
     right: spacing.container,
-    bottom: 28,
+    bottom: 40,
     width: 58,
     height: 58,
     alignItems: "center",
