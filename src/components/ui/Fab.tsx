@@ -9,11 +9,13 @@ export type FabProps = {
   // Icon-only circular variant (a bare "+"). The pill keeps its label; `round` drops
   // the text to a single blue disc — the label still names the button for screen readers.
   round?: boolean;
+  /** Leading glyph — "plus" (default) for add/log actions, "copy" for clone/duplicate. */
+  icon?: "plus" | "copy";
 };
 
 // Primary action, anchored bottom-right within thumb reach. The "+" is the one place the
 // action blue takes over the warm canvas — as a labeled pill, or a bare circular disc.
-export function Fab({ label, onPress, round = false }: FabProps) {
+export function Fab({ label, onPress, round = false, icon = "plus" }: FabProps) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -21,13 +23,38 @@ export function Fab({ label, onPress, round = false }: FabProps) {
       onPress={onPress}
       style={({ pressed }) => [round ? styles.fabRound : styles.fab, pressed && styles.pressed]}
     >
-      {/* Hand-drawn "+" from two bars — pixel-centred regardless of font metrics. */}
       <View style={round ? styles.plusWrapRound : styles.plusWrap}>
-        <View style={[styles.plusH, round && styles.plusHRound]} />
-        <View style={[styles.plusV, round && styles.plusVRound]} />
+        {icon === "copy" ? (
+          <CopyGlyph />
+        ) : (
+          <>
+            {/* Hand-drawn "+" from two bars — pixel-centred regardless of font metrics. */}
+            <View style={[styles.plusH, round && styles.plusHRound]} />
+            <View style={[styles.plusV, round && styles.plusVRound]} />
+          </>
+        )}
       </View>
       {round ? null : <AppText variant="labelMd" style={styles.label}>{label}</AppText>}
     </Pressable>
+  );
+}
+
+// Classic two-sheets copy glyph, drawn from View borders like the app's other icons.
+// The front sheet is button-blue filled so it occludes the back sheet's corner.
+function CopyGlyph() {
+  const sheet = {
+    position: "absolute" as const,
+    width: 12,
+    height: 14,
+    borderWidth: 2,
+    borderColor: colors.onPrimary,
+    borderRadius: 3,
+  };
+  return (
+    <>
+      <View style={[sheet, { top: 0, right: 0 }]} />
+      <View style={[sheet, { bottom: 0, left: 0, backgroundColor: colors.primary }]} />
+    </>
   );
 }
 
@@ -35,7 +62,7 @@ const styles = StyleSheet.create({
   fab: {
     position: "absolute",
     right: spacing.container,
-    bottom: 28,
+    bottom: 40,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
@@ -49,7 +76,7 @@ const styles = StyleSheet.create({
   fabRound: {
     position: "absolute",
     right: spacing.container,
-    bottom: 28,
+    bottom: 40,
     width: 58,
     height: 58,
     alignItems: "center",

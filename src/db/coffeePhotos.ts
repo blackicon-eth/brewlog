@@ -30,6 +30,16 @@ export async function deleteCoffeePhoto(db: Db, id: string): Promise<void> {
   await db.runAsync("DELETE FROM coffee_photos WHERE id = ?", [id]);
 }
 
+// How many rows still point at a photo file. Cloned coffees share URIs (the clone gets
+// its own rows, not its own files), so callers must check this before unlinking a file
+// from disk — 0 means the file is truly unreferenced and safe to delete.
+export async function countPhotosByUri(db: Db, uri: string): Promise<number> {
+  const row = await db.getFirstAsync<{ n: number }>(
+    "SELECT COUNT(*) AS n FROM coffee_photos WHERE uri = ?", [uri]
+  );
+  return row?.n ?? 0;
+}
+
 export async function updateCoffeePhotoPosition(db: Db, id: string, position: number): Promise<void> {
   await db.runAsync("UPDATE coffee_photos SET position = ? WHERE id = ?", [position, id]);
 }

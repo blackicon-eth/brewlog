@@ -2,6 +2,7 @@ import { formatRatio } from "../ratio";
 import { formatBrewDate, formatBrewTime } from "../brewFormat";
 import {
   formatNumberLocale, formatRatioLocale, formatBrewDateLocale, formatBrewTimeLocale,
+  formatRoastDateLocale,
 } from "../i18n/format";
 
 // Fixed brew timestamp: Fri 17 Jul 2026, 14:30 local.
@@ -34,6 +35,25 @@ describe("formatBrewDateLocale", () => {
 
   it("renders an Italian month for IT", () => {
     expect(formatBrewDateLocale(TS, "it")).toMatch(/lug/i);
+  });
+});
+
+describe("formatRoastDateLocale", () => {
+  it("renders day, short month, year for EN", () => {
+    expect(formatRoastDateLocale("2026-06-10", "en")).toBe("10 Jun 2026");
+  });
+
+  it("renders an Italian month for IT", () => {
+    expect(formatRoastDateLocale("2026-06-10", "it")).toMatch(/^10 giu\.? 2026$/i);
+  });
+
+  it("is not shifted by the local timezone (no UTC-midnight parse)", () => {
+    expect(formatRoastDateLocale("2026-01-01", "en")).toBe("1 Jan 2026");
+  });
+
+  it("falls back to the raw string for malformed or impossible dates", () => {
+    expect(formatRoastDateLocale("June 10", "en")).toBe("June 10");
+    expect(formatRoastDateLocale("2026-13-40", "en")).toBe("2026-13-40");
   });
 });
 
