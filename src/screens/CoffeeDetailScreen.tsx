@@ -111,22 +111,24 @@ export function CoffeeDetailScreen() {
           <Pressable onPress={() => nav.goBack()} hitSlop={10} style={styles.backBtn}>
             <Chevron direction="left" size={12} thickness={2.5} color={colors.onSurface} />
           </Pressable>
-          <Pressable
-            onPress={() => coffee && nav.navigate("CoffeeForm", { coffeeId: coffee.id })}
-            style={styles.editBtn}
-          >
-            <AppText variant="labelMd" style={styles.editText}>{t("common.edit")}</AppText>
-          </Pressable>
+          <View style={styles.topBarRight}>
+            {coffee?.archived ? (
+              <View style={styles.archivedBadge}>
+                <ArchiveIcon size={12} color={colors.onSurfaceVariant} thickness={1.4} />
+                <AppText variant="labelSm" style={styles.archivedText}>{t("coffeeDetail.archived")}</AppText>
+              </View>
+            ) : null}
+            <Pressable
+              onPress={() => coffee && nav.navigate("CoffeeForm", { coffeeId: coffee.id })}
+              style={styles.editBtn}
+            >
+              <AppText variant="labelMd" style={styles.editText}>{t("common.edit")}</AppText>
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.roasterRow}>
           {coffee ? <AppText variant="labelSm">{coffee.roaster}</AppText> : null}
-          {coffee?.archived ? (
-            <View style={styles.archivedBadge}>
-              <ArchiveIcon size={12} color={colors.onSurfaceVariant} thickness={1.4} />
-              <AppText variant="labelSm" style={styles.archivedText}>{t("coffeeDetail.archived")}</AppText>
-            </View>
-          ) : null}
         </View>
         <View style={styles.titleRow}>
           <AppText variant="headlineLg" style={styles.title}>{coffee ? coffee.name : "…"}</AppText>
@@ -228,7 +230,7 @@ export function CoffeeDetailScreen() {
           references carried over), opened straight away for its fresh roast date. */}
       {coffee ? (
         coffee.archived ? (
-          <Fab label={t("coffeeDetail.clone")} onPress={onClone} />
+          <Fab label={t("coffeeDetail.clone")} onPress={onClone} icon="copy" />
         ) : (
           <Fab label={t("coffeeDetail.logBrew")} onPress={() => nav.navigate("BrewForm", { coffeeId: params.coffeeId })} />
         )
@@ -245,15 +247,17 @@ const styles = StyleSheet.create({
   list: { paddingHorizontal: spacing.container, paddingBottom: 104 },
   header: { paddingHorizontal: spacing.container, paddingBottom: 4 },
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 18 },
+  topBarRight: { flexDirection: "row", alignItems: "center", gap: 8 },
   backBtn: { height: 34, justifyContent: "center" },
   editBtn: { borderWidth: 1, borderColor: colors.outlineVariant, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 },
   editText: { color: colors.onSurfaceVariant },
   roasterRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
   // Quiet grey "Archived" tag — matches the grayish archive language elsewhere.
+  // Fixed height so it lines up with the Edit pill beside it (16 line + 7×2 padding + 2 border).
   archivedBadge: {
     flexDirection: "row", alignItems: "center", gap: 5,
     backgroundColor: colors.surfaceContainer, borderRadius: 999,
-    paddingLeft: 8, paddingRight: 11, paddingVertical: 3,
+    paddingLeft: 8, paddingRight: 11, height: 32,
   },
   archivedText: { color: colors.onSurfaceVariant, letterSpacing: 0.4 },
   // Name on the left, the circular recipe-book button pinned to the right of the same line.
