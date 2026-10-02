@@ -23,6 +23,14 @@ the best recipe per bean. Everything runs locally — no cloud, no account.
 - **Two languages** — English and Italian, switchable live in Settings (first launch
   follows the device locale). The assistant itself always speaks English.
 
+## Install on a phone (no laptop)
+
+Prebuilt APKs are attached to [Releases](../../releases/latest) — download
+`app-release.apk` and tap it to install. It is **arm64 only** and signed with the Android
+debug keystore for sideloading, so you may need to allow "Install unknown apps" for your
+browser or file manager first. Enabling the assistant downloads a ~1.1 GB model, so keep
+the phone on Wi-Fi for that first step. To build it yourself, see [Quick start](#quick-start).
+
 ## Requirements
 
 - A **physical** Android device (developed/tested on a Galaxy S23; its 8 GB RAM runs the
